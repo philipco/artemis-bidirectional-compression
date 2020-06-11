@@ -1,0 +1,7 @@
+*.tar.gz
+*.cpython-37.pyc
+.idea/*
+**/.ipynb_checkpoints/*
+__pycache__/*
+htmlcov/*
+*.nbconvert.ipynb

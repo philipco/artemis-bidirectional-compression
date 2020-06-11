@@ -1,0 +1,73 @@
+"""
+Created by Philippenko, 8th June 2020.
+
+In this python file, we put all utilities function not related with the proper run.
+"""
+
+import pickle
+import os
+
+from math import sqrt, log
+from src.machinery.Parameters import Parameters
+
+
+def number_of_bits_needed_to_communicates_compressed(nb_devices: int, s: int, d: int) -> int:
+    """Computing the theoretical number of bits used for a single way when using compression (with Elias encoding)."""
+    frac = 2*(s**2+d) / (s * (s+sqrt(d)))
+    return nb_devices * (3 + 3/2) * log(frac) * s * (s + sqrt(d)) + 32
+
+
+def number_of_bits_needed_to_communicates_no_compressed(nb_devices:int, d: int) -> int:
+    """Computing the theoretical number of bits used for a single way when using compression (with Elias encoding)."""
+    return nb_devices * d * 32
+
+def compute_number_of_bits(type_params: Parameters):
+    """Computing the theoretical number of bits used by an algorithm (with Elias encoding)."""
+    # Initialization, the first element needs to be removed at the end.
+    number_of_bits = [0]
+    nb_devices = type_params.nb_devices
+    d = type_params.n_dimensions
+    for i in range(type_params.nb_epoch):
+        if type_params.bidirectional:
+            s = type_params.quantization_param
+            nb_bits = 2 * number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
+        elif type_params.quantization_param != 0:
+            s = type_params.quantization_param
+            nb_bits = number_of_bits_needed_to_communicates_no_compressed(nb_devices, d) \
+                   + number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
+        else:
+            nb_bits = 2 * number_of_bits_needed_to_communicates_no_compressed(nb_devices, d)
+
+        number_of_bits.append(nb_bits + number_of_bits[-1])
+    return number_of_bits[1:]
+
+
+def pickle_saver(data, filename: str) -> None:
+    """Save a python object into a pickle file.
+
+    If a file with the same name already exists, remove it.
+    Store the file into a folder pickle/ which need to already exist.
+
+    Args:
+        data: the python object to save.
+        filename: the filename where the object is saved.
+    """
+    file_to_save = "pickle/" + filename + ".pkl"
+    if os.path.exists(file_to_save):
+        os.remove(file_to_save)
+    pickle_out = open(file_to_save, "wb")
+    pickle.dump(data, pickle_out)
+    pickle_out.close()
+
+
+def pickle_loader(filename: str):
+    """Load a python object saved with pickle.
+
+    Args:
+        filename: the file where the object is stored.
+
+    Returns:
+        The python object to load.
+    """
+    pickle_in = open("pickle/" + filename + ".pkl", "rb")
+    return pickle.load(pickle_in)
