@@ -180,12 +180,12 @@ class Diana(PredefinedParameters):
         return "Diana"
 
 
-class DoubleSqueeze(PredefinedParameters):
-    """Predefine parameters to run DoubleSqueeze algorithm.
+class BiQSGD(PredefinedParameters):
+    """Predefine parameters to run Bi-QSGD algorithm.
     """
 
     def name(self) -> str:
-        return "DblSqz"
+        return "BiQSGD"
 
     def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
                momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
@@ -305,6 +305,6 @@ class SGDDoubleModelCompressionWithMem(PredefinedParameters):
 KIND_COMPRESSION = [SGDWithoutCompression(),
                     Qsgd(),
                     Diana(),
-                    DoubleSqueeze(),
+                    BiQSGD(),
                     Artemis()
                     ]

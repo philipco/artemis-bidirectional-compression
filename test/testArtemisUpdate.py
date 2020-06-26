@@ -75,8 +75,8 @@ class TestArtemisUpdate(unittest.TestCase):
         # there is a pb, with this test. Pass if ran with Artmis settings.
         self.assertTrue(torch.equal(update.value_to_quantized, zero_tensor))
 
-    def test_DoubleSqueeze(self):
-        params = DoubleSqueeze().define(n_dimensions=DIM, nb_devices=1, quantization_param=10)
+    def test_BiQSGD(self):
+        params = BiQSGD().define(n_dimensions=DIM, nb_devices=1, quantization_param=10)
         workers = [Worker(0, params)]
         workers[0].set_data(x, y)
         workers[0].cost_model.L = workers[0].cost_model.local_L
