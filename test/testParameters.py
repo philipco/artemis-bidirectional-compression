@@ -88,7 +88,7 @@ class ParametersTest(unittest.TestCase):
 
     def test_StochasticDoubleGradientsCompressionWithoutMemory_iscorrect(self):
         n_dimensions, nb_devices, quantization_param = 10, 10, 1
-        params = DoubleSqueeze().define(n_dimensions, nb_devices, quantization_param)
+        params = BiQSGD().define(n_dimensions, nb_devices, quantization_param)
         self.assertEqual(params.n_dimensions, n_dimensions)
         self.assertEqual(params.nb_devices, nb_devices)
         self.assertEqual(params.nb_epoch, NB_EPOCH)
