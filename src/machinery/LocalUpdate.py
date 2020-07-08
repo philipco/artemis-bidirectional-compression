@@ -100,23 +100,18 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
         learning_rate_down = self.parameters.learning_rate
-        if self.parameters.bidirectional:
-            # l_i must be update with true omega, not with it "unzip" version which corresponds to compress model param.
-            # As we override model_param, we need to update l_i in the same operation,
-            # to benefit from the true model_param.
-            if self.parameters.double_use_memory:
-                decompressed_value, self.l_i = tensor_sent + self.l_i, self.l_i + learning_rate_down * tensor_sent
-            else:
-                decompressed_value = tensor_sent
+
+        # l_i must be update with true omega, not with it "unzip" version which corresponds to compress model param.
+        # As we override model_param, we need to update l_i in the same operation,
+        # to benefit from the true model_param.
+        if self.parameters.double_use_memory:
+            decompressed_value, self.l_i = tensor_sent + self.l_i, self.l_i + learning_rate_down * tensor_sent
         else:
             decompressed_value = tensor_sent
 
         # Updating the model with the new gradients.
-        if self.parameters.compress_gradients and self.parameters.bidirectional:
-            self.v = self.parameters.momentum * self.v + decompressed_value
-            self.model_param = self.model_param - step * self.v
-        else:
-            self.model_param = decompressed_value
+        self.v = self.parameters.momentum * self.v + decompressed_value
+        self.model_param = self.model_param - step * self.v
 
     def compute(self, j: int):
         if self.parameters.stochastic:

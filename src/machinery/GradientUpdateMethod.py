@@ -135,35 +135,20 @@ class ArtemisUpdate(AbstractFLUpdate):
         # Computing new (compressed) gradients
         self.g = self.h + delta
 
-        omega = 0
-
         # If we compress gradients, we update now omega.
-        if self.parameters.compress_gradients and self.parameters.bidirectional:
-            self.value_to_quantized = self.g - self.l
-            omega = s_quantization(self.value_to_quantized, self.parameters.quantization_param)
+        self.value_to_quantized = self.g - self.l
+        omega = s_quantization(self.value_to_quantized, self.parameters.quantization_param)
 
         # Updating the model with the new gradients.
-        if self.parameters.compress_gradients and self.parameters.bidirectional:
-            self.v = self.parameters.momentum * self.v + (omega + self.l)
-        else:
-            self.v = self.parameters.momentum * self.v + self.g
-
+        self.v = self.parameters.momentum * self.v + (omega + self.l)
         model_param = model_param - self.v * self.step
-
-        # If we compress model, we update now omega.
-        # And if we don't use bidirectional compression, we just send model's parameters
-        if (not self.parameters.compress_gradients) and self.parameters.bidirectional:
-            self.value_to_quantized = model_param - self.l
-            omega = s_quantization(self.value_to_quantized, self.parameters.quantization_param)
-        elif not self.parameters.bidirectional:
-            omega = model_param
 
         # Send omega to all workers and update their local model.
         for worker in self.workers:
             worker.local_update.send_global_informations_and_update_local_param(omega, self.step)
 
         # Update the second memory if we are using bidirectional compression and that this feature has been turned on.
-        if self.parameters.bidirectional and self.parameters.double_use_memory:
+        if self.parameters.double_use_memory:
             self.l += self.parameters.learning_rate * omega
         self.h += self.parameters.learning_rate * delta
         return model_param

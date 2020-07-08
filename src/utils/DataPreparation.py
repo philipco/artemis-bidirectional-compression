@@ -23,7 +23,7 @@ def add_constant_columns(x):
 
 def sigmoid(x):
     """Implement sigmoid fundtion used in logistic regression."""
-    return torch.exp(x) / (1 + torch.exp(x))
+    return 1 / (1 + torch.exp(-x))
 
 
 def build_data_logistic(true_model_param: torch.FloatTensor, n_samples=NB_OF_POINTS_BY_DEVICE, n_dimensions=DIM,
@@ -49,7 +49,9 @@ def build_data_logistic(true_model_param: torch.FloatTensor, n_samples=NB_OF_POI
 
         # We use two different model to simulate non iid data.
         if i%2==0:
-            model_copy[(i+1)%n_dimensions] *= -1
+            for j in range(n_dimensions):
+                if j+1 % 2 == 0:
+                    model_copy[j] *= -1
         else:
             model_copy = deepcopy(true_model_param)
 
@@ -61,7 +63,7 @@ def build_data_logistic(true_model_param: torch.FloatTensor, n_samples=NB_OF_POI
 
         sign = np.array([1 for j in range(n_dimensions)])
         if i%2 == 0:
-            sign[i%n_dimensions] = -1
+            sign[i%2] = -1
 
         x = torch.from_numpy(sign * multivariate_normal(np.zeros(n_dimensions), cov, size=floor(n_samples)).astype(
             dtype=np.float64))
