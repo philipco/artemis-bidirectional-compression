@@ -65,7 +65,7 @@ class SGDWithoutCompression(PredefinedParameters):
                           step_formula=step_formula,
                           quantization_param=0,
                           momentum=momentum,
-                          verbose=True,
+                          verbose=False,
                           stochastic=stochastic,
                           bidirectional=False,
                           cost_model=model,
@@ -79,6 +79,9 @@ class Qsgd(PredefinedParameters):
 
     def name(self) -> str:
         return r"QSGD"
+
+    def type_FL(self):
+        return DianaDescent
 
     def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
                momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
@@ -114,7 +117,7 @@ class Diana(PredefinedParameters):
                           step_formula=step_formula,
                           quantization_param=quantization_param,
                           momentum=momentum,
-                          verbose=True,
+                          verbose=False,
                           stochastic=stochastic,
                           bidirectional=False,
                           cost_model=model,
@@ -131,6 +134,9 @@ class BiQSGD(PredefinedParameters):
 
     def name(self) -> str:
         return "BiQSGD"
+
+    def type_FL(self):
+        return ArtemisDescent
 
     def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
                momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
@@ -248,8 +254,8 @@ class SGDDoubleModelCompressionWithMem(PredefinedParameters):
 
 
 KIND_COMPRESSION = [SGDWithoutCompression(),
-                    # Qsgd(),
+                    Qsgd(),
                     Diana(),
-                    # BiQSGD(),
+                    BiQSGD(),
                     Artemis()
                     ]

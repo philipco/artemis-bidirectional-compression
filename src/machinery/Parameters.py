@@ -9,6 +9,7 @@ from src.models.CostModel import ACostModel, RMSEModel
 
 from math import sqrt
 
+
 def constant_step_size_formula(bidirectional: bool, nb_devices: int, n_dimensions: int):
     if sqrt(n_dimensions) >= nb_devices:
         if bidirectional:
@@ -32,16 +33,20 @@ def large_dim_selecter(bi: bool):
         return bi_large_dim
     return uni_large_dim
 
-def decreasing_steps_size(it, L, omega, N):
-    return 1 / (L * sqrt(it))
 
-def default_step_formula(stochastic: bool):
+def default_step_formula(sto: bool):
     """Default formula to compute the step size at each iteration.
 
     Two cases are handled, if it is a stochastic run or a full batch descent."""
-    if stochastic:
-        return lambda it, L, omega, N: 1 / (L * sqrt(it))
-    return lambda it, L, omega, N: 1 / L
+
+    def default_stochastic(it, L, omega, N): return 1 / (L * sqrt(it))
+    def default_full(it, L, omega, N): return 1/L
+
+    if sto:
+        return default_stochastic
+    else:
+        return default_full
+
 
 
 class Parameters:
@@ -77,7 +82,7 @@ class Parameters:
         self.n_dimensions = n_dimensions  # Dimension of the problem.
         self.nb_devices = nb_devices  # Number of device on the network.
         self.batch_size = batch_size  # Batch size.
-        self.step_formula = decreasing_steps_size
+        self.step_formula = default_step_formula(stochastic)
         # To compute the step size at each iteration, we use a lambda function which takes as parameters
         # the number of current epoch, the coefficient of smoothness and the quantization constant omega_c.
         # if step_formula == None:

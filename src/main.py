@@ -1,9 +1,10 @@
 """
 Created by Philippenko, 2 January 2020
 """
-from src.machinery.GradientDescent import ArtemisDescent
+from src.machinery.GradientDescent import FL_VanillaSGD
 from src.models.CostModel import RMSEModel
-from src.machinery.Parameters import Parameters, Artemis, Diana
+from src.machinery.Parameters import Parameters
+from src.machinery.PredefinedParameters import Artemis, Diana
 
 from src.utils.DataPreparation import build_data_linear
 from src.utils.Constants import generate_param
@@ -31,16 +32,16 @@ if __name__ == '__main__':
                              n_devices=MAX_NB_DEVICES, with_seed=False, without_noise=False)
 
     # 2) Computing objective function.
-    obj_min_descent = ArtemisDescent(Parameters(n_dimensions=dim_notebook,
-                                                nb_devices=nb_devices_for_the_run,
-                                                nb_epoch=600,
-                                                quantization_param=0,
-                                                momentum=0.,
-                                                verbose=False,
-                                                cost_model=RMSEModel(),
-                                                stochastic=False,
-                                                bidirectional=False
-                                                ))
+    obj_min_descent = FL_VanillaSGD(Parameters(n_dimensions=dim_notebook,
+                                               nb_devices=nb_devices_for_the_run,
+                                               nb_epoch=600,
+                                               quantization_param=0,
+                                               momentum=0.,
+                                               verbose=False,
+                                               cost_model=RMSEModel(),
+                                               stochastic=False,
+                                               bidirectional=False
+                                               ))
     obj_min_descent.set_data(X, Y)
     obj_min_descent.run()
     obj_min = obj_min_descent.losses[-1]

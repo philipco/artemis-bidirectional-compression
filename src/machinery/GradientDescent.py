@@ -27,7 +27,9 @@ import math
 
 from src.machinery.GradientUpdateMethod import BasicGradientUpdate, StochasticGradientUpdate, MomentumUpdate, SAGUpdate, \
     SVRGUpdate, \
-    CoordinateGradientUpdate, AdaGradUpdate, AdaDeltaUpdate, ArtemisUpdate, AbstractGradientUpdate
+    CoordinateGradientUpdate, AdaGradUpdate, AdaDeltaUpdate, ArtemisUpdate, AbstractGradientUpdate, \
+    GradientVanillaUpdate, DianaUpdate
+from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate
 from src.models.QuantizationModel import s_quantization_omega_c
 from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
@@ -50,7 +52,6 @@ class AGradientDescent(ABC):
             parameters: the parameters of the descent.
         """
         super().__init__()
-        self.workers = None
         self.parameters = parameters
         self.losses = []
         self.model_params = []
@@ -58,10 +59,32 @@ class AGradientDescent(ABC):
         self.averaged_losses = []
         self.X, self.Y = None, None
 
+        if self.parameters.quantization_param != 0:
+            self.parameters.omega_c = s_quantization_omega_c(
+                self.parameters.n_dimensions,
+                self.parameters.quantization_param
+            )
+
+            # If learning_rate is None, we set it to optimal value.
+            if self.parameters.learning_rate == None:
+                self.parameters.learning_rate = 1 / (2 * (self.parameters.omega_c + 1))
+            else:
+                if not self.parameters.force_learning_rate:
+                    self.parameters.learning_rate *= 1 / (1 * (self.parameters.omega_c + 1))
+
+        # If quantization_param == 0, it means there is no compression,
+        # which means that we don't want to "predict" values with previous one,
+        # and thus, we put learning_rate to zero.
+        else:
+            self.parameters.learning_rate = 0
+
+        # Creating each worker of the network.
+        self.workers = [Worker(i, parameters, self.__local_update__()) for i in range(self.parameters.nb_devices)]
+
     def set_data(self, X: torch.FloatTensor, Y: torch.FloatTensor) -> None:
         """Set data on each worker and compute coefficient of smoothness."""
         self.X, self.Y = X, Y
-        if self.workers is None: # To handle Federated Settings.
+        if self.workers is None: # To handle non-Federated Settings.
             self.parameters.cost_model.set_data(X, Y)
             self.parameters.cost_model.L = self.parameters.cost_model.local_L
         else:
@@ -82,10 +105,13 @@ class AGradientDescent(ABC):
         """
         pass
 
-    @abstractmethod
     def __number_iterations__(self) -> int:
         """Return the number of iterations needed to perform one epoch."""
-        pass
+        if self.parameters.stochastic:
+            n_samples, n_dimensions = self.workers[0].X.shape
+            return self.parameters.nb_epoch * n_samples
+
+        return self.parameters.nb_epoch
 
     @abstractmethod
     def get_name(self) -> str:
@@ -108,8 +134,12 @@ class AGradientDescent(ABC):
 
         # Initialization
         # current_model_param = torch.zeros(self.parameters.n_dimensions).to(dtype=torch.float64)
-        current_model_param = torch.FloatTensor([(1 + (-1)**i) - .5 - 0.5 / 3 for i in range(self.parameters.n_dimensions)])\
-           .to(dtype=torch.float64)
+
+        current_model_param = torch.FloatTensor(
+            [(-1 ** i) / (2 * self.parameters.n_dimensions) for i in range(self.parameters.n_dimensions)])\
+            .to(dtype=torch.float64)
+        # current_model_param = torch.FloatTensor([(1 + (-1)**i) - .5 - 0.5 / 3 for i in range(self.parameters.n_dimensions)])\
+        #    .to(dtype=torch.float64)
 
         self.model_params.append(current_model_param)
         self.losses.append(update.compute_cost(current_model_param))
@@ -180,63 +210,38 @@ class ArtemisDescent(AGradientDescent):
     This features can switched on when defining Parameters.
     """
 
-    def __init__(self, parameters: Parameters) -> None:
-        super().__init__(parameters)
-
-        if self.parameters.quantization_param != 0:
-            self.parameters.omega_c = s_quantization_omega_c(
-                self.parameters.n_dimensions,
-                self.parameters.quantization_param
-            )
-
-            # If learning_rate is None, we set it to optimal value.
-            if self.parameters.learning_rate == None:
-                self.parameters.learning_rate = 1 / (2 * (self.parameters.omega_c + 1))
-            else:
-                if not self.parameters.force_learning_rate:
-                    self.parameters.learning_rate *= 1 / (1 * (self.parameters.omega_c + 1))
-
-        # If quantization_param == 0, it means there is no compression,
-        # which means that we don't want to "predict" values with previous one,
-        # and thus, we put learning_rate to zero.
-        else:
-            self.parameters.learning_rate = 0
-
-        # Creating each worker of the network.
-        self.workers = [Worker(i, parameters) for i in range(parameters.nb_devices)]
-
-    def __number_iterations__(self):
-        if self.parameters.stochastic:
-            n_samples, n_dimensions = self.workers[0].X.shape
-            return self.parameters.nb_epoch * n_samples
-
-        return self.parameters.nb_epoch
+    def __local_update__(self):
+        return LocalArtemisUpdate
 
     def __update_method__(self) -> BasicGradientUpdate:
         return ArtemisUpdate(self.parameters, self.workers)
 
     def get_name(self) -> str:
-        name, s, param, reg, step, kind_compression = "", "", "", "", "", ""
-        if self.parameters.stochastic:
-            s = "sto_"
-        if self.parameters.quantization_param != 0:
-            if self.parameters.bidirectional:
-                name = "bi_"
-                if self.parameters.compress_gradients:
-                    kind_compression = "ĝ_"
-                    if self.parameters.double_use_memory:
-                        kind_compression = "ĝl_"
-                else:
-                    kind_compression = "ŵ_"
-            else:
-                name = "uni_"
-            if self.parameters.regularization_rate != 0:
-                reg = "$\lambda=" + str(self.parameters.regularization_rate) + "$ "
-            param = "$s=" + str(self.parameters.quantization_param) + \
-                    "$ $\\alpha=" + str(self.parameters.learning_rate)[:4] + "$ "
-        return kind_compression + s + name + "$N=" + str(self.parameters.nb_devices) + \
-                "$ $\\beta=" + str(self.parameters.momentum) \
-               + "$ " + param + reg
+        return "Artemis"
+
+
+class FL_VanillaSGD(AGradientDescent):
+
+    def __local_update__(self):
+        return LocalGradientVanillaUpdate
+
+    def __update_method__(self) -> AbstractGradientUpdate:
+        return GradientVanillaUpdate(self.parameters, self.workers)
+
+    def get_name(self) -> str:
+        return "VanillaGradient"
+
+
+class DianaDescent(AGradientDescent):
+
+    def __local_update__(self):
+        return LocalDianaUpdate
+
+    def __update_method__(self) -> AbstractGradientUpdate:
+        return DianaUpdate(self.parameters, self.workers)
+
+    def get_name(self) -> str:
+        return "Diana"
 
 
 class BasicGradientDescent(AGradientDescent):
