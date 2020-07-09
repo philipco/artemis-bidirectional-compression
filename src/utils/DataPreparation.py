@@ -11,7 +11,12 @@ from scipy.linalg.special_matrices import toeplitz
 import torch
 from math import floor
 
-from src.utils.Constants import DIM, NB_OF_POINTS_BY_DEVICE
+from src.utils.Constants import DIM, NB_OF_POINTS_BY_DEVICE, BIAS
+
+
+def add_bias_term(X):
+    newX = [torch.cat((torch.ones(len(X[0]), 1).to(dtype=torch.float64), x), 1) for x in X]
+    return newX
 
 
 def add_constant_columns(x):
@@ -109,7 +114,7 @@ def build_data_linear(true_model_param: torch.FloatTensor, n_samples=NB_OF_POINT
         x = torch.from_numpy(multivariate_normal(np.zeros(n_dimensions), cov, size=floor(n_samples)).astype(dtype=np.float64))
 
         # Simulation of the labels
-        y = x.mv(true_model_param)
+        y = x.mv(true_model_param) + BIAS
 
         # We add or not a noise
         if not without_noise:

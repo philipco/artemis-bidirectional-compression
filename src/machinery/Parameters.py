@@ -33,6 +33,22 @@ def large_dim_selecter(bi: bool):
         return bi_large_dim
     return uni_large_dim
 
+def default_step_formula_large_dim(sto: bool, bi: bool, quantization_param: int):
+    """Default formula to compute the step size at each iteration.
+
+    Two cases are handled, if it is a stochastic run or a full batch descent."""
+
+    def bi_large_dim(it, L, omega, N): return N / (4 * omega * (omega +1) * L)
+    def uni_large_dim(it, L, omega, N): return N / (4 * omega * L)
+    def vanilla_large_dim(it, L, omega, N): return 1 / (4  * L)
+
+    print("Large dimension...")
+
+    if quantization_param == 0:
+        return vanilla_large_dim
+    if bi:
+        return bi_large_dim
+    return bi_large_dim
 
 def default_step_formula(sto: bool):
     """Default formula to compute the step size at each iteration.
@@ -82,7 +98,8 @@ class Parameters:
         self.n_dimensions = n_dimensions  # Dimension of the problem.
         self.nb_devices = nb_devices  # Number of device on the network.
         self.batch_size = batch_size  # Batch size.
-        self.step_formula = default_step_formula(stochastic)
+        self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
+            else default_step_formula_large_dim(stochastic, bidirectional, quantization_param)
         # To compute the step size at each iteration, we use a lambda function which takes as parameters
         # the number of current epoch, the coefficient of smoothness and the quantization constant omega_c.
         # if step_formula == None:
