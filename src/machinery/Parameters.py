@@ -40,7 +40,7 @@ def default_step_formula_large_dim(sto: bool, bi: bool, quantization_param: int)
 
     def bi_large_dim(it, L, omega, N): return N / (4 * omega * (omega +1) * L)
     def uni_large_dim(it, L, omega, N): return N / (4 * omega * L)
-    def vanilla_large_dim(it, L, omega, N): return 1 / (4  * L)
+    def vanilla_large_dim(it, L, omega, N): return 1 / (4 * L)
 
     print("Large dimension...")
 

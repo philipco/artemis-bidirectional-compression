@@ -26,11 +26,6 @@ def add_constant_columns(x):
     return tx
 
 
-def sigmoid(x):
-    """Implement sigmoid fundtion used in logistic regression."""
-    return 1 / (1 + torch.exp(-x))
-
-
 def build_data_logistic(true_model_param: torch.FloatTensor, n_samples=NB_OF_POINTS_BY_DEVICE, n_dimensions=DIM,
                n_devices: int = 1, with_seed: bool = False,
                features_corr=0.6, labels_std=0.4):
@@ -54,9 +49,7 @@ def build_data_logistic(true_model_param: torch.FloatTensor, n_samples=NB_OF_POI
 
         # We use two different model to simulate non iid data.
         if i%2==0:
-            for j in range(n_dimensions):
-                if j+1 % 2 == 0:
-                    model_copy[j] *= -1
+            model_copy[(i+1)%n_dimensions] *= -1
         else:
             model_copy = deepcopy(true_model_param)
 
@@ -68,13 +61,15 @@ def build_data_logistic(true_model_param: torch.FloatTensor, n_samples=NB_OF_POI
 
         sign = np.array([1 for j in range(n_dimensions)])
         if i%2 == 0:
-            sign[i%2] = -1
+            sign[i%n_dimensions] = -1
 
         x = torch.from_numpy(sign * multivariate_normal(np.zeros(n_dimensions), cov, size=floor(n_samples)).astype(
             dtype=np.float64))
 
         # Simulation of the labels
-        y = torch.bernoulli(sigmoid(x.mv(model_copy.T)))
+        # NB : Logistic syntethic dataset is used to show how Artemis is used in non-i.i.d. settings.
+        # This is why, we don't introduce a bias here.
+        y = torch.bernoulli(torch.sigmoid(x.mv(model_copy.T)))
         y[y == 0] = -1
         X.append(x)
         Y.append(y)
