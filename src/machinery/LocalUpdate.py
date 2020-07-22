@@ -38,8 +38,19 @@ class AbstractLocalUpdate(ABC):
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
         pass
 
+    def compute_local_gradient(self, j: int):
+        if len(self.cost_model.X) <= j:
+            self.g_i = None
+            return
+        if self.parameters.stochastic:
+            x = torch.stack([self.cost_model.X[j]])
+            y = torch.stack([self.cost_model.Y[j]])
+            self.g_i = self.cost_model.grad_i(self.model_param, x, y)
+        else:
+            self.g_i = self.cost_model.grad(self.model_param)
+
     @abstractmethod
-    def compute(self, j: int):
+    def compute_locally(self, j: int):
         pass
 
 
@@ -48,13 +59,8 @@ class LocalGradientVanillaUpdate(AbstractLocalUpdate):
     def __init__(self, parameters: Parameters, cost_model: ACostModel) -> None:
         super().__init__(parameters, cost_model)
 
-    def compute(self, j: int):
-        if self.parameters.stochastic:
-            x = torch.stack([self.cost_model.X[j]])
-            y = torch.stack([self.cost_model.Y[j]])
-            self.g_i = self.cost_model.grad_i(self.model_param, x, y)
-        else:
-            self.g_i = self.cost_model.grad(self.model_param)
+    def compute_locally(self, j: int):
+        self.compute_local_gradient(j)
         return self.g_i
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
@@ -73,13 +79,10 @@ class LocalDianaUpdate(AbstractLocalUpdate):
         self.v = self.parameters.momentum * self.v + tensor_sent
         self.model_param = self.model_param - step * self.v
 
-    def compute(self, j: int):
-        if self.parameters.stochastic:
-            x = torch.stack([self.cost_model.X[j]])
-            y = torch.stack([self.cost_model.Y[j]])
-            self.g_i = self.cost_model.grad_i(self.model_param, x, y)
-        else:
-            self.g_i = self.cost_model.grad(self.model_param)
+    def compute_locally(self, j: int):
+        self.compute_local_gradient(j)
+        if self.g_i is None:
+            return None
 
         self.delta_i = self.g_i - self.h_i
         quantized_delta_i = s_quantization(self.delta_i, self.parameters.quantization_param)
@@ -113,13 +116,10 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         self.v = self.parameters.momentum * self.v + decompressed_value
         self.model_param = self.model_param - step * self.v
 
-    def compute(self, j: int):
-        if self.parameters.stochastic:
-            x = torch.stack([self.cost_model.X[j]])
-            y = torch.stack([self.cost_model.Y[j]])
-            self.g_i = self.cost_model.grad_i(self.model_param, x, y)
-        else:
-            self.g_i = self.cost_model.grad(self.model_param)
+    def compute_locally(self, j: int):
+        self.compute_local_gradient(j)
+        if self.g_i is None:
+            return None
 
         self.delta_i = self.g_i - self.h_i
         quantized_delta_i = s_quantization(self.delta_i, self.parameters.quantization_param)

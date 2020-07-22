@@ -15,7 +15,7 @@ from src.utils.Constants import DIM, NB_OF_POINTS_BY_DEVICE, BIAS
 
 
 def add_bias_term(X):
-    newX = [torch.cat((torch.ones(len(X[0]), 1).to(dtype=torch.float64), x), 1) for x in X]
+    newX = [torch.cat((torch.ones(len(x), 1).to(dtype=torch.float64), x), 1) for x in X]
     return newX
 
 

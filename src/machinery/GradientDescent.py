@@ -108,7 +108,7 @@ class AGradientDescent(ABC):
     def __number_iterations__(self) -> int:
         """Return the number of iterations needed to perform one epoch."""
         if self.parameters.stochastic:
-            n_samples, n_dimensions = self.workers[0].X.shape
+            n_samples = max([self.workers[i].X.shape[0] for i in range(len(self.workers))])
             return self.parameters.nb_epoch * n_samples
 
         return self.parameters.nb_epoch
@@ -151,7 +151,9 @@ class AGradientDescent(ABC):
         full_iterations = 0
         for i in range(1, self.parameters.nb_epoch):
 
-            for j in range(0, math.floor(self.__number_iterations__() / self.parameters.nb_epoch) ):
+            number_of_inside_it = self.__number_iterations__() / self.parameters.nb_epoch
+
+            for j in range(0, math.floor(number_of_inside_it)):
                 full_iterations += 1
                 in_loop = time.time()
                 current_model_param = update.compute(current_model_param.clone(), full_iterations, j)

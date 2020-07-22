@@ -40,12 +40,18 @@ def default_step_formula_large_dim(sto: bool, bi: bool, quantization_param: int)
 
     def bi_large_dim(it, L, omega, N): return N / (4 * omega * (omega +1) * L)
     def uni_large_dim(it, L, omega, N): return N / (4 * omega * L)
-    def vanilla_large_dim(it, L, omega, N): return 1 / (4 * L)
+    def vanilla_large_dim_sto(it, L, omega, N): return 1 / (L * sqrt(it))
+    def default_full(it, L, omega, N): return 1 / L
 
     print("Large dimension...")
 
+    if not sto:
+        return default_full
+
     if quantization_param == 0:
-        return vanilla_large_dim
+        return vanilla_large_dim_sto
+
+    # The non-stochastic case has not been considered when using compression.
     if bi:
         return bi_large_dim
     return bi_large_dim

@@ -99,7 +99,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 class ArtemisUpdate(AbstractFLUpdate):
     """This class implement the proper update of the Artemis schema.
 
-    It hold two potentiel memories (one for each way), and can either compress gradients, either models."""
+    It hold two potential memories (one for each way), and can either compress gradients, either models."""
 
     def __init__(self, parameters: Parameters, workers) -> None:
         super().__init__(parameters)
@@ -127,8 +127,9 @@ class ArtemisUpdate(AbstractFLUpdate):
         for worker in self.workers:
             # We send previously computed gradients,
             # and carry out the update step which has just been done on the central server.
-            quantized_delta_i = worker.local_update.compute(j)
-            all_delta_i.append(quantized_delta_i)
+            quantized_delta_i = worker.local_update.compute_locally(j)
+            if quantized_delta_i is not None:
+                all_delta_i.append(quantized_delta_i)
 
         # Aggregating all delta
         delta = torch.stack(all_delta_i).mean(0)
@@ -180,8 +181,9 @@ class DianaUpdate(AbstractFLUpdate):
         for worker in self.workers:
             # We send previously computed gradients,
             # and carry out the update step which has just been done on the central server.
-            quantized_delta_i = worker.local_update.compute(j)
-            all_delta_i.append(quantized_delta_i)
+            quantized_delta_i = worker.local_update.compute_locally(j)
+            if quantized_delta_i is not None:
+                all_delta_i.append(quantized_delta_i)
 
         # Aggregating all delta
         delta = torch.stack(all_delta_i).mean(0)
@@ -215,8 +217,9 @@ class GradientVanillaUpdate(AbstractFLUpdate):
         for worker in self.workers:
             # We send previously computed gradients,
             # and carry out the update step which has just been done on the central server.
-            gradient_i = worker.local_update.compute(j)
-            self.all_gradients.append(gradient_i)
+            gradient_i = worker.local_update.compute_locally(j)
+            if gradient_i is not None:
+                self.all_gradients.append(gradient_i)
 
         # Aggregating all gradients
         self.g = torch.stack(self.all_gradients).mean(0)
