@@ -11,5 +11,6 @@ scikit-learn
 python3-tk # doesn't work with conda - sudo apt-get install python3-tk
 torch
 torchvision
+seaborn
 tqdm
 joblib
