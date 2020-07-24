@@ -139,3 +139,4 @@ class Parameters:
         print("momentum:", self.momentum)
         print("stochastic:", self.stochastic)
         print("use avg:", self.use_averaging)
+

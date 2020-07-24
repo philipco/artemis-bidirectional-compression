@@ -87,7 +87,7 @@ def setup_plot(xlegends, ylegends, fontsize=fontsize, xticks_fontsize=fontsize, 
         plt.xscale("log")
     plt.yticks(fontsize=fontsize)
     plt.grid()
-    # plt.xticks(np.arange(0, 401, step=100), fontsize=xticks_fontsize)
+    #plt.xticks(np.arange(0, 401, step=100), fontsize=xticks_fontsize) # To use when running 400 iterations
     plt.xticks(fontsize=xticks_fontsize)
     plt.xlabel(xlegends, fontsize=fontsize)
     plt.ylabel(ylegends, fontsize=fontsize)
