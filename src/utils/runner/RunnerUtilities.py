@@ -6,9 +6,9 @@ This file give two functions (for single or multiple runs) to carry out a full g
 
 import torch
 
-from src.machinery.GradientDescent import ArtemisDescent
-from src.machinery.Parameters import Parameters, PredefinedParameters
+from src.machinery.Parameters import Parameters
 from src.machinery.GradientDescent import AGradientDescent
+from src.machinery.PredefinedParameters import PredefinedParameters
 
 from src.models.CostModel import RMSEModel
 
@@ -23,7 +23,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, X, Y,
                          quantization_param: int = 1,
                          step_formula=None,
                          use_averaging=False,
-                         model = RMSEModel(),
+                         model=RMSEModel(),
                          stochastic=True) -> MultipleDescentRun:
     """
 
@@ -38,8 +38,9 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, X, Y,
         model: cost model of the problem (e.g least-square, logistic ...).
         stochastic: true if running stochastic descent.
 
-    Returns: Mu
+    Returns:
     """
+    print(predefined_parameters.name())
 
     multiple_descent = MultipleDescentRun()
     for i in range(nb_run):
@@ -51,7 +52,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, X, Y,
                                               use_averaging=use_averaging,
                                               model=model,
                                               stochastic=stochastic)
-        model_descent = ArtemisDescent(params)
+        model_descent = predefined_parameters.type_FL()(params)
         model_descent.set_data(X, Y)
         model_descent.run()
         multiple_descent.append(model_descent)

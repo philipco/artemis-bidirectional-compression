@@ -13,7 +13,7 @@ To add a new update scheme, just extend the abstract class AbstractGradientUpdat
 from __future__ import annotations
 
 import math
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, ABCMeta
 import torch
 import random
 from typing import Tuple
@@ -34,11 +34,24 @@ class AbstractGradientUpdate(ABC):
     def __init__(self, parameters: Parameters) -> None:
         super().__init__()
         self.parameters = parameters
+        self.step = 0
+        self.all_gradients = []
 
     def compute_cost(self, model_param):
         """Compute the cost function for the model's parameter."""
         loss, _ = self.parameters.cost_model.cost(model_param)
         return loss.item()
+
+    def initialization(self, nb_it: int, model_param: torch.FloatTensor):
+        self.step = self.__step__(nb_it)
+        if nb_it == 1:
+            self.v = self.compute_full_gradients(model_param)
+
+            # Initialization of v_-1 (for momentum)
+            for worker in self.workers:
+                worker.local_update.set_initial_v(self.v)
+
+        self.all_gradients = []
 
     @abstractmethod
     def compute(self, model_param: torch.FloatTensor, nb_it: int, j: int) \
@@ -58,38 +71,16 @@ class AbstractGradientUpdate(ABC):
         """
         pass
 
-    @abstractmethod
     def __step__(self, it: int):
         """Compute the step size at iteration *it*."""
-        pass
-
-
-class ArtemisUpdate(AbstractGradientUpdate):
-    """This class implement the proper update of the Artemis schema.
-
-    It hold two potentiel memories (one for each way), and can either compress gradients, either models."""
-
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters)
-        self.workers = workers
-
-        self.value_to_quantized = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
-
-        self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.g = torch.zeros(parameters.n_dimensions, dtype=np.float)
-
-        # For unidirectional compression:
-        self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
-
-        # For bidirectional compression:
-        self.l = torch.zeros(parameters.n_dimensions, dtype=np.float)
-
-    def __step__(self, it: int):
         if it == 0:
             return 0
-        return self.parameters.step_formula(it, self.workers[0].cost_model.L, self.parameters.omega_c,
+        step = self.parameters.step_formula(it, self.workers[0].cost_model.L, self.parameters.omega_c,
                                             self.parameters.nb_devices)
+        return step
+
+
+class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
     def compute_full_gradients(self, model_param):
         grad = 0
@@ -104,60 +95,145 @@ class ArtemisUpdate(AbstractGradientUpdate):
             all_loss_i.append(loss_i.item())
         return np.mean(all_loss_i)
 
+
+class ArtemisUpdate(AbstractFLUpdate):
+    """This class implement the proper update of the Artemis schema.
+
+    It hold two potential memories (one for each way), and can either compress gradients, either models."""
+
+    def __init__(self, parameters: Parameters, workers) -> None:
+        super().__init__(parameters)
+        self.workers = workers
+
+        self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+        self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.g = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+        # For unidirectional compression:
+        self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+        # For bidirectional compression:
+        self.l = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
     def compute(self, model_param: torch.FloatTensor, nb_it: int, j: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
-        step = self.__step__(nb_it)
-        if nb_it == 1:
-            self.v = self.compute_full_gradients(model_param)
+        self.initialization(nb_it, model_param)
 
         all_delta_i = []
 
         for worker in self.workers:
-            # Initialization of v_-1 (for momentum)
-            if nb_it == 1:
-                worker.local_update.set_initial_v(self.v)
-            # We send previously computed gradients,
-            # and carry out the update step which has just been done on the central server.
-            quantized_delta_i = worker.local_update.compute(j)
-            all_delta_i.append(quantized_delta_i)
+            # We get all the compressed gradient computed on each worker.
+            compressed_delta_i = worker.local_update.compute_locally(j)
+
+            # If nothing is returned by the device, this device does not participate to the learning at this iterations.
+            # This may happened if it is considered that during one epoch each devices should run through all its data
+            # exactly once, and if there is different numbers of points on each device.
+            if compressed_delta_i is not None:
+                all_delta_i.append(compressed_delta_i)
 
         # Aggregating all delta
         delta = torch.stack(all_delta_i).mean(0)
         # Computing new (compressed) gradients
         self.g = self.h + delta
 
-        omega = 0
-
-        # If we compress gradients, we update now omega.
-        if self.parameters.compress_gradients and self.parameters.bidirectional:
-            self.value_to_quantized = self.g - self.l
-            omega = s_quantization(self.value_to_quantized, self.parameters.quantization_param)
+        # We update omega (compression of the sum of compressed gradients).
+        self.value_to_compress = self.g - self.l
+        omega = s_quantization(self.value_to_compress, self.parameters.quantization_param)
 
         # Updating the model with the new gradients.
-        if self.parameters.compress_gradients and self.parameters.bidirectional:
-            self.v = self.parameters.momentum * self.v + (omega + self.l)
-        else:
-            self.v = self.parameters.momentum * self.v + self.g
+        self.v = self.parameters.momentum * self.v + (omega + self.l)
+        model_param = model_param - self.v * self.step
 
-        model_param = model_param - self.v * step
+        # Send back omega to all workers and update their local model.
+        for worker in self.workers:
+            worker.local_update.send_global_informations_and_update_local_param(omega, self.step)
 
-        # If we compress model, we update now omega.
-        # And if we don't use bidirectional compression, we just send model's parameters
-        if (not self.parameters.compress_gradients) and self.parameters.bidirectional:
-            self.value_to_quantized = model_param - self.l
-            omega = s_quantization(self.value_to_quantized, self.parameters.quantization_param)
-        elif not self.parameters.bidirectional:
-            omega = model_param
+        # Update the second memory if we are using bidirectional compression and that this feature has been turned on.
+        if self.parameters.double_use_memory:
+            self.l += self.parameters.learning_rate * omega
+        self.h += self.parameters.learning_rate * delta
+        return model_param
+
+
+class DianaUpdate(AbstractFLUpdate):
+    """This class implement the proper update of the Artemis schema.
+
+    It hold two potentiel memories (one for each way), and can either compress gradients, either models."""
+
+    def __init__(self, parameters: Parameters, workers) -> None:
+        super().__init__(parameters)
+        self.workers = workers
+        self.value_to_quantized = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+        self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.g = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+        # For unidirectional compression:
+        self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+    def compute(self, model_param: torch.FloatTensor, nb_it: int, j: int) \
+            -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+
+        self.initialization(nb_it, model_param)
+
+        all_delta_i = []
+
+        for worker in self.workers:
+            # We send previously computed gradients,
+            # and carry out the update step which has just been done on the central server.
+            quantized_delta_i = worker.local_update.compute_locally(j)
+            if quantized_delta_i is not None:
+                all_delta_i.append(quantized_delta_i)
+
+        # Aggregating all delta
+        delta = torch.stack(all_delta_i).mean(0)
+        # Computing new (compressed) gradients
+        self.g = self.h + delta
+
+        self.v = self.parameters.momentum * self.v + self.g
+        model_param = model_param - self.v * self.step
 
         # Send omega to all workers and update their local model.
         for worker in self.workers:
-            worker.local_update.set_omega_and_update_model(omega, step)
-
-        # Update the second memory if we are using bidirectional compression and that this feature has been turned on.
-        if self.parameters.bidirectional and self.parameters.double_use_memory:
-            self.l += self.parameters.learning_rate * omega
+            worker.local_update.send_global_informations_and_update_local_param(self.g, self.step)
         self.h += self.parameters.learning_rate * delta
+        return model_param
+
+
+class GradientVanillaUpdate(AbstractFLUpdate):
+
+    def __init__(self, parameters: Parameters, workers) -> None:
+        super().__init__(parameters)
+        self.workers = workers
+
+        self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.g = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+    def compute(self, model_param: torch.FloatTensor, nb_it: int, j: int) \
+            -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+
+        self.initialization(nb_it, model_param)
+
+        for worker in self.workers:
+            # We send previously computed gradients,
+            # and carry out the update step which has just been done on the central server.
+            gradient_i = worker.local_update.compute_locally(j)
+            if gradient_i is not None:
+                self.all_gradients.append(gradient_i)
+
+        # Aggregating all gradients
+        self.g = torch.stack(self.all_gradients).mean(0)
+        self.v = self.parameters.momentum * self.v + self.g
+
+        model_param = model_param - self.v * self.step
+
+        # Send global gradient to all workers and update their local model.
+        for worker in self.workers:
+            worker.local_update.send_global_informations_and_update_local_param(self.g, self.step)
+
         return model_param
 
 
@@ -187,9 +263,9 @@ class StochasticGradientUpdate(AbstractGradientUpdate):
         # Randomly selecting a data point
         n_samples, n_dimension = self.parameters.cost_model.X.shape
         start = time.time()
-        #random_element = random.sample(list(range(n_samples)), self.parameters.batch_size)
-        x = torch.stack([self.parameters.cost_model.X[j]])# for i in random_element])
-        y = torch.stack([self.parameters.cost_model.Y[j]])# for i in random_element])
+        # random_element = random.sample(list(range(n_samples)), self.parameters.batch_size)
+        x = torch.stack([self.parameters.cost_model.X[j]])  # for i in random_element])
+        y = torch.stack([self.parameters.cost_model.Y[j]])  # for i in random_element])
         self.time_sample += (time.time() - start)
         # Computing Gradient
         grad = self.parameters.cost_model.grad_i(model_param, x, y)
@@ -311,7 +387,7 @@ class AdaGradUpdate(BasicGradientUpdate):
         # Adding new gradient to list of all grad
         self.grads.append(grad)
         # Computing adaptative gradient
-        adaptative_grad = grad / torch.sqrt(torch.sum(torch.stack(self.grads)**2, dim=0))
+        adaptative_grad = grad / torch.sqrt(torch.sum(torch.stack(self.grads) ** 2, dim=0))
         # Updating model
         model_param = model_param - self.__step__(nb_it) * adaptative_grad
         return model_param
@@ -338,7 +414,6 @@ class AdaDeltaUpdate(BasicGradientUpdate):
         old_model = model_param
         model_param -= step * grad
         # Compute aggregated model
-        self.aggregated_update = self.decay_rate * self.aggregated_update + (1 - self.aggregated_update) * (model_param - old_model) ** 2
+        self.aggregated_update = self.decay_rate * self.aggregated_update + (1 - self.aggregated_update) * (
+                    model_param - old_model) ** 2
         return model_param
-
-

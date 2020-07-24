@@ -14,6 +14,7 @@ import torch
 from typing import Tuple
 from abc import ABC, abstractmethod
 import time
+from scipy import sparse
 
 from src.models.RegularizationModel import ARegularizationModel, NoRegularization
 
@@ -110,6 +111,9 @@ class ACostModel(ABC):
 
 
 class LogisticModel(ACostModel):
+    """Cost model for logistic regression.
+
+    Note that labels should be equal to +/-1."""
 
     cost_times = 0
     cost_n = 0
@@ -118,11 +122,7 @@ class LogisticModel(ACostModel):
         n_sample = self.X.shape[0]
         w, X, Y = w.clone().requires_grad_(), self.X.clone().requires_grad_(), self.Y.clone().requires_grad_()
         start = time.time()
-        self.cost_n += 1
-        loss = 0
-        for i in range(n_sample):
-            in_exp = - Y[i] * (w.dot(X[i]))
-            loss += torch.log(1 + torch.exp(in_exp))
+        loss = -torch.sum(torch.log(torch.sigmoid(self.Y * self.X.mv(w))))
         end = time.time()
         self.cost_times += (end - start)
         return loss / n_sample, w
@@ -130,11 +130,8 @@ class LogisticModel(ACostModel):
 
     def grad(self, w: torch.FloatTensor) -> torch.FloatTensor:
         n_sample = self.X.shape[0]
-        grad = 0
-        for i in range(n_sample):
-            in_exp = self.Y[i] * (w.dot(self.X[i]))
-            grad -= self.Y[i] * self.X[i] / (1 + torch.exp(in_exp))
-        return grad / n_sample
+        s = torch.sigmoid(self.Y * self.X.mv(w))
+        return self.X.T.mv((s - 1) * self.Y) / n_sample
 
     def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor):
         grad = 0

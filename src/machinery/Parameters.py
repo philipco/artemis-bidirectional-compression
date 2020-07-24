@@ -10,13 +10,65 @@ from src.models.CostModel import ACostModel, RMSEModel
 from math import sqrt
 
 
-def default_step_formula(stochastic: bool):
+def constant_step_size_formula(bidirectional: bool, nb_devices: int, n_dimensions: int):
+    if sqrt(n_dimensions) >= nb_devices:
+        if bidirectional:
+            return lambda it, L, omega, N: N / (4 * omega * L * (omega + 1))
+            # If omega = 0, it means we don't use compression and hence, the step size can be bigger.
+        return lambda it, L, omega, N: 1 / (L * sqrt(it))#N / (4 * omega * L) if omega != 0 else N / (2 * L)
+    else:
+        if bidirectional:
+            return lambda it, L, omega, N: 1 / (5 * L * (omega + 1))
+        # If omega = 0, it means we don't use compression and hence, the step size can be bigger.
+        return lambda it, L, omega, N: 1 / (5 * L) if omega != 0 else 1 / (2 * L)
+
+def bi_large_dim(it, L, omega, N):
+    return N / (4 * omega * L * (omega + 1))
+
+def uni_large_dim(it, L, omega, N):
+    return N / (4 * omega * L)
+
+def large_dim_selecter(bi: bool):
+    if bi:
+        return bi_large_dim
+    return uni_large_dim
+
+def default_step_formula_large_dim(sto: bool, bi: bool, quantization_param: int):
     """Default formula to compute the step size at each iteration.
 
     Two cases are handled, if it is a stochastic run or a full batch descent."""
-    if stochastic:
-        return lambda it, L, omega, N: 1 / (L * sqrt(it))
-    return lambda it, L, omega, N: 1 / L
+
+    def bi_large_dim(it, L, omega, N): return N / (4 * omega * (omega +1) * L)
+    def uni_large_dim(it, L, omega, N): return N / (4 * omega * L)
+    def vanilla_large_dim_sto(it, L, omega, N): return 1 / (L * sqrt(it))
+    def default_full(it, L, omega, N): return 1 / L
+
+    print("Large dimension...")
+
+    if not sto:
+        return default_full
+
+    if quantization_param == 0:
+        return vanilla_large_dim_sto
+
+    # The non-stochastic case has not been considered when using compression.
+    if bi:
+        return bi_large_dim
+    return bi_large_dim
+
+def default_step_formula(sto: bool):
+    """Default formula to compute the step size at each iteration.
+
+    Two cases are handled, if it is a stochastic run or a full batch descent."""
+
+    def default_stochastic(it, L, omega, N): return 1 / (L * sqrt(it))
+    def default_full(it, L, omega, N): return 1/L
+
+    if sto:
+        return default_stochastic
+    else:
+        return default_full
+
 
 
 class Parameters:
@@ -52,12 +104,15 @@ class Parameters:
         self.n_dimensions = n_dimensions  # Dimension of the problem.
         self.nb_devices = nb_devices  # Number of device on the network.
         self.batch_size = batch_size  # Batch size.
+        self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
+            else default_step_formula_large_dim(stochastic, bidirectional, quantization_param)
         # To compute the step size at each iteration, we use a lambda function which takes as parameters
         # the number of current epoch, the coefficient of smoothness and the quantization constant omega_c.
-        if step_formula == None:
-            self.step_formula = default_step_formula(stochastic)
-        else:
-            self.step_formula = step_formula
+        # if step_formula == None:
+        #     self.step_formula = constant_step_size_formula(bidirectional, nb_devices, n_dimensions)
+        #     self.step_formula = default_step_formula(stochastic)
+        # else:
+        #     self.step_formula = step_formula
         self.nb_epoch = nb_epoch # number of epoch of the run
         self.regularization_rate = regularization_rate # coefficient of regularization
         self.force_learning_rate = force_learning_rate
@@ -72,239 +127,16 @@ class Parameters:
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
 
+    def print(self):
+        print("federated", self.federated)
+        print("nb devices:", self.nb_devices)
+        print("nb dimension:", self.n_dimensions)
+        print("quantization param:", self.quantization_param)
+        print("regularization rate:", self.regularization_rate)
+        print("cost model", self.cost_model)
+        print("omega_c", self.omega_c)
+        print("step size", self.step_formula)
+        print("momentum:", self.momentum)
+        print("stochastic:", self.stochastic)
+        print("use avg:", self.use_averaging)
 
-class PredefinedParameters():
-    """Abstract class to predefine (no customizable) parameters required by a given type of algorithms (e.g Artemis, QSGD ...)
-
-    Keep high degree of customization.
-    """
-
-    def name(self) -> str:
-        """Name of the predefined parameters.
-        """
-        return "empty"
-
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int,
-               step_formula=None, momentum: float = 0,
-               nb_epoch: int = NB_EPOCH,
-               use_averaging=False, model: ACostModel = RMSEModel(), stochastic=True):
-        """Define parameters to be used during the descent.
-
-        Args:
-            n_dimensions: dimensions of the problem.
-            nb_devices: number of device in the federated network.
-            quantization_param: parameter of quantization.
-            step_formula: lambda formul to compute the step size at each iteration.
-            momentum: momentum coefficient.
-            nb_epoch: number of epoch for the run.
-            use_averaging: true if using Polyak-Rupper Averaging.
-            model: cost model of the problem (e.g least-square, logistic ...).
-            stochastic: true if running stochastic descent.
-
-        Returns:
-            Build parameters.
-        """
-        pass
-
-
-class SGDWithoutCompression(PredefinedParameters):
-    """Predefine parameters to run SGD algorithm in a federated settings.
-    """
-
-    def name(self):
-        return "SGD"
-
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int = 0, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
-               model: ACostModel = RMSEModel(), stochastic=True):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          step_formula=step_formula,
-                          quantization_param=0,
-                          momentum=momentum,
-                          verbose=False,
-                          stochastic=stochastic,
-                          bidirectional=False,
-                          cost_model=model,
-                          use_averaging=use_averaging
-                          )
-
-
-class Qsgd(PredefinedParameters):
-    """Predefine parameters to run QSGD algorithm.
-    """
-
-    def name(self) -> str:
-        return r"QSGD"
-
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
-               model: ACostModel = RMSEModel(), stochastic=True) -> None:
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          step_formula=step_formula,
-                          quantization_param=quantization_param,
-                          momentum=momentum,
-                          learning_rate=0,
-                          verbose=False,
-                          stochastic=stochastic,
-                          cost_model=model,
-                          use_averaging=use_averaging,
-                          bidirectional=False
-                          )
-
-
-class Diana(PredefinedParameters):
-    """Predefine parameters to run Diana algorithm.
-    """
-
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          step_formula=step_formula,
-                          quantization_param=quantization_param,
-                          momentum=momentum,
-                          verbose=False,
-                          stochastic=stochastic,
-                          bidirectional=False,
-                          cost_model=model,
-                          use_averaging=use_averaging
-                          )
-
-    def name(self) -> str:
-        return "Diana"
-
-
-class BiQSGD(PredefinedParameters):
-    """Predefine parameters to run Bi-QSGD algorithm.
-    """
-
-    def name(self) -> str:
-        return "BiQSGD"
-
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          step_formula=step_formula,
-                          quantization_param=1,
-                          learning_rate=0,
-                          momentum=momentum,
-                          verbose=False,
-                          stochastic=stochastic,
-                          cost_model=model,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          double_use_memory=False,
-                          compress_gradients=True
-                          )
-
-
-class Artemis(PredefinedParameters):
-    """Predefine parameters to run Artemis algorithm.
-    """
-
-    def name(self) -> str:
-        return "Artemis"
-
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          step_formula=step_formula,
-                          quantization_param=quantization_param,
-                          momentum=momentum,
-                          verbose=False,
-                          stochastic=stochastic,
-                          cost_model=model,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          double_use_memory=False,
-                          compress_gradients=True
-                          )
-
-
-class DoreVariant(PredefinedParameters):
-    """Predefine parameters to run a variant of algorithm.
-    This variant use
-    """
-
-    def name(self) -> str:
-        return "Dore"
-
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          step_formula=step_formula,
-                          quantization_param=quantization_param,
-                          momentum=momentum,
-                          verbose=False,
-                          stochastic=stochastic,
-                          cost_model=model,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          double_use_memory=True,
-                          compress_gradients=True
-                          )
-
-
-class SGDDoubleModelCompressionWithoutMem(PredefinedParameters):
-
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          step_formula=step_formula,
-                          quantization_param=quantization_param,
-                          momentum=momentum,
-                          verbose=False,
-                          stochastic=stochastic,
-                          cost_model=model,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          double_use_memory=False,
-                          compress_gradients=False
-                          )
-
-
-class SGDDoubleModelCompressionWithMem(PredefinedParameters):
-
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          step_formula=step_formula,
-                          quantization_param=quantization_param,
-                          momentum=momentum,
-                          verbose=False,
-                          stochastic=stochastic,
-                          cost_model=model,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          double_use_memory=True,
-                          compress_gradients=False
-                          )
-
-
-KIND_COMPRESSION = [SGDWithoutCompression(),
-                    Qsgd(),
-                    Diana(),
-                    BiQSGD(),
-                    Artemis()
-                    ]

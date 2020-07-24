@@ -13,6 +13,7 @@ import numpy as np
 
 from src.machinery.GradientUpdateMethod import ArtemisUpdate
 from src.machinery.Parameters import *
+from src.machinery.PredefinedParameters import *
 from src.machinery.Worker import Worker
 
 nb_samples = 5
@@ -26,6 +27,7 @@ w = 2 * ones_tensor
 
 
 class TestArtemisUpdate(unittest.TestCase):
+    """ Doesn't work. Not update the API in this test."""
 
     def setUp(self):
         pass
@@ -39,7 +41,7 @@ class TestArtemisUpdate(unittest.TestCase):
         self.assertTrue(torch.equal(update.h, zero_tensor))
         self.assertTrue(torch.equal(update.v, zero_tensor))
         self.assertTrue(torch.equal(update.l, zero_tensor))
-        self.assertTrue(torch.equal(update.value_to_quantized, zero_tensor))
+        self.assertTrue(torch.equal(update.value_to_compress, zero_tensor))
 
     def test_QSGD(self):
         params = Qsgd().define(n_dimensions=DIM, nb_devices=1, quantization_param=10)
@@ -56,7 +58,7 @@ class TestArtemisUpdate(unittest.TestCase):
         self.assertTrue(torch.equal(update.h, zero_tensor))
         self.assertTrue(torch.equal(update.l, zero_tensor))
         # Checking that for the return nothing has been quantized.
-        self.assertTrue(torch.equal(update.value_to_quantized, zero_tensor))
+        self.assertTrue(torch.equal(update.value_to_compress, zero_tensor))
 
     def test_Diana(self):
         params = Diana().define(n_dimensions=DIM, nb_devices=1, quantization_param=10)
@@ -73,9 +75,9 @@ class TestArtemisUpdate(unittest.TestCase):
         self.assertTrue(torch.equal(update.l, zero_tensor))
         # Checking that for the return nothing has been quantized.
         # there is a pb, with this test. Pass if ran with Artmis settings.
-        self.assertTrue(torch.equal(update.value_to_quantized, zero_tensor))
+        self.assertTrue(torch.equal(update.value_to_compress, zero_tensor))
 
-    def test_BiQSGD(self):
+    def test_BiQsgd(self):
         params = BiQSGD().define(n_dimensions=DIM, nb_devices=1, quantization_param=10)
         workers = [Worker(0, params)]
         workers[0].set_data(x, y)
@@ -91,7 +93,7 @@ class TestArtemisUpdate(unittest.TestCase):
         # Check that l has been updated.
         self.assertTrue(torch.equal(update.l, zero_tensor))
         # Check that correct value has been compressed
-        self.assertTrue(torch.equal(update.value_to_quantized, update.g))
+        self.assertTrue(torch.equal(update.value_to_compress, update.g))
 
     def test_Artemis(self):
         params = Artemis().define(n_dimensions=DIM, nb_devices=1, quantization_param=10)
@@ -108,7 +110,7 @@ class TestArtemisUpdate(unittest.TestCase):
         # Check that l has been updated.
         self.assertTrue(torch.equal(update.l, zero_tensor))
         # Check that correct value has been compressed
-        self.assertTrue(torch.equal(update.value_to_quantized, update.g))
+        self.assertTrue(torch.equal(update.value_to_compress, update.g))
 
     def test_doubleGRADIENTcompression_WITH_additional_memory(self):
         params = DoreVariant().define(n_dimensions=DIM, nb_devices=1, quantization_param=10)
@@ -128,7 +130,7 @@ class TestArtemisUpdate(unittest.TestCase):
         # Check that l has been updated.
         self.assertFalse(torch.equal(update.l, artificial_l))
         # Check that correct value has been compressed
-        self.assertTrue(torch.equal(update.value_to_quantized, update.g - artificial_l))
+        self.assertTrue(torch.equal(update.value_to_compress, update.g - artificial_l))
 
     def test_doubleMODELcompression_without_memory(self):
         params = SGDDoubleModelCompressionWithoutMem().define(n_dimensions=DIM, nb_devices=1,
@@ -146,7 +148,7 @@ class TestArtemisUpdate(unittest.TestCase):
         # Check that l has been updated.
         self.assertTrue(torch.equal(update.l, zero_tensor))
         # Check that correct value has been compressed
-        self.assertTrue(torch.equal(update.value_to_quantized, new_w))
+        self.assertTrue(torch.equal(update.value_to_compress, new_w))
 
     def test_doubleMODELcompression_WITH_memory(self):
         params = SGDDoubleModelCompressionWithMem().define(n_dimensions=DIM, nb_devices=1,
@@ -166,4 +168,4 @@ class TestArtemisUpdate(unittest.TestCase):
         # Check that l has been updated.
         self.assertFalse(torch.equal(update.l, artificial_l))
         # Check that correct value has been compressed
-        self.assertTrue(torch.equal(update.value_to_quantized, new_w - artificial_l))
+        self.assertTrue(torch.equal(update.value_to_compress, new_w - artificial_l))

@@ -11,7 +11,12 @@ from scipy.linalg.special_matrices import toeplitz
 import torch
 from math import floor
 
-from src.utils.Constants import DIM, NB_OF_POINTS_BY_DEVICE
+from src.utils.Constants import DIM, NB_OF_POINTS_BY_DEVICE, BIAS
+
+
+def add_bias_term(X):
+    newX = [torch.cat((torch.ones(len(x), 1).to(dtype=torch.float64), x), 1) for x in X]
+    return newX
 
 
 def add_constant_columns(x):
@@ -19,11 +24,6 @@ def add_constant_columns(x):
     num_samples = x.shape[0]
     tx = np.c_[np.ones(num_samples), x]
     return tx
-
-
-def sigmoid(x):
-    """Implement sigmoid fundtion used in logistic regression."""
-    return torch.exp(x) / (1 + torch.exp(x))
 
 
 def build_data_logistic(true_model_param: torch.FloatTensor, n_samples=NB_OF_POINTS_BY_DEVICE, n_dimensions=DIM,
@@ -67,7 +67,9 @@ def build_data_logistic(true_model_param: torch.FloatTensor, n_samples=NB_OF_POI
             dtype=np.float64))
 
         # Simulation of the labels
-        y = torch.bernoulli(sigmoid(x.mv(model_copy.T)))
+        # NB : Logistic syntethic dataset is used to show how Artemis is used in non-i.i.d. settings.
+        # This is why, we don't introduce a bias here.
+        y = torch.bernoulli(torch.sigmoid(x.mv(model_copy.T)))
         y[y == 0] = -1
         X.append(x)
         Y.append(y)
@@ -107,7 +109,7 @@ def build_data_linear(true_model_param: torch.FloatTensor, n_samples=NB_OF_POINT
         x = torch.from_numpy(multivariate_normal(np.zeros(n_dimensions), cov, size=floor(n_samples)).astype(dtype=np.float64))
 
         # Simulation of the labels
-        y = x.mv(true_model_param)
+        y = x.mv(true_model_param) + BIAS
 
         # We add or not a noise
         if not without_noise:

@@ -16,10 +16,10 @@ class Worker:
     and a local update method (to carry out the local step of the federated gradient descent).
     """
 
-    def __init__(self, ID : int, parameters: Parameters) -> None:
+    def __init__(self, ID : int, parameters: Parameters, localUpdate) -> None:
         super().__init__()
         self.cost_model = deepcopy(parameters.cost_model)
-        self.local_update = LocalArtemisUpdate(parameters, self.cost_model)
+        self.local_update = localUpdate(parameters, self.cost_model)
         self.model_param = None
         self.ID = ID
 
