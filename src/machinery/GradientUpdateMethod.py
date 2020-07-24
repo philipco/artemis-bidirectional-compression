@@ -47,11 +47,11 @@ class AbstractGradientUpdate(ABC):
         if nb_it == 1:
             self.v = self.compute_full_gradients(model_param)
 
-        self.all_gradients = []
-        # Initialization of v_-1 (for momentum)
-        if nb_it == 1:
+            # Initialization of v_-1 (for momentum)
             for worker in self.workers:
                 worker.local_update.set_initial_v(self.v)
+
+        self.all_gradients = []
 
     @abstractmethod
     def compute(self, model_param: torch.FloatTensor, nb_it: int, j: int) \
@@ -105,7 +105,7 @@ class ArtemisUpdate(AbstractFLUpdate):
         super().__init__(parameters)
         self.workers = workers
 
-        self.value_to_quantized = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
         self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -125,26 +125,29 @@ class ArtemisUpdate(AbstractFLUpdate):
         all_delta_i = []
 
         for worker in self.workers:
-            # We send previously computed gradients,
-            # and carry out the update step which has just been done on the central server.
-            quantized_delta_i = worker.local_update.compute_locally(j)
-            if quantized_delta_i is not None:
-                all_delta_i.append(quantized_delta_i)
+            # We get all the compressed gradient computed on each worker.
+            compressed_delta_i = worker.local_update.compute_locally(j)
+
+            # If nothing is returned by the device, this device does not participate to the learning at this iterations.
+            # This may happened if it is considered that during one epoch each devices should run through all its data
+            # exactly once, and if there is different numbers of points on each device.
+            if compressed_delta_i is not None:
+                all_delta_i.append(compressed_delta_i)
 
         # Aggregating all delta
         delta = torch.stack(all_delta_i).mean(0)
         # Computing new (compressed) gradients
         self.g = self.h + delta
 
-        # If we compress gradients, we update now omega.
-        self.value_to_quantized = self.g - self.l
-        omega = s_quantization(self.value_to_quantized, self.parameters.quantization_param)
+        # We update omega (compression of the sum of compressed gradients).
+        self.value_to_compress = self.g - self.l
+        omega = s_quantization(self.value_to_compress, self.parameters.quantization_param)
 
         # Updating the model with the new gradients.
         self.v = self.parameters.momentum * self.v + (omega + self.l)
         model_param = model_param - self.v * self.step
 
-        # Send omega to all workers and update their local model.
+        # Send back omega to all workers and update their local model.
         for worker in self.workers:
             worker.local_update.send_global_informations_and_update_local_param(omega, self.step)
 

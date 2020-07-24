@@ -4,6 +4,7 @@ Created by Philippenko, 6th March 2020.
 In this python file is provided tools to implement any local update scheme. This is the part which is perfomed on local
 devices in federated learning.
 """
+import random
 
 import torch
 import numpy as np
@@ -39,12 +40,13 @@ class AbstractLocalUpdate(ABC):
         pass
 
     def compute_local_gradient(self, j: int):
-        if len(self.cost_model.X) <= j:
-            self.g_i = None
-            return
+        # if len(self.cost_model.X) <= j:
+        #     self.g_i = None
+        #     return
         if self.parameters.stochastic:
-            x = torch.stack([self.cost_model.X[j]])
-            y = torch.stack([self.cost_model.Y[j]])
+            idx = random.choice(range(len(self.cost_model.X)))
+            x = torch.stack([self.cost_model.X[idx]])
+            y = torch.stack([self.cost_model.Y[idx]])
             self.g_i = self.cost_model.grad_i(self.model_param, x, y)
         else:
             self.g_i = self.cost_model.grad(self.model_param)

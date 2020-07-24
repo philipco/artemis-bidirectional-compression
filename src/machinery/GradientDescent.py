@@ -109,7 +109,7 @@ class AGradientDescent(ABC):
         """Return the number of iterations needed to perform one epoch."""
         if self.parameters.stochastic:
             n_samples = max([self.workers[i].X.shape[0] for i in range(len(self.workers))])
-            return self.parameters.nb_epoch * n_samples
+            return n_samples * self.parameters.nb_epoch#int(self.parameters.nb_epoch * n_samples / 20)
 
         return self.parameters.nb_epoch
 
@@ -153,6 +153,11 @@ class AGradientDescent(ABC):
 
             number_of_inside_it = self.__number_iterations__() / self.parameters.nb_epoch
 
+            # This loops corresponds to the number of loop before considering that an epoch is completed.
+            # It is the communication between the central server and all remote devices.
+            # This is not the loop carried out on local remote devices.
+            # Hence, there is a communication between all devices during this loop.
+            # If we use compression, of course all communication are compressed !
             for j in range(0, math.floor(number_of_inside_it)):
                 full_iterations += 1
                 in_loop = time.time()
@@ -187,6 +192,7 @@ class AGradientDescent(ABC):
         # Otherwise it may later cause issues.
         if len(self.losses) != self.parameters.nb_epoch:
             self.losses = self.losses + [self.losses[-1] for i in range(self.parameters.nb_epoch - len(self.losses))]
+            self.averaged_losses = self.averaged_losses + [self.averaged_losses[-1] for i in range(self.parameters.nb_epoch - len(self.averaged_losses))]
 
         self.losses = np.array(self.losses)
         if self.parameters.verbose:
