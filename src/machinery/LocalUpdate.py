@@ -44,10 +44,14 @@ class AbstractLocalUpdate(ABC):
         #     self.g_i = None
         #     return
         if self.parameters.stochastic:
-            idx = random.choice(range(len(self.cost_model.X)))
-            x = torch.stack([self.cost_model.X[idx]])
-            y = torch.stack([self.cost_model.Y[idx]])
-            self.g_i = self.cost_model.grad_i(self.model_param, x, y)
+            # If batch size is bigger than number of sample of the device, we only take all its points.
+            if self.parameters.batch_size > len(self.cost_model.X):
+                self.g_i = self.cost_model.grad(self.model_param)
+            else:
+                idx = random.sample(list(range(len(self.cost_model.X))), self.parameters.batch_size)
+                x = torch.stack([self.cost_model.X[i] for i in idx])
+                y = torch.stack([self.cost_model.Y[i] for i in idx])
+                self.g_i = self.cost_model.grad_i(self.model_param, x, y)
         else:
             self.g_i = self.cost_model.grad(self.model_param)
 

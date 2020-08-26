@@ -11,7 +11,7 @@ markers = ["o", "v", "s", "p", "X", "d", "P", "*"]
 markersize = 2
 curve_size=4
 fontsize=30
-fontsize_legend=21
+fontsize_legend=26
 figsize=(8,7)
 fourfigsize=(13, 8)
 sixfigsize=(13, 11)
@@ -19,7 +19,7 @@ sixfigsize=(13, 11)
 nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 
-def plot_error_dist(all_losses, legend, nb_devices, nb_dim, all_error=None,
+def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all_error=None,
                     x_points=None, x_legend=None):
     N_it = len(all_losses[0])
     plt.figure(figsize=figsize)
@@ -48,7 +48,10 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, all_error=None,
             plt.plot(abscisse, objectives_dist, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
         it += 1
 
-    title_precision = "\n(N=" + str(nb_devices) +", d=" + str(nb_dim) + ")"
+    if batch_size is None:
+        title_precision = "\n(N=" + str(nb_devices) +", d=" + str(nb_dim) + ")"
+    else:
+        title_precision = "\n(N=" + str(nb_devices) + ", d=" + str(nb_dim) + ", b=" + str(batch_size) + ")"
 
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
     setup_plot(x_legend + title_precision, r"$\log_{10}(F(w^k) - F(w^*))$", xlog=(x_points is not None))
@@ -87,7 +90,7 @@ def setup_plot(xlegends, ylegends, fontsize=fontsize, xticks_fontsize=fontsize, 
         plt.xscale("log")
     plt.yticks(fontsize=fontsize)
     plt.grid()
-    #plt.xticks(np.arange(0, 401, step=100), fontsize=xticks_fontsize) # To use when running 400 iterations
+    # plt.xticks(np.arange(0, 401, step=100), fontsize=xticks_fontsize)
     plt.xticks(fontsize=xticks_fontsize)
     plt.xlabel(xlegends, fontsize=fontsize)
     plt.ylabel(ylegends, fontsize=fontsize)

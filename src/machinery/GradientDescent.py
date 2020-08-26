@@ -109,7 +109,7 @@ class AGradientDescent(ABC):
         """Return the number of iterations needed to perform one epoch."""
         if self.parameters.stochastic:
             n_samples = max([self.workers[i].X.shape[0] for i in range(len(self.workers))])
-            return n_samples * self.parameters.nb_epoch#int(self.parameters.nb_epoch * n_samples / 20)
+            return n_samples * self.parameters.nb_epoch / min(n_samples, self.parameters.batch_size)#int(self.parameters.nb_epoch * n_samples / 20)
 
         return self.parameters.nb_epoch
 

@@ -31,7 +31,7 @@ class AbstractGradientUpdate(ABC):
 
     time_sample = 0
 
-    def __init__(self, parameters: Parameters) -> None:
+    def __init__(self, parameters: Parameters, workers) -> None:
         super().__init__()
         self.parameters = parameters
         self.step = 0
@@ -82,6 +82,27 @@ class AbstractGradientUpdate(ABC):
 
 class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
+    def __init__(self, parameters: Parameters, workers) -> None:
+        super().__init__(parameters, workers)
+
+        self.workers = workers
+
+        # Number of samples on each worker to later attribute a participation weight.
+        self.weight_of_each_worker = []
+        for worker in self.workers:
+            self.weight_of_each_worker.append(worker.X.shape[0])
+        total_nb_of_points = sum(self.weight_of_each_worker)
+        self.weight_of_each_worker = [n / total_nb_of_points for n in self.weight_of_each_worker]
+        assert sum(self.weight_of_each_worker) == 1
+
+    def compute_aggregation(self, local_information_to_aggregate):
+        return torch.stack(local_information_to_aggregate).mean(0)
+        agg = torch.zeros_like(local_information_to_aggregate[0])
+        for i in range(len(self.workers)):
+            agg += local_information_to_aggregate[i] * self.weight_of_each_worker[i]
+        return agg/(len(self.workers))
+
+
     def compute_full_gradients(self, model_param):
         grad = 0
         for worker in self.workers:
@@ -102,8 +123,7 @@ class ArtemisUpdate(AbstractFLUpdate):
     It hold two potential memories (one for each way), and can either compress gradients, either models."""
 
     def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters)
-        self.workers = workers
+        super().__init__(parameters, workers)
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
         self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -135,7 +155,7 @@ class ArtemisUpdate(AbstractFLUpdate):
                 all_delta_i.append(compressed_delta_i)
 
         # Aggregating all delta
-        delta = torch.stack(all_delta_i).mean(0)
+        delta = self.compute_aggregation(all_delta_i) #torch.stack(all_delta_i).mean(0)
         # Computing new (compressed) gradients
         self.g = self.h + delta
 
@@ -164,8 +184,7 @@ class DianaUpdate(AbstractFLUpdate):
     It hold two potentiel memories (one for each way), and can either compress gradients, either models."""
 
     def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters)
-        self.workers = workers
+        super().__init__(parameters, workers)
         self.value_to_quantized = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -189,7 +208,8 @@ class DianaUpdate(AbstractFLUpdate):
                 all_delta_i.append(quantized_delta_i)
 
         # Aggregating all delta
-        delta = torch.stack(all_delta_i).mean(0)
+        delta = self.compute_aggregation(all_delta_i)
+        # delta = torch.stack(all_delta_i).mean(0)
         # Computing new (compressed) gradients
         self.g = self.h + delta
 
@@ -206,8 +226,7 @@ class DianaUpdate(AbstractFLUpdate):
 class GradientVanillaUpdate(AbstractFLUpdate):
 
     def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters)
-        self.workers = workers
+        super().__init__(parameters, workers)
 
         self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
         self.g = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -225,6 +244,7 @@ class GradientVanillaUpdate(AbstractFLUpdate):
                 self.all_gradients.append(gradient_i)
 
         # Aggregating all gradients
+        self.g  = self.compute_aggregation(self.all_gradients)
         self.g = torch.stack(self.all_gradients).mean(0)
         self.v = self.parameters.momentum * self.v + self.g
 
