@@ -91,7 +91,8 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         return torch.stack(local_information_to_aggregate).mean(0)
         agg = torch.zeros_like(local_information_to_aggregate[0])
         for i in range(len(self.workers)):
-            # In Artemis there is no weight associated with the aggregation, all nodes have the same weight.
+            # In Artemis there is no weight associated with the aggregation, all nodes must have the same weight equal
+            # to 1 / len(workers).
             agg += local_information_to_aggregate[i]
         return agg/(len(self.workers))
 
@@ -148,7 +149,7 @@ class ArtemisUpdate(AbstractFLUpdate):
                 all_delta_i.append(compressed_delta_i)
 
         # Aggregating all delta
-        delta = self.compute_aggregation(all_delta_i) #torch.stack(all_delta_i).mean(0)
+        delta = self.compute_aggregation(all_delta_i)
         # Computing new (compressed) gradients
         self.g = self.h + delta
 
@@ -202,7 +203,6 @@ class DianaUpdate(AbstractFLUpdate):
 
         # Aggregating all delta
         delta = self.compute_aggregation(all_delta_i)
-        # delta = torch.stack(all_delta_i).mean(0)
         # Computing new (compressed) gradients
         self.g = self.h + delta
 

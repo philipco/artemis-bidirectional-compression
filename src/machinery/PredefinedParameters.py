@@ -136,7 +136,7 @@ class BiQSGD(PredefinedParameters):
     """
 
     def name(self) -> str:
-        return "DblSqz"
+        return "BiQSGD"
 
     def type_FL(self):
         return ArtemisDescent

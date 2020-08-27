@@ -108,6 +108,9 @@ class AGradientDescent(ABC):
     def __number_iterations__(self) -> int:
         """Return the number of iterations needed to perform one epoch."""
         if self.parameters.stochastic:
+            # Devices may have different number of points. Thus to reach an equal weight of participation,
+            # we choose that an epoch is constitutated of N rounds of communication with the central server,
+            # where N is the minimum size of the dataset hold by the different devices.
             n_samples = min([self.workers[i].X.shape[0] for i in range(len(self.workers))])
             return n_samples * self.parameters.nb_epoch / min(n_samples, self.parameters.batch_size)
 

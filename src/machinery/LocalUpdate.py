@@ -50,6 +50,8 @@ class AbstractLocalUpdate(ABC):
                 idx = random.sample(list(range(len(self.cost_model.X))), self.parameters.batch_size)
                 x = torch.stack([self.cost_model.X[i] for i in idx])
                 y = torch.stack([self.cost_model.Y[i] for i in idx])
+                assert x.shape[0] == self.parameters.batch_size and y.shape[0] == self.parameters.batch_size, \
+                    "The batch doesn't have the correct size, can not compute the local gradient."
                 self.g_i = self.cost_model.grad_i(self.model_param, x, y)
         else:
             self.g_i = self.cost_model.grad(self.model_param)

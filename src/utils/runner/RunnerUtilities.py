@@ -15,7 +15,7 @@ from src.models.CostModel import RMSEModel
 from src.utils.Constants import NB_EPOCH
 from src.utils.runner.MultipleDescentRun import MultipleDescentRun
 
-nb_run = 3  # Number of gradient descent before averaging.
+nb_run = 5  # Number of gradient descent before averaging.
 
 
 def multiple_run_descent(predefined_parameters: PredefinedParameters, X, Y,
