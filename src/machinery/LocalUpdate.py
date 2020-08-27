@@ -27,7 +27,6 @@ class AbstractLocalUpdate(ABC):
         self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         # Initialization of model's parameter.
-        # self.model_param = torch.zeros(self.parameters.n_dimensions).to(dtype=torch.float64)
         self.model_param = torch.FloatTensor(
             [(-1 ** i) / (2 * self.parameters.n_dimensions) for i in range(self.parameters.n_dimensions)]) \
             .to(dtype=torch.float64)

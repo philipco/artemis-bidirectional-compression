@@ -35,6 +35,10 @@ def s_quantization(x: torch.FloatTensor, s: int) -> torch.FloatTensor:
 
 def s_quantization_omega_c(dim: int, s: int):
     """Return the value of omega_c (involved in variance) of the s-quantization."""
+    # If s==0, it means that there is no compression.
+    # But for the need of experiments, we may need to compute the quantization constant associated with s=1.
+    if s==0:
+        return sqrt(dim)
     return min(dim / s*s, sqrt(dim) / s)
 
 

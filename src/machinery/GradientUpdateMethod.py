@@ -87,19 +87,12 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         self.workers = workers
 
-        # Number of samples on each worker to later attribute a participation weight.
-        self.weight_of_each_worker = []
-        for worker in self.workers:
-            self.weight_of_each_worker.append(worker.X.shape[0])
-        total_nb_of_points = sum(self.weight_of_each_worker)
-        self.weight_of_each_worker = [n / total_nb_of_points for n in self.weight_of_each_worker]
-        assert sum(self.weight_of_each_worker) == 1
-
     def compute_aggregation(self, local_information_to_aggregate):
         return torch.stack(local_information_to_aggregate).mean(0)
         agg = torch.zeros_like(local_information_to_aggregate[0])
         for i in range(len(self.workers)):
-            agg += local_information_to_aggregate[i] * self.weight_of_each_worker[i]
+            # In Artemis there is no weight associated with the aggregation, all nodes have the same weight.
+            agg += local_information_to_aggregate[i]
         return agg/(len(self.workers))
 
 
