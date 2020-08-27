@@ -15,60 +15,41 @@ def constant_step_size_formula(bidirectional: bool, nb_devices: int, n_dimension
         if bidirectional:
             return lambda it, L, omega, N: N / (4 * omega * L * (omega + 1))
             # If omega = 0, it means we don't use compression and hence, the step size can be bigger.
-        return lambda it, L, omega, N: 1 / (L * sqrt(it))#N / (4 * omega * L) if omega != 0 else N / (2 * L)
+        return lambda it, L, omega, N: 1 / (L * sqrt(it))  # N / (4 * omega * L) if omega != 0 else N / (2 * L)
     else:
         if bidirectional:
             return lambda it, L, omega, N: 1 / (5 * L * (omega + 1))
         # If omega = 0, it means we don't use compression and hence, the step size can be bigger.
         return lambda it, L, omega, N: 1 / (5 * L) if omega != 0 else 1 / (2 * L)
 
-def bi_large_dim(it, L, omega, N):
-    return N / (4 * omega * L * (omega + 1))
+def full_batch_step_size(it, L, omega, N): return 1 / L
+def bi_large_dim(it, L, omega, N): return N / (4 * omega * (omega + 1) * L)
+def uni_large_dim(it, L, omega, N): return N / (4 * omega * L)
+def deacreasing_step_size(it, L, omega, N): return 1 / (L * sqrt(it))
+def large_batch_in_large_dim(it, L, omega, N): return N / (8 * L)
 
-def uni_large_dim(it, L, omega, N):
-    return N / (4 * omega * L)
 
-def large_dim_selecter(bi: bool):
-    if bi:
-        return bi_large_dim
-    return uni_large_dim
+def step_formula_when_using_big_batch_size(sto: bool, bi: bool, quantization_param: int): return large_batch_in_large_dim
 
-def default_step_formula_large_dim(sto: bool, bi: bool, quantization_param: int):
+
+def step_formula_in_large_dimension(sto: bool, bi: bool, quantization_param: int, batch_size: int):
     """Default formula to compute the step size at each iteration.
 
     Two cases are handled, if it is a stochastic run or a full batch descent."""
 
-    def bi_large_dim(it, L, omega, N): return N / (4 * omega * (omega +1) * L)
-    def uni_large_dim(it, L, omega, N): return N / (4 * omega * L)
-    def vanilla_large_dim_sto(it, L, omega, N): return 1 / (L * sqrt(it))
-    def default_full(it, L, omega, N): return 1 / L
-
-    print("Large dimension...")
-
-    if not sto:
-        return default_full
-
-    if quantization_param == 0:
-        return vanilla_large_dim_sto
-
-    # The non-stochastic case has not been considered when using compression.
-    if bi:
-        return bi_large_dim
+    if batch_size >= 150 or not sto:
+        return step_formula_when_using_big_batch_size(sto, bi, quantization_param)
     return bi_large_dim
+
 
 def default_step_formula(sto: bool):
     """Default formula to compute the step size at each iteration.
 
     Two cases are handled, if it is a stochastic run or a full batch descent."""
 
-    def default_stochastic(it, L, omega, N): return 1 / (L * sqrt(it))
-    def default_full(it, L, omega, N): return 1/L
-
     if sto:
-        return default_stochastic
-    else:
-        return default_full
-
+        return deacreasing_step_size
+    return full_batch_step_size
 
 
 class Parameters:
@@ -105,7 +86,7 @@ class Parameters:
         self.nb_devices = nb_devices  # Number of device on the network.
         self.batch_size = batch_size  # Batch size.
         self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
-            else default_step_formula_large_dim(stochastic, bidirectional, quantization_param)
+            else step_formula_in_large_dimension(stochastic, bidirectional, quantization_param, batch_size)
         # To compute the step size at each iteration, we use a lambda function which takes as parameters
         # the number of current epoch, the coefficient of smoothness and the quantization constant omega_c.
         # if step_formula == None:
@@ -113,12 +94,12 @@ class Parameters:
         #     self.step_formula = default_step_formula(stochastic)
         # else:
         #     self.step_formula = step_formula
-        self.nb_epoch = nb_epoch # number of epoch of the run
-        self.regularization_rate = regularization_rate # coefficient of regularization
+        self.nb_epoch = nb_epoch  # number of epoch of the run
+        self.regularization_rate = regularization_rate  # coefficient of regularization
         self.force_learning_rate = force_learning_rate
-        self.momentum = momentum # momentum coefficient
-        self.quantization_param = quantization_param # quantization parameter
-        self.omega_c = 0 # quantization constant involved in the variance inequality of the scheme
+        self.momentum = momentum  # momentum coefficient
+        self.quantization_param = quantization_param  # quantization parameter
+        self.omega_c = 0  # quantization constant involved in the variance inequality of the scheme
         self.learning_rate = learning_rate
         self.bidirectional = bidirectional
         self.stochastic = stochastic  # true if runing a stochastic gradient descent
