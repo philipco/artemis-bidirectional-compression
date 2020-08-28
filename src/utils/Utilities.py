@@ -52,6 +52,8 @@ def pickle_saver(data, filename: str) -> None:
         data: the python object to save.
         filename: the filename where the object is saved.
     """
+    if not os.path.exists("pickle"):
+        os.makedirs("pickle")
     file_to_save = "pickle/" + filename + ".pkl"
     if os.path.exists(file_to_save):
         os.remove(file_to_save)

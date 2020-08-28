@@ -6,7 +6,7 @@ Test to verify that predefined parameters are correctly set up.
 
 import unittest
 from src.machinery.Parameters import *
-from src.utils.Constants import DIM, NB_EPOCH, NB_DEVICES
+from src.utils.Constants import DIM, NB_EPOCH, NB_WORKERS
 
 class ParametersTest(unittest.TestCase):
     def setUp(self):
@@ -19,7 +19,7 @@ class ParametersTest(unittest.TestCase):
         self.assertIs(type(params.cost_model), RMSEModel)
         self.assertEqual(params.federated, False)
         self.assertEqual(params.n_dimensions, DIM)
-        self.assertEqual(params.nb_devices, NB_DEVICES)
+        self.assertEqual(params.nb_devices, NB_WORKERS)
         self.assertEqual(params.batch_size, 1)
         self.assertEqual(params.step_formula.__code__.co_code, (lambda it, L, omega, N :1 / (L * sqrt(it))).__code__.co_code)
         self.assertEqual(params.nb_epoch, NB_EPOCH)

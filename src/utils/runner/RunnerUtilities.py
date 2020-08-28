@@ -12,10 +12,8 @@ from src.machinery.PredefinedParameters import PredefinedParameters
 
 from src.models.CostModel import RMSEModel
 
-from src.utils.Constants import NB_EPOCH
+from src.utils.Constants import NB_EPOCH, NB_RUN
 from src.utils.runner.MultipleDescentRun import MultipleDescentRun
-
-nb_run = 5  # Number of gradient descent before averaging.
 
 
 def multiple_run_descent(predefined_parameters: PredefinedParameters, X, Y,
@@ -43,7 +41,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, X, Y,
     print(predefined_parameters.name())
 
     multiple_descent = MultipleDescentRun()
-    for i in range(nb_run):
+    for i in range(NB_RUN):
         params = predefined_parameters.define(n_dimensions=X[0].shape[1],
                                               nb_devices=len(X),
                                               quantization_param=quantization_param,
