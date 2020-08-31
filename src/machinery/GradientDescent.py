@@ -207,7 +207,7 @@ class ArtemisDescent(AGradientDescent):
 
     This implementation of Artemis is very flexible and incorporates several possibility. Mainly:
     1. add a moment
-    2. use Polyak-Rupper averaging
+    2. use Polyak-Ruppert averaging
     3. carry out a stochastic descent or a full batch
     4. use bidirectional or unidirectional compression
     5. use or not memory
@@ -215,7 +215,7 @@ class ArtemisDescent(AGradientDescent):
     7. for downlink, compress either gradients either models
     8. set the quantization parameter
 
-    This features can switched on when defining Parameters.
+    This features can be switched on when defining the Parameters.
     """
 
     def __local_update__(self):
