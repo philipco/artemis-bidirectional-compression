@@ -24,7 +24,8 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, X, Y,
                          step_formula=None,
                          use_averaging=False,
                          model=RMSEModel(),
-                         stochastic=True) -> MultipleDescentRun:
+                         stochastic=True,
+                         batch_size=1) -> MultipleDescentRun:
     """
 
     Args:
@@ -51,7 +52,8 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, X, Y,
                                               nb_epoch=nb_epoch,
                                               use_averaging=use_averaging,
                                               model=model,
-                                              stochastic=stochastic)
+                                              stochastic=stochastic,
+                                              batch_size=batch_size)
         model_descent = predefined_parameters.type_FL()(params)
         model_descent.set_data(X, Y)
         model_descent.run()

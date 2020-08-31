@@ -59,12 +59,12 @@ class AGradientDescent(ABC):
         self.averaged_losses = []
         self.X, self.Y = None, None
 
-        if self.parameters.quantization_param != 0:
-            self.parameters.omega_c = s_quantization_omega_c(
+        #if self.parameters.quantization_param != 0:
+        self.parameters.omega_c = s_quantization_omega_c(
                 self.parameters.n_dimensions,
                 self.parameters.quantization_param
             )
-
+        if self.parameters.quantization_param != 0:
             # If learning_rate is None, we set it to optimal value.
             if self.parameters.learning_rate == None:
                 self.parameters.learning_rate = 1 / (2 * (self.parameters.omega_c + 1))
@@ -108,8 +108,11 @@ class AGradientDescent(ABC):
     def __number_iterations__(self) -> int:
         """Return the number of iterations needed to perform one epoch."""
         if self.parameters.stochastic:
-            n_samples = max([self.workers[i].X.shape[0] for i in range(len(self.workers))])
-            return n_samples * self.parameters.nb_epoch#int(self.parameters.nb_epoch * n_samples / 20)
+            # Devices may have different number of points. Thus to reach an equal weight of participation,
+            # we choose that an epoch is constitutated of N rounds of communication with the central server,
+            # where N is the minimum size of the dataset hold by the different devices.
+            n_samples = min([self.workers[i].X.shape[0] for i in range(len(self.workers))])
+            return n_samples * self.parameters.nb_epoch / min(n_samples, self.parameters.batch_size)
 
         return self.parameters.nb_epoch
 
@@ -133,13 +136,9 @@ class AGradientDescent(ABC):
         update = self.__update_method__()
 
         # Initialization
-        # current_model_param = torch.zeros(self.parameters.n_dimensions).to(dtype=torch.float64)
-
         current_model_param = torch.FloatTensor(
             [(-1 ** i) / (2 * self.parameters.n_dimensions) for i in range(self.parameters.n_dimensions)])\
             .to(dtype=torch.float64)
-        # current_model_param = torch.FloatTensor([(1 + (-1)**i) - .5 - 0.5 / 3 for i in range(self.parameters.n_dimensions)])\
-        #    .to(dtype=torch.float64)
 
         self.model_params.append(current_model_param)
         self.losses.append(update.compute_cost(current_model_param))
@@ -192,6 +191,7 @@ class AGradientDescent(ABC):
         # Otherwise it may later cause issues.
         if len(self.losses) != self.parameters.nb_epoch:
             self.losses = self.losses + [self.losses[-1] for i in range(self.parameters.nb_epoch - len(self.losses))]
+        if len(self.averaged_losses) != self.parameters.nb_epoch and self.parameters.use_averaging == True:
             self.averaged_losses = self.averaged_losses + [self.averaged_losses[-1] for i in range(self.parameters.nb_epoch - len(self.averaged_losses))]
 
         self.losses = np.array(self.losses)
