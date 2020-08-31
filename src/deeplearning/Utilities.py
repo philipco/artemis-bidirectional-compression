@@ -7,8 +7,8 @@ import torch.nn as nn
 import numpy as np
 import torch.optim as optim
 
-from src.deeplearning.Artemis import Artemis
-from src.deeplearning.NeuralNetworksModel import TwoLayersModel
+from src.deeplearning.FederatedLearningAlgo import Artemis, AFederatedLearningAlgo
+from src.deeplearning.NeuralNetworksModel import TwoLayersModel, ANeuralNetworkModel
 from src.deeplearning.Parameters import Parameters
 from src.deeplearning.Worker import Worker
 from src.utils.Constants import NB_EPOCH, LR
@@ -24,6 +24,7 @@ class ResultsOfSeveralDescents:
         self.all_losses = [desc.losses for desc in all_descent.values()]
         self.X_number_of_bits = [desc.theoretical_nb_bits for desc in all_descent.values()]
         self.nb_devices_for_the_run = nb_devices_for_the_run
+        self.n_dimensions = next(iter(all_descent.values())).n_dimensions
         self.names = [names for names in all_descent]
 
     def get_losses_i(self, i: int, averaged: bool = False):
@@ -77,21 +78,23 @@ class ResultsOfSeveralDescents:
 class MultipleDescentRun:
 
     def __init__(self, parameters: Parameters):
-        self.multiple_descent = []
         self.losses = []
         self.theoretical_nb_bits = []
         self.parameters = parameters
+        self.n_dimensions = None
 
     def get_last(self):
         return self.multiple_descent[-1]
 
-    def append(self, losses):
+    def append(self, losses, n_dimensions):
         if not self.theoretical_nb_bits:
-            self.theoretical_nb_bits = compute_number_of_bits(self.parameters)
+            self.theoretical_nb_bits = self.parameters.compressor.compute_number_of_bits(self.parameters.bidirectional)
+        if not self.n_dimensions:
+            self.n_dimensions = n_dimensions
         self.losses.append(losses)
 
 
-def multiple_run_descent(parameters: Parameters,
+def multiple_run_descent(fl_algo: AFederatedLearningAlgo, parameters: Parameters,
                          loaders,
                          nb_epoch=NB_EPOCH,
                          use_averaging=False,
@@ -99,9 +102,9 @@ def multiple_run_descent(parameters: Parameters,
     multiple_descent = MultipleDescentRun(parameters)
 
     for i in range(NB_RUN):
-        artemis = Artemis(loaders, parameters.type_device, variant=0)
+        fl_training = fl_algo(parameters, loaders, parameters.type_device)
         for round_idx in range(nb_epoch):
-            artemis.step()
-        multiple_descent.append(artemis.losses)
-        print("---> final loss:", artemis.losses[-1])
+            fl_training.step()
+        multiple_descent.append(fl_training.losses, parameters.n_dimensions)
+        print("---> final loss:", fl_training.losses[-1])
     return multiple_descent

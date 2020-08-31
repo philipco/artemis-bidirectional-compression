@@ -1,8 +1,21 @@
+from abc import abstractmethod
+
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-class TwoLayersModel(nn.Module):
+class ANeuralNetworkModel(nn.Module):
+
+    @abstractmethod
+    def forward(self, x):
+        pass
+
+    def number_of_param(self):
+        pass
+
+
+class TwoLayersModel(ANeuralNetworkModel):
+
     def __init__(self):
         super(TwoLayersModel, self).__init__()
         self.fc1 = nn.Linear(784, 128)

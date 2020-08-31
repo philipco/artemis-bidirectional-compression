@@ -201,7 +201,7 @@ def get_optimizer(optimizer_name, model, lr_initial):
                       if param.requires_grad], lr=lr_initial)
 
 
-def get_worker(device, optimizer_name, initial_lr, seed=1234):
+def get_worker(model_builder, device, optimizer_name, initial_lr, seed=1234):
     """
     constructs the learner corresponding to an experiment for a given seed
 
@@ -215,7 +215,7 @@ def get_worker(device, optimizer_name, initial_lr, seed=1234):
 
     criterion = nn.CrossEntropyLoss()
     metric = accuracy
-    model = TwoLayersModel()
+    model = model_builder()
 
     optimizer = get_optimizer(optimizer_name=optimizer_name,
                               model=model,

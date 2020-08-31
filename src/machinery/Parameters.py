@@ -4,7 +4,7 @@ Created by Philippenko, 12th March 2020.
 This python file provide tools to easily customize a gradient descent based on its hyperparameters.
 It also provide predefine parameters to run classical algorithm without introducing an error.
 """
-from src.utils.Constants import NB_EPOCH, NB_DEVICES, DIM
+from src.utils.Constants import NB_EPOCH, NB_WORKERS, DIM
 from src.models.CostModel import ACostModel, RMSEModel
 
 from math import sqrt
@@ -64,7 +64,7 @@ class Parameters:
                  cost_model: ACostModel = RMSEModel(),
                  federated: bool = False,
                  n_dimensions: int = DIM,
-                 nb_devices: int = NB_DEVICES,
+                 nb_devices: int = NB_WORKERS,
                  batch_size: int = 1,
                  step_formula=None,
                  nb_epoch: int = NB_EPOCH,
