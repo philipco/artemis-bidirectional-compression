@@ -6,7 +6,9 @@ Test to verify that predefined parameters are correctly set up.
 
 import unittest
 from src.machinery.Parameters import *
+from src.machinery.PredefinedParameters import BiQSGD, Diana, Qsgd, Artemis
 from src.utils.Constants import DIM, NB_EPOCH, NB_WORKERS
+
 
 class ParametersTest(unittest.TestCase):
     def setUp(self):

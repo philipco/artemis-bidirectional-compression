@@ -27,7 +27,6 @@ class AbstractLocalUpdate(ABC):
         self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         # Initialization of model's parameter.
-        # self.model_param = torch.zeros(self.parameters.n_dimensions).to(dtype=torch.float64)
         self.model_param = torch.FloatTensor(
             [(-1 ** i) / (2 * self.parameters.n_dimensions) for i in range(self.parameters.n_dimensions)]) \
             .to(dtype=torch.float64)
@@ -44,10 +43,16 @@ class AbstractLocalUpdate(ABC):
         #     self.g_i = None
         #     return
         if self.parameters.stochastic:
-            idx = random.choice(range(len(self.cost_model.X)))
-            x = torch.stack([self.cost_model.X[idx]])
-            y = torch.stack([self.cost_model.Y[idx]])
-            self.g_i = self.cost_model.grad_i(self.model_param, x, y)
+            # If batch size is bigger than number of sample of the device, we only take all its points.
+            if self.parameters.batch_size > len(self.cost_model.X):
+                self.g_i = self.cost_model.grad(self.model_param)
+            else:
+                idx = random.sample(list(range(len(self.cost_model.X))), self.parameters.batch_size)
+                x = torch.stack([self.cost_model.X[i] for i in idx])
+                y = torch.stack([self.cost_model.Y[i] for i in idx])
+                assert x.shape[0] == self.parameters.batch_size and y.shape[0] == self.parameters.batch_size, \
+                    "The batch doesn't have the correct size, can not compute the local gradient."
+                self.g_i = self.cost_model.grad_i(self.model_param, x, y)
         else:
             self.g_i = self.cost_model.grad(self.model_param)
 

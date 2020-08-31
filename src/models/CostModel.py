@@ -134,11 +134,9 @@ class LogisticModel(ACostModel):
         return self.X.T.mv((s - 1) * self.Y) / n_sample
 
     def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor):
-        grad = 0
-        i=0
-        in_exp = y[i] * (w.dot(x[i]))
-        grad -= y[i] * x[i] / (1 + torch.exp(in_exp))
-        return grad
+        n_sample = x.shape[0]
+        s = torch.sigmoid(y * x.mv(w))
+        return x.T.mv((s - 1) * y) / n_sample
 
     def grad_coordinate(self, w: torch.FloatTensor, j: int) -> torch.FloatTensor:
         pass
