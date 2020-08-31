@@ -88,13 +88,9 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         self.workers = workers
 
     def compute_aggregation(self, local_information_to_aggregate):
+        # In Artemis there is no weight associated with the aggregation, all nodes must have the same weight equal
+        # to 1 / len(workers), this is why, an average is enough.
         return torch.stack(local_information_to_aggregate).mean(0)
-        agg = torch.zeros_like(local_information_to_aggregate[0])
-        for i in range(len(self.workers)):
-            # In Artemis there is no weight associated with the aggregation, all nodes must have the same weight equal
-            # to 1 / len(workers).
-            agg += local_information_to_aggregate[i]
-        return agg/(len(self.workers))
 
 
     def compute_full_gradients(self, model_param):
