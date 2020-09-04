@@ -1,5 +1,5 @@
 from src.deeplearning.Compression import QuantizationCompressor
-from src.deeplearning.NeuralNetworksModel import TwoLayersModel
+from src.deeplearning.NeuralNetworksModel import TwoLayersModel, LinReg
 from src.utils.Constants import NB_EPOCH, NB_WORKERS
 
 
@@ -36,5 +36,7 @@ class Parameters:
     def get_model(self):
         if self.model_id == "2Layers":
             return TwoLayersModel
+        if self.model_id == "LinReg":
+            return LinReg
         else:
             raise NotImplementedError

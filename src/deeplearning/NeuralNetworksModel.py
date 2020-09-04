@@ -11,7 +11,7 @@ class ANeuralNetworkModel(nn.Module):
         pass
 
     def number_of_param(self):
-        pass
+        return sum(p.numel() for p in self.parameters())
 
 
 class TwoLayersModel(ANeuralNetworkModel):
@@ -26,5 +26,15 @@ class TwoLayersModel(ANeuralNetworkModel):
         x = F.relu(self.fc1(x))
         return self.fc2(x)
 
-    def number_of_param(self):
-        return sum(p.numel() for p in self.parameters())
+
+class LinReg(ANeuralNetworkModel):
+
+    def __init__(self):
+        super(LinReg, self).__init__()
+        self.linear = nn.Linear(1, 1)
+
+    def forward(self, x):
+        y_hat = self.linear(x)
+        return y_hat
+
+
