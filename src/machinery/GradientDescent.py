@@ -19,6 +19,8 @@ The method *run* should not be overridden as this the core gear which launch the
 work correctly as soon as the update scheme method is correctly defined.
 """
 from __future__ import annotations
+
+import gc
 from abc import ABC, abstractmethod
 import time
 import numpy as np
@@ -89,11 +91,16 @@ class AGradientDescent(ABC):
             self.parameters.cost_model.L = self.parameters.cost_model.local_L
         else:
             L = 0
+            if self.parameters.verbose:
+                print("Computing Lipschitz constant ...")
             for (worker, x, y) in zip(self.workers, X, Y):
                 worker.set_data(x, y)
                 L += worker.cost_model.local_L
             for worker in self.workers:
                 worker.cost_model.L = L / self.parameters.nb_devices
+            if self.parameters.verbose:
+                print("Done.")
+
 
 
     @abstractmethod
@@ -158,6 +165,7 @@ class AGradientDescent(ABC):
             # Hence, there is a communication between all devices during this loop.
             # If we use compression, of course all communication are compressed !
             for j in range(0, math.floor(number_of_inside_it)):
+                gc.collect()
                 full_iterations += 1
                 in_loop = time.time()
                 current_model_param = update.compute(current_model_param.clone(), full_iterations, j)

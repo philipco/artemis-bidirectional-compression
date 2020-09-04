@@ -10,11 +10,11 @@ To add a new one, just extend the abstract class ACostModel which contains metho
 
 Once implemented, pass this new cost model as parameter of a (multiple) gradient descent run.
 """
+import scipy.sparse as sp
 import torch
 from typing import Tuple
 from abc import ABC, abstractmethod
 import time
-from scipy import sparse
 
 from src.models.RegularizationModel import ARegularizationModel, NoRegularization
 
@@ -27,10 +27,8 @@ class ACostModel(ABC):
 
     def __init__(self, regularization: ARegularizationModel = NoRegularization()) -> None:
         super().__init__()
-        self.X = None
-        self.Y = None
-        self.L = None
-        self.local_L = None
+        self.X, self.Y = None, None
+        self.L, self.local_L = None, None
         self.regularization = regularization
 
     def set_data(self, X: torch.FloatTensor, Y: torch.FloatTensor):
@@ -66,7 +64,7 @@ class ACostModel(ABC):
         return automaticGradComputation(w, self.X, self.Y, self.cost)
 
     @abstractmethod
-    def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor) :
+    def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor):
         """Compute the stochastic gradient at datapoint (x,y).
 
         Args:
@@ -99,7 +97,7 @@ class ACostModel(ABC):
     @abstractmethod
     def proximal(self, w, gamma):
         """Evaluate the proximal operator at point w.
-        
+
         Args:
             w: the parameters of the model.
             gamma: the proximal coefficient.
@@ -120,30 +118,42 @@ class LogisticModel(ACostModel):
 
     def cost(self, w: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         n_sample = self.X.shape[0]
-        w, X, Y = w.clone().requires_grad_(), self.X.clone().requires_grad_(), self.Y.clone().requires_grad_()
         start = time.time()
-        loss = -torch.sum(torch.log(torch.sigmoid(self.Y * self.X.mv(w))))
+        if (isinstance(self.X, sp.csc.csc_matrix)):
+            loss = -torch.sum(torch.log(torch.sigmoid(self.Y * self.X.dot(w))))
+        else:
+            loss = -torch.sum(torch.log(torch.sigmoid(self.Y * self.X.mv(w))))
         end = time.time()
         self.cost_times += (end - start)
         return loss / n_sample, w
 
-
     def grad(self, w: torch.FloatTensor) -> torch.FloatTensor:
         n_sample = self.X.shape[0]
-        s = torch.sigmoid(self.Y * self.X.mv(w))
-        return self.X.T.mv((s - 1) * self.Y) / n_sample
+        if isinstance(self.X, sp.csc.csc_matrix):
+            s = torch.sigmoid((self.Y * self.X.dot(w)))
+            return torch.FloatTensor(self.X.T.dot((s - 1) * self.Y) / n_sample)
+        else:
+            s = torch.sigmoid(self.Y * self.X.mv(w))
+            return self.X.T.mv((s - 1) * self.Y) / n_sample
 
     def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor):
         n_sample = x.shape[0]
-        s = torch.sigmoid(y * x.mv(w))
-        return x.T.mv((s - 1) * y) / n_sample
+        if isinstance(self.X, sp.csc.csc_matrix):
+            s = torch.sigmoid((y * x.dot(w)))
+            return torch.FloatTensor(x.T.dot((s - 1) * y) / n_sample)
+        else:
+            s = torch.sigmoid(y * x.mv(w))
+            return x.T.mv((s - 1) * y) / n_sample
 
     def grad_coordinate(self, w: torch.FloatTensor, j: int) -> torch.FloatTensor:
         pass
 
     def lips(self):
         n_sample = self.X.shape[0]
-        L = (torch.norm(self.X.T.mm(self.X), p=2) / (4 * n_sample)).item() + self.regularization.regularization_rate
+        if (isinstance(self.X, sp.csc.csc_matrix)):
+            L = sp.linalg.norm(self.X.T.dot(self.X)) / (4 * n_sample) + self.regularization.regularization_rate
+        else:
+            L = (torch.norm(self.X.T.mm(self.X), p=2) / (4 * n_sample)).item() + self.regularization.regularization_rate
         return L
 
     def proximal(self, w, gamma):
@@ -164,7 +174,6 @@ class RMSEModel(ACostModel):
         w, X, Y = w.clone().requires_grad_(), self.X.clone().requires_grad_(), self.Y.clone().requires_grad_()
         loss = torch.norm(X.mv(w) - Y, p=2) ** 2 / n_sample + self.regularization.coefficient(w)
         return loss, w
-
 
     def grad(self, w: torch.FloatTensor) -> torch.FloatTensor:
         """
@@ -188,10 +197,10 @@ class RMSEModel(ACostModel):
 
     def lips(self):
         n_sample = self.X.shape[0]
-        return (2 * torch.norm(self.X.T.mm(self.X), p=2) / n_sample).item() + 2 * self.regularization.regularization_rate
+        return (2 * torch.norm(self.X.T.mm(self.X),
+                               p=2) / n_sample).item() + 2 * self.regularization.regularization_rate
 
     def proximal(self, w, gamma):
-
         return w / (gamma + 1)
 
 

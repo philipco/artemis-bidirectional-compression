@@ -6,6 +6,7 @@ devices in federated learning.
 """
 import random
 
+import scipy.sparse as sp
 import torch
 import numpy as np
 
@@ -39,16 +40,16 @@ class AbstractLocalUpdate(ABC):
         pass
 
     def compute_local_gradient(self, j: int):
-        # if len(self.cost_model.X) <= j:
-        #     self.g_i = None
-        #     return
         if self.parameters.stochastic:
             # If batch size is bigger than number of sample of the device, we only take all its points.
-            if self.parameters.batch_size > len(self.cost_model.X):
+            if self.parameters.batch_size > self.cost_model.X.shape[0]:
                 self.g_i = self.cost_model.grad(self.model_param)
             else:
-                idx = random.sample(list(range(len(self.cost_model.X))), self.parameters.batch_size)
-                x = torch.stack([self.cost_model.X[i] for i in idx])
+                idx = random.sample(list(range(self.cost_model.X.shape[0])), self.parameters.batch_size)
+                if isinstance(self.cost_model.X, sp.csc.csc_matrix):
+                    x = sp.hstack([self.cost_model.X[i] for i in idx])
+                else:
+                    x = torch.stack([self.cost_model.X[i] for i in idx])
                 y = torch.stack([self.cost_model.Y[i] for i in idx])
                 assert x.shape[0] == self.parameters.batch_size and y.shape[0] == self.parameters.batch_size, \
                     "The batch doesn't have the correct size, can not compute the local gradient."
