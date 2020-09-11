@@ -15,6 +15,7 @@ import torch
 from typing import Tuple
 from abc import ABC, abstractmethod
 import time
+import numpy as np
 
 from src.models.RegularizationModel import ARegularizationModel, NoRegularization
 
@@ -24,20 +25,22 @@ class ACostModel(ABC):
 
     The cost model is used in the gradient descent to compute the loss and the gradient at each iteration.
     """
+    #__slots__ = ('cost_times', 'grad_times', 'lips_times', 'X', 'Y', 'L', 'local_L', 'regularization')
 
-    def __init__(self, regularization: ARegularizationModel = NoRegularization()) -> None:
+    def __init__(self, X, Y, regularization: ARegularizationModel = NoRegularization()) -> None:
         super().__init__()
-        self.X, self.Y = None, None
-        self.L, self.local_L = None, None
+
+        self.cost_times, self.grad_times, self.lips_times = 0, 0, 0
+
         self.regularization = regularization
 
-    def set_data(self, X: torch.FloatTensor, Y: torch.FloatTensor):
-        """Set data once for all in the cost model.
-
-        The cost model will query this data to compute the cost and the associated gradient.
-        """
         self.X, self.Y = X, Y
         self.local_L = self.lips()
+        self.L = None
+
+    def reinit(self):
+        self.cost_times, self.grad_times, self.lips_times = 0, 0, 0
+
 
     @abstractmethod
     def cost(self, w: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
@@ -113,9 +116,6 @@ class LogisticModel(ACostModel):
 
     Note that labels should be equal to +/-1."""
 
-    cost_times = 0
-    cost_n = 0
-
     def cost(self, w: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         n_sample = self.X.shape[0]
         start = time.time()
@@ -131,29 +131,39 @@ class LogisticModel(ACostModel):
         n_sample = self.X.shape[0]
         if isinstance(self.X, sp.csc.csc_matrix):
             s = torch.sigmoid((self.Y * self.X.dot(w)))
-            return torch.FloatTensor(self.X.T.dot((s - 1) * self.Y) / n_sample)
+            grad = torch.FloatTensor(self.X.T.dot((s - 1) * self.Y) / n_sample)
         else:
             s = torch.sigmoid(self.Y * self.X.mv(w))
-            return self.X.T.mv((s - 1) * self.Y) / n_sample
+            grad = self.X.T.mv((s - 1) * self.Y) / n_sample
+        del s
+        return grad
 
     def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor):
         n_sample = x.shape[0]
+        start = time.time()
         if isinstance(self.X, sp.csc.csc_matrix):
             s = torch.sigmoid((y * x.dot(w)))
-            return torch.FloatTensor(x.T.dot((s - 1) * y) / n_sample)
+            grad = torch.FloatTensor(x.T.dot((s - 1) * y) / n_sample)
         else:
             s = torch.sigmoid(y * x.mv(w))
-            return x.T.mv((s - 1) * y) / n_sample
+            grad = x.T.mv((s - 1) * y) / n_sample
+        end = time.time()
+        self.grad_times += (end - start)
+        del s
+        return grad
 
     def grad_coordinate(self, w: torch.FloatTensor, j: int) -> torch.FloatTensor:
         pass
 
     def lips(self):
         n_sample = self.X.shape[0]
+        start = time.time()
         if (isinstance(self.X, sp.csc.csc_matrix)):
             L = sp.linalg.norm(self.X.T.dot(self.X)) / (4 * n_sample) + self.regularization.regularization_rate
         else:
             L = (torch.norm(self.X.T.mm(self.X), p=2) / (4 * n_sample)).item() + self.regularization.regularization_rate
+        end = time.time()
+        self.lips_times += (end - start)
         return L
 
     def proximal(self, w, gamma):
@@ -219,3 +229,11 @@ def automaticGradComputation(w: torch.FloatTensor, X: torch.FloatTensor, Y: torc
     loss, w_with_grad = fn(w, X, Y)
     loss.backward()
     return w_with_grad.grad
+
+
+def build_several_cost_model(cost_model, X, Y, nb_devices: int):
+    cost_models = [cost_model(X[k], Y[k]) for k in range(nb_devices)]
+    global_L = np.mean([cost.local_L for cost in cost_models])
+    for cost in cost_models:
+        cost.L = global_L
+    return cost_models

@@ -61,7 +61,7 @@ class Parameters:
     """
 
     def __init__(self,
-                 cost_model: ACostModel = RMSEModel(),
+                 cost_models,
                  federated: bool = False,
                  n_dimensions: int = DIM,
                  nb_devices: int = NB_DEVICES,
@@ -76,24 +76,19 @@ class Parameters:
                  bidirectional: bool = False,
                  verbose: bool = False,
                  stochastic: bool = True,
+                 streaming: bool = False,
                  compress_gradients: bool = True,
                  double_use_memory: bool = False,
-                 use_averaging: bool = False) -> None:
+                 use_averaging: bool = False,
+                 time_debug: bool = False) -> None:
         super().__init__()
-        self.cost_model = cost_model  # Cost model to use for gradient descent.
+        self.cost_models = cost_models  # Cost model to use for gradient descent.
         self.federated = federated  # Boolean to say if we do federated learning or not.
         self.n_dimensions = n_dimensions  # Dimension of the problem.
         self.nb_devices = nb_devices  # Number of device on the network.
         self.batch_size = batch_size  # Batch size.
         self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
             else step_formula_in_large_dimension(stochastic, bidirectional, quantization_param, batch_size)
-        # To compute the step size at each iteration, we use a lambda function which takes as parameters
-        # the number of current epoch, the coefficient of smoothness and the quantization constant omega_c.
-        # if step_formula == None:
-        #     self.step_formula = constant_step_size_formula(bidirectional, nb_devices, n_dimensions)
-        #     self.step_formula = default_step_formula(stochastic)
-        # else:
-        #     self.step_formula = step_formula
         self.nb_epoch = nb_epoch  # number of epoch of the run
         self.regularization_rate = regularization_rate  # coefficient of regularization
         self.force_learning_rate = force_learning_rate
@@ -102,11 +97,13 @@ class Parameters:
         self.omega_c = 0  # quantization constant involved in the variance inequality of the scheme
         self.learning_rate = learning_rate
         self.bidirectional = bidirectional
-        self.stochastic = stochastic  # true if runing a stochastic gradient descent
+        self.stochastic = stochastic  # true if running a stochastic gradient descent
+        self.streaming = streaming # True if each sample should be used only once !
         self.compress_gradients = compress_gradients
         self.double_use_memory = double_use_memory  # Use a
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
+        self.time_debug = time_debug
 
     def print(self):
         print("federated", self.federated)

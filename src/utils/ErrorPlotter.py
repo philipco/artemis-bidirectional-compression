@@ -76,7 +76,7 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
 
     plt.xticks([i for i in range(1, len(xlabels) + 1)], xlabels, rotation=25)
 
-    title_precision = "\n(d=" + str(nb_dim) + ")"
+    title_precision = "\n(d={0})".format(nb_dim)
 
     setup_plot(x_legend + title_precision, r"$\log_{10}(F(w^k) - F(w^*))$", xticks_fontsize=15,
                xlog=False)

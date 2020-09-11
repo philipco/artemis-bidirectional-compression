@@ -20,7 +20,7 @@ class MultipleDescentRun:
 
     def append(self, new_descent: GradientDescent):
         if not self.theoretical_nb_bits:
-            self.theoretical_nb_bits = compute_number_of_bits(new_descent.parameters)
+            self.theoretical_nb_bits = compute_number_of_bits(new_descent.parameters, len(new_descent.losses))
         self.multiple_descent.append(new_descent)
         self.losses = [d.losses for d in self.multiple_descent]
         self.averaged_losses = [d.averaged_losses for d in self.multiple_descent]

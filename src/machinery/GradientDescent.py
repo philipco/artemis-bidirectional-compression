@@ -26,11 +26,11 @@ import time
 import numpy as np
 import torch
 import math
+import os
+import psutil
+import resource
 
-from src.machinery.GradientUpdateMethod import BasicGradientUpdate, StochasticGradientUpdate, MomentumUpdate, SAGUpdate, \
-    SVRGUpdate, \
-    CoordinateGradientUpdate, AdaGradUpdate, AdaDeltaUpdate, ArtemisUpdate, AbstractGradientUpdate, \
-    GradientVanillaUpdate, DianaUpdate
+from src.machinery.GradientUpdateMethod import ArtemisUpdate, AbstractGradientUpdate, GradientVanillaUpdate, DianaUpdate
 from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate
 from src.models.QuantizationModel import s_quantization_omega_c
 from src.machinery.Parameters import Parameters
@@ -43,6 +43,8 @@ class AGradientDescent(ABC):
     The AGradientDescent class declares the factory methods while subclasses provide
     the implementation of this methods.
     """
+    # __slots__ = ('parameters', 'losses', 'model_params', 'model_params', 'averaged_model_params', 'averaged_losses',
+    #              'workers', 'memory_info')
 
     def __init__(self, parameters: Parameters) -> None:
         """Initialization of the gradient descent.
@@ -59,7 +61,7 @@ class AGradientDescent(ABC):
         self.model_params = []
         self.averaged_model_params = []
         self.averaged_losses = []
-        self.X, self.Y = None, None
+        self.memory_info = None
 
         #if self.parameters.quantization_param != 0:
         self.parameters.omega_c = s_quantization_omega_c(
@@ -112,13 +114,13 @@ class AGradientDescent(ABC):
         """
         pass
 
-    def __number_iterations__(self) -> int:
+    def __number_iterations__(self, cost_models) -> int:
         """Return the number of iterations needed to perform one epoch."""
         if self.parameters.stochastic:
             # Devices may have different number of points. Thus to reach an equal weight of participation,
             # we choose that an epoch is constitutated of N rounds of communication with the central server,
             # where N is the minimum size of the dataset hold by the different devices.
-            n_samples = min([self.workers[i].X.shape[0] for i in range(len(self.workers))])
+            n_samples = min([cost_models[i].X.shape[0] for i in range(len(cost_models))])
             return n_samples * self.parameters.nb_epoch / min(n_samples, self.parameters.batch_size)
 
         return self.parameters.nb_epoch
@@ -128,7 +130,7 @@ class AGradientDescent(ABC):
         """Get the name of the gradient descent algorithm."""
         pass
 
-    def run(self) -> float:
+    def run(self, cost_models) -> float:
         """Run the gradient descent over the data.
 
         Returns:
@@ -137,7 +139,8 @@ class AGradientDescent(ABC):
 
         start_time = time.time()
 
-        inside_loop = 0
+        inside_loop_time = 0
+        averaging_time = 0
 
         # Call for the update method of the gradient descent.
         update = self.__update_method__()
@@ -148,16 +151,26 @@ class AGradientDescent(ABC):
             .to(dtype=torch.float64)
 
         self.model_params.append(current_model_param)
-        self.losses.append(update.compute_cost(current_model_param))
+        self.losses.append(update.compute_cost(current_model_param, cost_models))
 
         if self.parameters.use_averaging:
             self.averaged_model_params.append(self.model_params[-1])
             self.averaged_losses.append(self.losses[-1])
 
         full_iterations = 0
-        for i in range(1, self.parameters.nb_epoch):
 
-            number_of_inside_it = self.__number_iterations__() / self.parameters.nb_epoch
+        if self.parameters.streaming:
+            nb_epoch = min([cost_models[i].X.shape[0] for i in range(len(cost_models))])
+        else:
+            nb_epoch = self.parameters.nb_epoch
+
+        for i in range(1, nb_epoch):
+
+            # If we are in streaming mode, each sample should be used only once !
+            if self.parameters.streaming:
+                number_of_inside_it = 1
+            else:
+                number_of_inside_it = self.__number_iterations__(cost_models) / self.parameters.nb_epoch
 
             # This loops corresponds to the number of loop before considering that an epoch is completed.
             # It is the communication between the central server and all remote devices.
@@ -165,23 +178,25 @@ class AGradientDescent(ABC):
             # Hence, there is a communication between all devices during this loop.
             # If we use compression, of course all communication are compressed !
             for j in range(0, math.floor(number_of_inside_it)):
-                gc.collect()
-                full_iterations += 1
                 in_loop = time.time()
-                current_model_param = update.compute(current_model_param.clone(), full_iterations, j)
-                inside_loop += (time.time() - in_loop)
+                full_iterations += 1
+                # If in streaming mode, we send the epoch numerous, else the numerous of the inside iteration.
+                current_model_param = update.compute(current_model_param, cost_models, full_iterations, (j, i)[self.parameters.streaming])
+                inside_loop_time += (time.time() - in_loop)
 
             self.model_params.append(current_model_param)
-            self.losses.append(update.compute_cost(self.model_params[-1]))
+            self.losses.append(update.compute_cost(self.model_params[-1], cost_models))
 
+            start_averaging_time = time.time()
             if self.parameters.use_averaging:
                 self.averaged_model_params.append(torch.mean(torch.stack(self.model_params), 0))
-                self.averaged_losses.append(update.compute_cost(self.averaged_model_params[-1]))
+                self.averaged_losses.append(update.compute_cost(self.averaged_model_params[-1], cost_models))
+            averaging_time += time.time() - start_averaging_time
 
             if self.parameters.verbose:
                 if i == 1:
                     print(' | '.join([name.center(8) for name in ["it", "obj"]]))
-                if i % (self.parameters.nb_epoch / 5) == 0:
+                if i % (nb_epoch / 5) == 0:
                     print(' | '.join([("%d" % i).rjust(8), ("%.4e" % self.losses[-1]).rjust(8)]))
 
             # Beyond 1e9, we consider that the algorithm has diverged.
@@ -191,9 +206,22 @@ class AGradientDescent(ABC):
             if (self.losses[-1] > 1e9):
                 self.losses[-1] = MAX_LOSS
                 break
-
         end_time = time.time()
         elapsed_time = end_time - start_time
+
+        self.memory_info = psutil.Process(os.getpid()).memory_info().rss / 1e6
+
+        if self.parameters.time_debug:
+            for cost_model in cost_models:
+
+                print("Lips time: {0}".format(cost_model.lips_times))
+                print("Cost time: {0}".format(cost_model.cost_times))
+                print("Grad time: {0}".format(cost_model.grad_times))
+
+            print("== Inside time {0}".format(inside_loop_time))
+            print("== Averaging time : {0}".format(averaging_time))
+            print("== Full time : {0}".format(elapsed_time))
+            print("=== Used memory : {0} Mbytes".format(self.memory_info))  # in bytes
 
         # If we interrupted the run, we need to complete the list of loss to reach the number of iterations.
         # Otherwise it may later cause issues.
@@ -205,7 +233,7 @@ class AGradientDescent(ABC):
         self.losses = np.array(self.losses)
         if self.parameters.verbose:
             print("Gradient Descent: execution time={t:.3f} seconds".format(t=elapsed_time))
-            print("Final loss : ", str(self.losses[-1]) + "\n")
+            print("Final loss : {0:.5f}\n".format(self.losses[-1]))
 
         return elapsed_time
 
@@ -229,7 +257,7 @@ class ArtemisDescent(AGradientDescent):
     def __local_update__(self):
         return LocalArtemisUpdate
 
-    def __update_method__(self) -> BasicGradientUpdate:
+    def __update_method__(self) -> AbstractGradientUpdate:
         return ArtemisUpdate(self.parameters, self.workers)
 
     def get_name(self) -> str:
@@ -258,97 +286,3 @@ class DianaDescent(AGradientDescent):
 
     def get_name(self) -> str:
         return "Diana"
-
-
-class BasicGradientDescent(AGradientDescent):
-    """Basic implementation of the abstract GD class."""
-
-    def __update_method__(self) -> BasicGradientUpdate:
-        return BasicGradientUpdate(self.parameters)
-
-    def __number_iterations__(self):
-        return self.parameters.nb_epoch
-
-    def get_name(self) -> str:
-        return "GD"
-
-
-class StochasticGradientDescent(AGradientDescent):
-    """Stochastic implementation of the abstract GD class."""
-
-    def __update_method__(self) -> StochasticGradientUpdate:
-        return StochasticGradientUpdate(self.parameters)
-
-    def __number_iterations__(self):
-        n_samples, n_dimensions = self.X.shape
-        return self.parameters.nb_epoch * n_samples
-
-    def get_name(self) -> str:
-        return "SGD"
-
-
-class Momentum(StochasticGradientDescent):
-    """Basic implementation of the abstract GD class."""
-
-    def __update_method__(self) -> MomentumUpdate:
-        return MomentumUpdate(self.parameters)
-
-    def get_name(self) -> str:
-        return "Momentum"
-
-
-class SAG(StochasticGradientDescent):
-    """Basic implementation of the abstract GD class."""
-
-    def __update_method__(self) -> SAGUpdate:
-        return SAGUpdate(self.parameters)
-
-    def get_name(self) -> str:
-        return "SAG"
-
-
-class SVRGDescent(AGradientDescent):
-    """Basic implementation of the abstract GD class."""
-
-    def __update_method__(self) -> SVRGUpdate:
-        return SVRGUpdate(self.parameters)
-
-    def __number_iterations__(self):
-        return self.parameters.nb_epoch
-
-    def get_name(self) -> str:
-        return "SVRG"
-
-
-class CoordinateGradientDescent(AGradientDescent):
-    """Basic implementation of the abstract GD class."""
-
-    def __update_method__(self) -> CoordinateGradientUpdate:
-        return CoordinateGradientUpdate(self.parameters)
-
-    def __number_iterations__(self):
-        n_samples, n_dimensions = self.X.shape
-        return self.parameters.nb_epoch * n_dimensions
-
-    def get_name(self) -> str:
-        return "Coordinate GD"
-
-
-class AdaGradDescent(BasicGradientDescent):
-    """Adagrad implementation of the abstract GD class."""
-
-    def __update_method__(self) -> AdaGradUpdate:
-        return AdaGradUpdate(self.parameters)
-
-    def get_name(self) -> str:
-        return "AdaGrad"
-
-class AdaDeltaDescent(BasicGradientDescent):
-    """Adagrad implementation of the abstract GD class."""
-
-    def __update_method__(self) -> AdaDeltaUpdate:
-        return AdaDeltaUpdate(self.parameters)
-
-    def get_name(self) -> str:
-        return "AdaDelta"
-
