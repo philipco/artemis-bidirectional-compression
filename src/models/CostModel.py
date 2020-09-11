@@ -149,7 +149,6 @@ class LogisticModel(ACostModel):
             grad = x.T.mv((s - 1) * y) / n_sample
         end = time.time()
         self.grad_times += (end - start)
-        del s
         return grad
 
     def grad_coordinate(self, w: torch.FloatTensor, j: int) -> torch.FloatTensor:
@@ -173,33 +172,25 @@ class LogisticModel(ACostModel):
 class RMSEModel(ACostModel):
 
     def cost(self, w: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
-        """
-        Examples:
-        >>> np.around(RMSEModel(w=3*torch.ones(3), X=torch.ones(3), Y=2*torch.ones(1))[0]) # Single dimension regression
-        tensor(49.) #TODO ! Doesn't work due to X.shape instruction.
-        >>> np.around(RMSEModel(w=torch.ones(3), X=torch.ones((2, 3)), Y=2*torch.zeros(2))[0]) # Multi dimension regression
-        tensor(9.)
-        """
         n_sample = self.X.shape[0]
+        start = time.time()
         w, X, Y = w.clone().requires_grad_(), self.X.clone().requires_grad_(), self.Y.clone().requires_grad_()
         loss = torch.norm(X.mv(w) - Y, p=2) ** 2 / n_sample + self.regularization.coefficient(w)
+        end = time.time()
+        self.grad_times += (end - start)
         return loss, w
 
     def grad(self, w: torch.FloatTensor) -> torch.FloatTensor:
-        """
-        Examples:
-            >>> np.around(RMSE_grad(torch.ones(3), torch.ones((2,3)), 2*torch.ones(2)))
-            array([2., 2., 2.])
-            >>> np.around(RMSE_grad(3*torch.ones(3), torch.ones((2,3)), torch.zeros(2)))
-            array([18., 18., 18.])
-
-        """
         n_sample = self.X.shape[0]
         return 2 * self.X.T.mv(self.X.mv(w) - self.Y) / n_sample + self.regularization.grad(w)
 
     def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor) -> torch.FloatTensor:
         n_sample = x.shape[0]
-        return 2 * x.T.mv(x.mv(w) - y) / n_sample + self.regularization.grad(w)
+        start = time.time()
+        grad = 2 * x.T.mv(x.mv(w) - y) / n_sample + self.regularization.grad(w)
+        end = time.time()
+        self.grad_times += (end - start)
+        return grad
 
     def grad_coordinate(self, w: torch.FloatTensor, j: int) -> torch.FloatTensor:
         n_sample = self.X.shape[0]
@@ -207,8 +198,12 @@ class RMSEModel(ACostModel):
 
     def lips(self):
         n_sample = self.X.shape[0]
-        return (2 * torch.norm(self.X.T.mm(self.X),
-                               p=2) / n_sample).item() + 2 * self.regularization.regularization_rate
+        start = time.time()
+        L = (2 * torch.norm(self.X.T.mm(self.X),
+                            p=2) / n_sample).item() + 2 * self.regularization.regularization_rate
+        end = time.time()
+        self.lips_times += (end - start)
+        return L
 
     def proximal(self, w, gamma):
         return w / (gamma + 1)

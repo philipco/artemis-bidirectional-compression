@@ -7,13 +7,9 @@ import gc
 import time
 from pathlib import Path
 
-import torch
-
 from src.machinery.Parameters import Parameters
 from src.machinery.GradientDescent import AGradientDescent
 from src.machinery.PredefinedParameters import PredefinedParameters
-
-from src.models.CostModel import RMSEModel
 
 from src.utils.Constants import NB_EPOCH
 from src.utils.runner.MultipleDescentRun import MultipleDescentRun
@@ -77,9 +73,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
     return multiple_descent
 
 
-def single_run_descent(X: torch.FloatTensor, Y: torch.FloatTensor,
-                  model: AGradientDescent, cost_models, parameters: Parameters) -> AGradientDescent:
+def single_run_descent(cost_models, model: AGradientDescent, parameters: Parameters) -> AGradientDescent:
     model_descent = model(parameters)
-    model_descent.set_data(X, Y)
     model_descent.run(cost_models)
     return model_descent

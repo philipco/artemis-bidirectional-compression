@@ -20,13 +20,3 @@ class Worker:
         self.local_update = localUpdate(parameters)
         self.model_param = None
         self.ID = ID
-
-    def set_data(self, X: torch.FloatTensor, Y: torch.FloatTensor) -> None:
-        """Set data on worker.
-
-        Args:
-            X: Data.
-            Y: labels.
-        """
-        self.X, self.Y = X, Y
-        self.cost_model.set_data(self.X, self.Y)

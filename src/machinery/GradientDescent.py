@@ -20,7 +20,6 @@ work correctly as soon as the update scheme method is correctly defined.
 """
 from __future__ import annotations
 
-import gc
 from abc import ABC, abstractmethod
 import time
 import numpy as np
@@ -28,7 +27,6 @@ import torch
 import math
 import os
 import psutil
-import resource
 
 from src.machinery.GradientUpdateMethod import ArtemisUpdate, AbstractGradientUpdate, GradientVanillaUpdate, DianaUpdate
 from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate
@@ -84,26 +82,6 @@ class AGradientDescent(ABC):
 
         # Creating each worker of the network.
         self.workers = [Worker(i, parameters, self.__local_update__()) for i in range(self.parameters.nb_devices)]
-
-    def set_data(self, X: torch.FloatTensor, Y: torch.FloatTensor) -> None:
-        """Set data on each worker and compute coefficient of smoothness."""
-        self.X, self.Y = X, Y
-        if self.workers is None: # To handle non-Federated Settings.
-            self.parameters.cost_model.set_data(X, Y)
-            self.parameters.cost_model.L = self.parameters.cost_model.local_L
-        else:
-            L = 0
-            if self.parameters.verbose:
-                print("Computing Lipschitz constant ...")
-            for (worker, x, y) in zip(self.workers, X, Y):
-                worker.set_data(x, y)
-                L += worker.cost_model.local_L
-            for worker in self.workers:
-                worker.cost_model.L = L / self.parameters.nb_devices
-            if self.parameters.verbose:
-                print("Done.")
-
-
 
     @abstractmethod
     def __update_method__(self) -> AbstractGradientUpdate:
