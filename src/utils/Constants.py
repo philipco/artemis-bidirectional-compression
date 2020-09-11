@@ -12,7 +12,7 @@ W_BOUND = (-7.5, 7.5)  # Bound of the plot when plotting gradient descent.
 NB_DEVICES = 10  # Default number of devices.
 DIM = 10  # Default dimension.
 DIM_OUTPUT = 1  # Default output dimension.
-NB_EPOCH = 2  # Number of epoch for one gradient descent.
+NB_EPOCH = 100  # Number of epoch for one gradient descent.
 NB_OF_POINTS_BY_DEVICE = 200  # Default number of points by device.
 MAX_LOSS = 1e10 # maximal acceptable loss when considering that gradient descent diverged.
 
