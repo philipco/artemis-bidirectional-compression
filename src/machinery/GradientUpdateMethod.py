@@ -12,13 +12,11 @@ To add a new update scheme, just extend the abstract class AbstractGradientUpdat
 
 from __future__ import annotations
 
-import math
 from abc import ABC, abstractmethod, ABCMeta
 import torch
 import random
 from typing import Tuple
 import numpy as np
-import time
 
 from src.machinery.Parameters import Parameters
 from src.models.QuantizationModel import s_quantization
@@ -31,7 +29,7 @@ class AbstractGradientUpdate(ABC):
 
     time_sample = 0
 
-    def __init__(self, parameters: Parameters, workers) -> None:
+    def __init__(self, parameters: Parameters) -> None:
         super().__init__()
         self.parameters = parameters
         self.step = 0
@@ -42,19 +40,6 @@ class AbstractGradientUpdate(ABC):
         loss, _ = self.parameters.cost_model.cost(model_param)
         return loss.item()
 
-    def initialization(self, nb_it: int, model_param: torch.FloatTensor, L: float):
-        self.step = self.__step__(nb_it, L)
-        if nb_it == 1:
-            if self.parameters.momentum != 0:
-                self.v = self.compute_full_gradients(model_param)
-            else:
-                self.v = torch.zeros_like(model_param)
-            # Initialization of v_-1 (for momentum)
-            for worker in self.workers:
-                worker.local_update.set_initial_v(self.v)
-
-        self.all_gradients = []
-
     @abstractmethod
     def compute(self, model_param: torch.FloatTensor, cost_models, nb_it: int, j: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
@@ -63,7 +48,7 @@ class AbstractGradientUpdate(ABC):
         This  method must update the model's parameter according to the scheme.
 
         Args:
-            model_param: the parameters of the model before the update
+            model_param: this is used only for initialization at iteration k=1. Deprecated, should be removed !
             nb_it: index of epoch (iteration over full local data)
             j: index of inside iterations
 
@@ -85,15 +70,22 @@ class AbstractGradientUpdate(ABC):
 class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
     def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters, workers)
+        super().__init__(parameters)
+
+        self.all_delta_i = []
+
+        self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+        self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.g = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         self.workers = workers
+        self.workers_sub_set = None
 
     def compute_aggregation(self, local_information_to_aggregate):
         # In Artemis there is no weight associated with the aggregation, all nodes must have the same weight equal
         # to 1 / len(workers), this is why, an average is enough.
         return torch.stack(local_information_to_aggregate).mean(0)
-
 
     def compute_full_gradients(self, model_param):
         grad = 0
@@ -108,6 +100,27 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             all_loss_i.append(loss_i.item())
         return np.mean(all_loss_i)
 
+    def initialization(self, nb_it: int, model_param: torch.FloatTensor, L: float, cost_models):
+        self.step = self.__step__(nb_it, L)
+        if nb_it == 1:
+            if self.parameters.momentum != 0:
+                self.v = self.compute_full_gradients(model_param)
+            else:
+                self.v = torch.zeros_like(model_param)
+            # Initialization of v_-1 (for momentum)
+            for worker in self.workers:
+                worker.local_update.set_initial_v(self.v)
+
+        self.all_gradients = []
+        self.all_delta_i = []
+        self.workers_sub_set = random.sample(list(zip(self.workers, cost_models)),
+                                             int(len(cost_models) * self.parameters.fraction_sampled_workers))
+
+    def get_set_of_workers(self, cost_models, all=True):
+        if all:
+            return list(zip(self.workers, cost_models))
+        return self.workers_sub_set
+
 
 class ArtemisUpdate(AbstractFLUpdate):
     """This class implement the proper update of the Artemis schema.
@@ -118,10 +131,6 @@ class ArtemisUpdate(AbstractFLUpdate):
         super().__init__(parameters, workers)
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
-
-        self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.g = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         # For unidirectional compression:
         self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -132,11 +141,9 @@ class ArtemisUpdate(AbstractFLUpdate):
     def compute(self, model_param: torch.FloatTensor, cost_models, nb_it: int, j: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
-        self.initialization(nb_it, model_param, cost_models[0].L)
+        self.initialization(nb_it, model_param, cost_models[0].L, cost_models)
 
-        all_delta_i = []
-
-        for worker, cost_model in zip(self.workers, cost_models):
+        for worker, cost_model in self.workers_sub_set:
             # We get all the compressed gradient computed on each worker.
             compressed_delta_i = worker.local_update.compute_locally(cost_model, j)
 
@@ -144,28 +151,28 @@ class ArtemisUpdate(AbstractFLUpdate):
             # This may happened if it is considered that during one epoch each devices should run through all its data
             # exactly once, and if there is different numbers of points on each device.
             if compressed_delta_i is not None:
-                all_delta_i.append(compressed_delta_i)
+                self.all_delta_i.append(compressed_delta_i)
 
         # Aggregating all delta
-        delta = self.compute_aggregation(all_delta_i)
+        delta = self.compute_aggregation(self.all_delta_i)
         # Computing new (compressed) gradients
         self.g = self.h + delta
 
         # We update omega (compression of the sum of compressed gradients).
         self.value_to_compress = self.g - self.l
-        omega = s_quantization(self.value_to_compress, self.parameters.quantization_param)
+        self.omega = s_quantization(self.value_to_compress, self.parameters.quantization_param)
 
         # Updating the model with the new gradients.
-        self.v = self.parameters.momentum * self.v + (omega + self.l)
+        self.v = self.parameters.momentum * self.v + (self.omega + self.l)
         model_param = model_param - self.v * self.step
 
         # Send back omega to all workers and update their local model.
-        for worker in self.workers:
-            worker.local_update.send_global_informations_and_update_local_param(omega, self.step)
+        for worker, _ in self.get_set_of_workers(cost_models):
+            worker.local_update.send_global_informations_and_update_local_param(self.omega, self.step)
 
         # Update the second memory if we are using bidirectional compression and that this feature has been turned on.
         if self.parameters.double_use_memory:
-            self.l += self.parameters.learning_rate * omega
+            self.l += self.parameters.learning_rate * self.omega
         self.h += self.parameters.learning_rate * delta
         return model_param
 
@@ -177,10 +184,8 @@ class DianaUpdate(AbstractFLUpdate):
 
     def __init__(self, parameters: Parameters, workers) -> None:
         super().__init__(parameters, workers)
-        self.value_to_quantized = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
-        self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.g = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         # For unidirectional compression:
         self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -188,28 +193,28 @@ class DianaUpdate(AbstractFLUpdate):
     def compute(self, model_param: torch.FloatTensor, cost_models, nb_it: int, j: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
-        self.initialization(nb_it, model_param, cost_models[0].L)
+        self.initialization(nb_it, model_param, cost_models[0].L, cost_models)
 
-        all_delta_i = []
-
-        for worker, cost_model in zip(self.workers, cost_models):
+        for worker, cost_model in self.workers_sub_set:
             # We send previously computed gradients,
             # and carry out the update step which has just been done on the central server.
             quantized_delta_i = worker.local_update.compute_locally(cost_model, j)
             if quantized_delta_i is not None:
-                all_delta_i.append(quantized_delta_i)
+                self.all_delta_i.append(quantized_delta_i)
 
         # Aggregating all delta
-        delta = self.compute_aggregation(all_delta_i)
+        delta = self.compute_aggregation(self.all_delta_i)
         # Computing new (compressed) gradients
         self.g = self.h + delta
 
         self.v = self.parameters.momentum * self.v + self.g
         model_param = model_param - self.v * self.step
 
+        self.omega = self.g
+
         # Send omega to all workers and update their local model.
-        for worker in self.workers:
-            worker.local_update.send_global_informations_and_update_local_param(self.g, self.step)
+        for worker, _ in self.get_set_of_workers(cost_models):
+            worker.local_update.send_global_informations_and_update_local_param(self.omega, self.step)
         self.h += self.parameters.learning_rate * delta
         return model_param
 
@@ -219,15 +224,12 @@ class GradientVanillaUpdate(AbstractFLUpdate):
     def __init__(self, parameters: Parameters, workers) -> None:
         super().__init__(parameters, workers)
 
-        self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.g = torch.zeros(parameters.n_dimensions, dtype=np.float)
-
     def compute(self, model_param: torch.FloatTensor, cost_models, nb_it: int, j: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
-        self.initialization(nb_it, model_param, cost_models[0].L)
+        self.initialization(nb_it, model_param, cost_models[0].L, cost_models)
 
-        for worker, cost_model in zip(self.workers, cost_models):
+        for worker, cost_model in self.workers_sub_set:
             # We send previously computed gradients,
             # and carry out the update step which has just been done on the central server.
             gradient_i = worker.local_update.compute_locally(cost_model, j)
@@ -240,8 +242,10 @@ class GradientVanillaUpdate(AbstractFLUpdate):
 
         model_param = model_param - self.v * self.step
 
+        self.omega = self.g
+
         # Send global gradient to all workers and update their local model.
-        for worker in self.workers:
-            worker.local_update.send_global_informations_and_update_local_param(self.g, self.step)
+        for worker, _ in self.get_set_of_workers(cost_models):
+            worker.local_update.send_global_informations_and_update_local_param(self.omega, self.step)
 
         return model_param

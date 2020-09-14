@@ -20,7 +20,7 @@ def palette(nb_cluster: int = 10):
     return sns.color_palette("bright", nb_cluster)
 
 
-def tnse(data):
+def tsne(data):
     tsne = TSNE()
     X_embedded = tsne.fit_transform(scale(data))
     fig, ax = plt.subplots(figsize=dim_tnse_fig)

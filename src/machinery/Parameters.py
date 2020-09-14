@@ -65,6 +65,7 @@ class Parameters:
                  federated: bool = False,
                  n_dimensions: int = DIM,
                  nb_devices: int = NB_DEVICES,
+                 fraction_sampled_workers: float = 1.,
                  batch_size: int = 1,
                  step_formula=None,
                  nb_epoch: int = NB_EPOCH,
@@ -86,6 +87,7 @@ class Parameters:
         self.federated = federated  # Boolean to say if we do federated learning or not.
         self.n_dimensions = n_dimensions  # Dimension of the problem.
         self.nb_devices = nb_devices  # Number of device on the network.
+        self.fraction_sampled_workers = fraction_sampled_workers
         self.batch_size = batch_size  # Batch size.
         self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
             else step_formula_in_large_dimension(stochastic, bidirectional, quantization_param, batch_size)
