@@ -194,7 +194,7 @@ class AGradientDescent(ABC):
 
                 print("Lips time: {0}".format(cost_model.lips_times))
                 print("Cost time: {0}".format(cost_model.cost_times))
-                print("Grad time: {0}".format(cost_model.grad_times))
+                print("Grad time: {0}".format(cost_model.grad_i_times))
 
             print("== Inside time {0}".format(inside_loop_time))
             print("== Averaging time : {0}".format(averaging_time))

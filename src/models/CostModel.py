@@ -30,17 +30,13 @@ class ACostModel(ABC):
     def __init__(self, X, Y, regularization: ARegularizationModel = NoRegularization()) -> None:
         super().__init__()
 
-        self.cost_times, self.grad_times, self.lips_times = 0, 0, 0
+        self.cost_times, self.grad_i_times, self.lips_times = 0, 0, 0
 
         self.regularization = regularization
 
         self.X, self.Y = X, Y
         self.local_L = self.lips()
         self.L = None
-
-    def reinit(self):
-        self.cost_times, self.grad_times, self.lips_times = 0, 0, 0
-
 
     @abstractmethod
     def cost(self, w: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
@@ -116,6 +112,11 @@ class LogisticModel(ACostModel):
 
     Note that labels should be equal to +/-1."""
 
+    def __init__(self, X, Y, regularization: ARegularizationModel = NoRegularization()) -> None:
+        super().__init__(X, Y, regularization)
+        assert torch.Tensor([-1, 1]).to(dtype=torch.float64).equal(torch.sort(torch.unique(Y))[0]), \
+            "Y values must be exactly -1 and 1."
+
     def cost(self, w: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         n_sample = self.X.shape[0]
         start = time.time()
@@ -148,7 +149,7 @@ class LogisticModel(ACostModel):
             s = torch.sigmoid(y * x.mv(w))
             grad = x.T.mv((s - 1) * y) / n_sample
         end = time.time()
-        self.grad_times += (end - start)
+        self.grad_i_times += (end - start)
         return grad
 
     def grad_coordinate(self, w: torch.FloatTensor, j: int) -> torch.FloatTensor:
@@ -171,13 +172,17 @@ class LogisticModel(ACostModel):
 
 class RMSEModel(ACostModel):
 
+    def __init__(self, X, Y, regularization: ARegularizationModel = NoRegularization()) -> None:
+        super().__init__(X, Y, regularization)
+        assert len(torch.unique(Y)) > 2, "Y values must have at least 3 different values."
+
     def cost(self, w: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         n_sample = self.X.shape[0]
         start = time.time()
         w, X, Y = w.clone().requires_grad_(), self.X.clone().requires_grad_(), self.Y.clone().requires_grad_()
         loss = torch.norm(X.mv(w) - Y, p=2) ** 2 / n_sample + self.regularization.coefficient(w)
         end = time.time()
-        self.grad_times += (end - start)
+        self.grad_i_times += (end - start)
         return loss, w
 
     def grad(self, w: torch.FloatTensor) -> torch.FloatTensor:
@@ -189,7 +194,7 @@ class RMSEModel(ACostModel):
         start = time.time()
         grad = 2 * x.T.mv(x.mv(w) - y) / n_sample + self.regularization.grad(w)
         end = time.time()
-        self.grad_times += (end - start)
+        self.grad_i_times += (end - start)
         return grad
 
     def grad_coordinate(self, w: torch.FloatTensor, j: int) -> torch.FloatTensor:
