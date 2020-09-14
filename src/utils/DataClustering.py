@@ -29,7 +29,8 @@ def tnse(data):
 
 
 def find_cluster(embedded_data, nb_cluster: int = 10):
-    clustering = GaussianMixture(n_components=nb_cluster, random_state=0, tol=1e-6, max_iter=2000).fit(embedded_data)
+    clustering = GaussianMixture(n_components=nb_cluster, random_state=0, tol=1e-6, n_init=4, max_iter=2000)\
+        .fit(embedded_data)
     predicted_cluster = clustering.predict(embedded_data)
 
     fig, ax = plt.subplots(figsize=dim_tnse_fig)
@@ -63,9 +64,9 @@ def clustering_data(data, predicted_cluster, column_name: str, nb_cluster: int =
         Y.append(torch.stack([y[0] for y in torch.tensor(Y_sub_data, dtype=torch.float64)]))
 
     nb_devices = len(X)
-    print("There is " + str(nb_devices) + " devices.")
+    print("There is {0} devices.".format(nb_devices))
     for i in range(nb_devices):
-        print("Number of points on device " + str(i) + " : " + str(len(X[i])))
+        print("Number of points on device {0} : {1}".format(i, len(X[i])))
 
     # Adding a columns of "1" to take into account a potential bias.
     X = add_bias_term(X)

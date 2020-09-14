@@ -9,6 +9,9 @@ import os
 
 from math import sqrt, log
 from src.machinery.Parameters import Parameters
+import pandas as pd
+
+from pympler import tracker
 
 
 def number_of_bits_needed_to_communicates_compressed(nb_devices: int, s: int, d: int) -> int:
@@ -21,13 +24,13 @@ def number_of_bits_needed_to_communicates_no_compressed(nb_devices:int, d: int) 
     """Computing the theoretical number of bits used for a single way when using compression (with Elias encoding)."""
     return nb_devices * d * 32
 
-def compute_number_of_bits(type_params: Parameters):
+def compute_number_of_bits(type_params: Parameters, nb_epoch: int):
     """Computing the theoretical number of bits used by an algorithm (with Elias encoding)."""
     # Initialization, the first element needs to be removed at the end.
     number_of_bits = [0]
     nb_devices = type_params.nb_devices
     d = type_params.n_dimensions
-    for i in range(type_params.nb_epoch):
+    for i in range(nb_epoch):
         if type_params.bidirectional:
             s = type_params.quantization_param
             nb_bits = 2 * number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
@@ -52,7 +55,7 @@ def pickle_saver(data, filename: str) -> None:
         data: the python object to save.
         filename: the filename where the object is saved.
     """
-    file_to_save = "pickle/" + filename + ".pkl"
+    file_to_save = "pickle/{0}.pkl".format(filename)
     if os.path.exists(file_to_save):
         os.remove(file_to_save)
     pickle_out = open(file_to_save, "wb")
@@ -69,5 +72,15 @@ def pickle_loader(filename: str):
     Returns:
         The python object to load.
     """
-    pickle_in = open("pickle/" + filename + ".pkl", "rb")
+    pickle_in = open("pickle/{0}.pkl".format(filename), "rb")
     return pickle.load(pickle_in)
+
+
+def check_memory_usage():
+
+    mem = tracker.SummaryTracker()
+    memory = pd.DataFrame(mem.create_summary(), columns=['object', 'number_of_objects', 'memory'])
+    memory['mem_per_object'] = memory['memory'] / memory['number_of_objects']
+    print(memory.sort_values('memory', ascending=False).head(10))
+    print("============================================================")
+    print(memory.sort_values('mem_per_object', ascending=False).head(10))

@@ -23,10 +23,10 @@ class PredefinedParameters():
     def type_FL(self):
         return ArtemisDescent
 
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int,
                step_formula=None, momentum: float = 0,
                nb_epoch: int = NB_EPOCH,
-               use_averaging=False, model: ACostModel = RMSEModel(), stochastic=True, batch_size=1):
+               use_averaging=False, stochastic=True, streaming=False, batch_size=1):
         """Define parameters to be used during the descent.
 
         Args:
@@ -37,7 +37,7 @@ class PredefinedParameters():
             momentum: momentum coefficient.
             nb_epoch: number of epoch for the run.
             use_averaging: true if using Polyak-Rupper Averaging.
-            model: cost model of the problem (e.g least-square, logistic ...).
+            cost_models: cost model of the problem (e.g least-square, logistic ...).
             stochastic: true if running stochastic descent.
 
         Returns:
@@ -56,9 +56,9 @@ class SGDWithoutCompression(PredefinedParameters):
     def type_FL(self):
         return FL_VanillaSGD
 
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int = 0, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
-               model: ACostModel = RMSEModel(), stochastic=True, batch_size=1):
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
                           nb_epoch=nb_epoch,
@@ -67,9 +67,10 @@ class SGDWithoutCompression(PredefinedParameters):
                           momentum=momentum,
                           verbose=False,
                           stochastic=stochastic,
+                          streaming=streaming,
                           batch_size=batch_size,
                           bidirectional=False,
-                          cost_model=model,
+                          cost_models=cost_models,
                           use_averaging=use_averaging
                           )
 
@@ -84,9 +85,9 @@ class Qsgd(PredefinedParameters):
     def type_FL(self):
         return DianaDescent
 
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
-               model: ACostModel = RMSEModel(), stochastic=True, batch_size=1) -> None:
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
                           nb_epoch=nb_epoch,
@@ -96,8 +97,9 @@ class Qsgd(PredefinedParameters):
                           learning_rate=0,
                           verbose=False,
                           stochastic=stochastic,
+                          streaming=streaming,
                           batch_size=batch_size,
-                          cost_model=model,
+                          cost_models=cost_models,
                           use_averaging=use_averaging,
                           bidirectional=False
                           )
@@ -110,9 +112,9 @@ class Diana(PredefinedParameters):
     def type_FL(self):
         return DianaDescent
 
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True, batch_size=1):
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
                           nb_epoch=nb_epoch,
@@ -121,9 +123,10 @@ class Diana(PredefinedParameters):
                           momentum=momentum,
                           verbose=False,
                           stochastic=stochastic,
+                          streaming=streaming,
                           batch_size=batch_size,
                           bidirectional=False,
-                          cost_model=model,
+                          cost_models=cost_models,
                           use_averaging=use_averaging
                           )
 
@@ -141,9 +144,9 @@ class BiQSGD(PredefinedParameters):
     def type_FL(self):
         return ArtemisDescent
 
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True, batch_size=1):
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
                           nb_epoch=nb_epoch,
@@ -153,8 +156,9 @@ class BiQSGD(PredefinedParameters):
                           momentum=momentum,
                           verbose=False,
                           stochastic=stochastic,
+                          streaming=streaming,
                           batch_size=batch_size,
-                          cost_model=model,
+                          cost_models=cost_models,
                           use_averaging=use_averaging,
                           bidirectional=True,
                           double_use_memory=False,
@@ -169,9 +173,9 @@ class Artemis(PredefinedParameters):
     def name(self) -> str:
         return "Artemis"
 
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True, batch_size=1):
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
                           nb_epoch=nb_epoch,
@@ -180,8 +184,9 @@ class Artemis(PredefinedParameters):
                           momentum=momentum,
                           verbose=False,
                           stochastic=stochastic,
+                          streaming=streaming,
                           batch_size=batch_size,
-                          cost_model=model,
+                          cost_models=cost_models,
                           use_averaging=use_averaging,
                           bidirectional=True,
                           double_use_memory=False,
@@ -197,9 +202,9 @@ class DoreVariant(PredefinedParameters):
     def name(self) -> str:
         return "Dore"
 
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True, batch_size=1):
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
                           nb_epoch=nb_epoch,
@@ -208,8 +213,9 @@ class DoreVariant(PredefinedParameters):
                           momentum=momentum,
                           verbose=False,
                           stochastic=stochastic,
+                          streaming=streaming,
                           batch_size=batch_size,
-                          cost_model=model,
+                          cost_models=cost_models,
                           use_averaging=use_averaging,
                           bidirectional=True,
                           double_use_memory=True,
@@ -219,9 +225,9 @@ class DoreVariant(PredefinedParameters):
 
 class SGDDoubleModelCompressionWithoutMem(PredefinedParameters):
 
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True, batch_size=1):
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
                           nb_epoch=nb_epoch,
@@ -230,8 +236,9 @@ class SGDDoubleModelCompressionWithoutMem(PredefinedParameters):
                           momentum=momentum,
                           verbose=False,
                           stochastic=stochastic,
+                          streaming=streaming,
                           batch_size=batch_size,
-                          cost_model=model,
+                          cost_models=cost_models,
                           use_averaging=use_averaging,
                           bidirectional=True,
                           double_use_memory=False,
@@ -241,9 +248,9 @@ class SGDDoubleModelCompressionWithoutMem(PredefinedParameters):
 
 class SGDDoubleModelCompressionWithMem(PredefinedParameters):
 
-    def define(self, n_dimensions: int, nb_devices: int, quantization_param: int, step_formula=None,
-               momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False, model: ACostModel = RMSEModel(),
-               stochastic=True, batch_size=1):
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
                           nb_epoch=nb_epoch,
@@ -252,8 +259,9 @@ class SGDDoubleModelCompressionWithMem(PredefinedParameters):
                           momentum=momentum,
                           verbose=False,
                           stochastic=stochastic,
+                          streaming=streaming,
                           batch_size=batch_size,
-                          cost_model=model,
+                          cost_models=cost_models,
                           use_averaging=use_averaging,
                           bidirectional=True,
                           double_use_memory=True,

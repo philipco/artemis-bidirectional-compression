@@ -5,7 +5,6 @@ Created by Philippenko, 6th March 2020.
 import torch
 from copy import deepcopy
 
-from src.machinery.LocalUpdate import LocalArtemisUpdate
 from src.machinery.Parameters import Parameters
 
 
@@ -18,17 +17,6 @@ class Worker:
 
     def __init__(self, ID : int, parameters: Parameters, localUpdate) -> None:
         super().__init__()
-        self.cost_model = deepcopy(parameters.cost_model)
-        self.local_update = localUpdate(parameters, self.cost_model)
+        self.local_update = localUpdate(parameters)
         self.model_param = None
         self.ID = ID
-
-    def set_data(self, X: torch.FloatTensor, Y: torch.FloatTensor) -> None:
-        """Set data on worker.
-
-        Args:
-            X: Data.
-            Y: labels.
-        """
-        self.X, self.Y = X, Y
-        self.cost_model.set_data(self.X, self.Y)

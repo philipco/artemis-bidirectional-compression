@@ -11,7 +11,7 @@ import numpy as np
 
 from src.machinery.GradientDescent import FL_VanillaSGD, ArtemisDescent
 from src.machinery.Parameters import Parameters
-from src.models.CostModel import RMSEModel, LogisticModel
+from src.models.CostModel import RMSEModel, LogisticModel, build_several_cost_model
 from src.utils.Constants import generate_param
 from src.utils.DataPreparation import build_data_linear, build_data_logistic, add_bias_term
 from src.utils.runner.RunnerUtilities import single_run_descent
@@ -41,6 +41,9 @@ class PerformancesTest(unittest.TestCase):
 
         ### RMSE ###
 
+        # Creating cost models which will be used to computed cost/loss, gradients, L ...
+        cls.linear_cost_models = build_several_cost_model(RMSEModel, linear_X, linear_Y, nb_devices)
+
         # Defining parameters for the performances test.
         cls.linear_params = Parameters(n_dimensions=dim_test + 1,
                                        nb_devices=nb_devices,
@@ -48,7 +51,7 @@ class PerformancesTest(unittest.TestCase):
                                        step_formula=None,
                                        nb_epoch=nb_epoch,
                                        use_averaging=False,
-                                       cost_model=RMSEModel(),
+                                       cost_models=cls.linear_cost_models,
                                        stochastic=True)
 
         obj_min_by_N_descent = FL_VanillaSGD(Parameters(n_dimensions=dim_test + 1,
@@ -57,16 +60,17 @@ class PerformancesTest(unittest.TestCase):
                                                         momentum=0.,
                                                         quantization_param=0,
                                                         verbose=True,
-                                                        cost_model=RMSEModel(),
+                                                        cost_models=cls.linear_cost_models,
                                                         stochastic=False,
                                                         bidirectional=False,
                                                         ))
-        obj_min_by_N_descent.set_data(linear_X[:nb_devices], linear_Y[:nb_devices])
-        obj_min_by_N_descent.run()
+        obj_min_by_N_descent.run(cls.linear_cost_models)
         cls.linear_obj = obj_min_by_N_descent.losses[-1]
 
         # For LOGISTIC:
-
+        
+        cls.logistic_cost_models = build_several_cost_model(LogisticModel, logistic_X, logistic_Y, nb_devices)
+        
         # Defining parameters for the performances test.
         cls.logistic_params = Parameters(n_dimensions=2,
                                          nb_devices=nb_devices,
@@ -74,7 +78,7 @@ class PerformancesTest(unittest.TestCase):
                                          step_formula=None,
                                          nb_epoch=nb_epoch,
                                          use_averaging=False,
-                                         cost_model=LogisticModel(),
+                                         cost_models=cls.logistic_cost_models,
                                          stochastic=True)
 
         obj_min_by_N_descent = FL_VanillaSGD(Parameters(n_dimensions=2,
@@ -83,43 +87,42 @@ class PerformancesTest(unittest.TestCase):
                                                         momentum=0.,
                                                         quantization_param=0,
                                                         verbose=True,
-                                                        cost_model=LogisticModel(),
+                                                        cost_models=cls.logistic_cost_models,
                                                         stochastic=False,
                                                         bidirectional=False,
                                                         ))
-        obj_min_by_N_descent.set_data(logistic_X[:nb_devices], logistic_Y[:nb_devices])
-        obj_min_by_N_descent.run()
+        obj_min_by_N_descent.run(cls.logistic_cost_models)
         cls.logistic_obj = obj_min_by_N_descent.losses[-1]
 
     def test_artemis(self):
-        model_descent = single_run_descent(linear_X, linear_Y, ArtemisDescent, self.linear_params)
+        model_descent = single_run_descent(self.linear_cost_models, ArtemisDescent, self.linear_params)
         self.assertLess(np.log10(model_descent.losses[-1] - self.linear_obj), -2)
-        model_descent = single_run_descent(logistic_X, logistic_Y, ArtemisDescent, self.logistic_params)
+        model_descent = single_run_descent(self.logistic_cost_models, ArtemisDescent, self.logistic_params)
         self.assertLess(np.log10(model_descent.losses[-1] - self.logistic_obj), -3.5)
 
     def test_bi_qsgd(self):
-        model_descent = single_run_descent(linear_X, linear_Y, ArtemisDescent, self.linear_params)
+        model_descent = single_run_descent(self.linear_cost_models, ArtemisDescent, self.linear_params)
         self.assertLess(np.log10(model_descent.losses[-1] - self.linear_obj), -2)
-        model_descent = single_run_descent(logistic_X, logistic_Y, ArtemisDescent, self.logistic_params)
+        model_descent = single_run_descent(self.logistic_cost_models, ArtemisDescent, self.logistic_params)
         self.assertLess(np.log10(model_descent.losses[-1] - self.logistic_obj), -3.5)
 
     def test_diana(self):
-        model_descent = single_run_descent(linear_X, linear_Y, FL_VanillaSGD, self.linear_params)
+        model_descent = single_run_descent(self.linear_cost_models, FL_VanillaSGD, self.linear_params)
         self.assertLess(np.log10(model_descent.losses[-1] - self.linear_obj), -2.5)
-        model_descent = single_run_descent(logistic_X, logistic_Y, FL_VanillaSGD, self.logistic_params)
+        model_descent = single_run_descent(self.logistic_cost_models, FL_VanillaSGD, self.logistic_params)
         self.assertLess(np.log10(model_descent.losses[-1] - self.logistic_obj), -3.5)
 
 
     def test_qsgd(self):
-        model_descent = single_run_descent(linear_X, linear_Y, FL_VanillaSGD, self.linear_params)
+        model_descent = single_run_descent(self.linear_cost_models, FL_VanillaSGD, self.linear_params)
         self.assertLess(np.log10(model_descent.losses[-1] - self.linear_obj), -2.5)
-        model_descent = single_run_descent(logistic_X, logistic_Y, FL_VanillaSGD, self.logistic_params)
+        model_descent = single_run_descent(self.logistic_cost_models, FL_VanillaSGD, self.logistic_params)
         self.assertLess(np.log10(model_descent.losses[-1] - self.logistic_obj), -3.5)
 
     def test_vanilla(self):
-        model_descent = single_run_descent(linear_X, linear_Y, FL_VanillaSGD, self.linear_params)
+        model_descent = single_run_descent(self.linear_cost_models, FL_VanillaSGD, self.linear_params)
         self.assertLess(np.log10(model_descent.losses[-1] - self.linear_obj), -3)
-        model_descent = single_run_descent(logistic_X, logistic_Y, FL_VanillaSGD, self.logistic_params)
+        model_descent = single_run_descent(self.logistic_cost_models, FL_VanillaSGD, self.logistic_params)
         self.assertLess(np.log10(model_descent.losses[-1] - self.logistic_obj), -3.5)
 
 
