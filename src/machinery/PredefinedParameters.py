@@ -25,7 +25,7 @@ class PredefinedParameters():
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int,
                step_formula=None, momentum: float = 0,
-               nb_epoch: int = NB_EPOCH,
+               nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1.,
                use_averaging=False, stochastic=True, streaming=False, batch_size=1):
         """Define parameters to be used during the descent.
 
@@ -57,7 +57,7 @@ class SGDWithoutCompression(PredefinedParameters):
         return FL_VanillaSGD
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
-               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
@@ -86,7 +86,7 @@ class Qsgd(PredefinedParameters):
         return DianaDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
-               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
@@ -113,7 +113,7 @@ class Diana(PredefinedParameters):
         return DianaDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
-               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
@@ -145,7 +145,7 @@ class BiQSGD(PredefinedParameters):
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
-               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
@@ -174,7 +174,7 @@ class Artemis(PredefinedParameters):
         return "Artemis"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
-               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
@@ -203,7 +203,7 @@ class DoreVariant(PredefinedParameters):
         return "Dore"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
-               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
@@ -226,7 +226,8 @@ class DoreVariant(PredefinedParameters):
 class SGDDoubleModelCompressionWithoutMem(PredefinedParameters):
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
-               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH,
+               fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
@@ -249,7 +250,8 @@ class SGDDoubleModelCompressionWithoutMem(PredefinedParameters):
 class SGDDoubleModelCompressionWithMem(PredefinedParameters):
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
-               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH, use_averaging=False,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH,
+               fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,

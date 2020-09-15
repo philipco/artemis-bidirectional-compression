@@ -101,6 +101,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         return np.mean(all_loss_i)
 
     def initialization(self, nb_it: int, model_param: torch.FloatTensor, L: float, cost_models):
+
         self.step = self.__step__(nb_it, L)
         if nb_it == 1:
             if self.parameters.momentum != 0:
@@ -116,10 +117,14 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         self.workers_sub_set = random.sample(list(zip(self.workers, cost_models)),
                                              int(len(cost_models) * self.parameters.fraction_sampled_workers))
 
-    def get_set_of_workers(self, cost_models, all=True):
+    def get_set_of_workers(self, cost_models, all=False):
         if all:
             return list(zip(self.workers, cost_models))
         return self.workers_sub_set
+
+    def send_back_global_informations_and_update(self, cost_models):
+        for worker, _ in self.get_set_of_workers(cost_models):
+            worker.local_update.send_global_informations_and_update_local_param(self.omega, self.step)
 
 
 class ArtemisUpdate(AbstractFLUpdate):
@@ -166,11 +171,9 @@ class ArtemisUpdate(AbstractFLUpdate):
         self.v = self.parameters.momentum * self.v + (self.omega + self.l)
         model_param = model_param - self.v * self.step
 
-        # Send back omega to all workers and update their local model.
-        for worker, _ in self.get_set_of_workers(cost_models):
-            worker.local_update.send_global_informations_and_update_local_param(self.omega, self.step)
+        self.send_back_global_informations_and_update(cost_models)
 
-        # Update the second memory if we are using bidirectional compression and that this feature has been turned on.
+        # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
         if self.parameters.double_use_memory:
             self.l += self.parameters.learning_rate * self.omega
         self.h += self.parameters.learning_rate * delta
@@ -212,9 +215,8 @@ class DianaUpdate(AbstractFLUpdate):
 
         self.omega = self.g
 
-        # Send omega to all workers and update their local model.
-        for worker, _ in self.get_set_of_workers(cost_models):
-            worker.local_update.send_global_informations_and_update_local_param(self.omega, self.step)
+        self.send_back_global_informations_and_update(cost_models)
+
         self.h += self.parameters.learning_rate * delta
         return model_param
 
@@ -244,8 +246,6 @@ class GradientVanillaUpdate(AbstractFLUpdate):
 
         self.omega = self.g
 
-        # Send global gradient to all workers and update their local model.
-        for worker, _ in self.get_set_of_workers(cost_models):
-            worker.local_update.send_global_informations_and_update_local_param(self.omega, self.step)
+        self.send_back_global_informations_and_update(cost_models)
 
         return model_param
