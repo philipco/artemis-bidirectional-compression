@@ -76,6 +76,8 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
+        self.omega_k = []
+
         self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
         self.g = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
@@ -103,6 +105,10 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
     def initialization(self, nb_it: int, model_param: torch.FloatTensor, L: float, cost_models):
 
         self.step = self.__step__(nb_it, L)
+
+        if nb_it > 1:
+            self.send_back_global_informations_and_update(cost_models)
+
         if nb_it == 1:
             if self.parameters.momentum != 0:
                 self.v = self.compute_full_gradients(model_param)
@@ -114,8 +120,13 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         self.all_gradients = []
         self.all_delta_i = []
+
+        if isinstance(self.parameters.fraction_sampled_workers, str):
+            fraction = random.choice(np.linspace(0.1,1,10))
+        else:
+            fraction = self.parameters.fraction_sampled_workers
         self.workers_sub_set = random.sample(list(zip(self.workers, cost_models)),
-                                             int(len(cost_models) * self.parameters.fraction_sampled_workers))
+                                             int(len(cost_models) * fraction))
 
     def get_set_of_workers(self, cost_models, all=False):
         if all:
@@ -123,8 +134,18 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         return self.workers_sub_set
 
     def send_back_global_informations_and_update(self, cost_models):
+        """
+
+        :param cost_models:
+        :return:
+        """
+        # print(len(self.get_set_of_workers(cost_models)))
         for worker, _ in self.get_set_of_workers(cost_models):
-            worker.local_update.send_global_informations_and_update_local_param(self.omega, self.step)
+            #Instead use worker....([self.omega], self.step) to get classic approach.
+            worker.local_update.send_global_informations_and_update_local_param(self.omega_k[worker.idx_last_update:], self.step)
+            if self.parameters.fraction_sampled_workers == 1.:
+                assert len(self.omega_k[worker.idx_last_update:]) == 1
+            worker.idx_last_update = len(self.omega_k)
 
 
 class ArtemisUpdate(AbstractFLUpdate):
@@ -148,7 +169,9 @@ class ArtemisUpdate(AbstractFLUpdate):
 
         self.initialization(nb_it, model_param, cost_models[0].L, cost_models)
 
-        for worker, cost_model in self.workers_sub_set:
+        # Warning, if one wants to run the case when subset are updating, but then al devices are updated,
+        # the following lines must be changed.
+        for worker, cost_model in self.get_set_of_workers(cost_models):
             # We get all the compressed gradient computed on each worker.
             compressed_delta_i = worker.local_update.compute_locally(cost_model, j)
 
@@ -166,12 +189,11 @@ class ArtemisUpdate(AbstractFLUpdate):
         # We update omega (compression of the sum of compressed gradients).
         self.value_to_compress = self.g - self.l
         self.omega = s_quantization(self.value_to_compress, self.parameters.quantization_param)
+        self.omega_k.append(self.omega)
 
         # Updating the model with the new gradients.
         self.v = self.parameters.momentum * self.v + (self.omega + self.l)
         model_param = model_param - self.v * self.step
-
-        self.send_back_global_informations_and_update(cost_models)
 
         # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
         if self.parameters.double_use_memory:
@@ -198,7 +220,7 @@ class DianaUpdate(AbstractFLUpdate):
 
         self.initialization(nb_it, model_param, cost_models[0].L, cost_models)
 
-        for worker, cost_model in self.workers_sub_set:
+        for worker, cost_model in self.get_set_of_workers(cost_models):
             # We send previously computed gradients,
             # and carry out the update step which has just been done on the central server.
             quantized_delta_i = worker.local_update.compute_locally(cost_model, j)
@@ -214,8 +236,7 @@ class DianaUpdate(AbstractFLUpdate):
         model_param = model_param - self.v * self.step
 
         self.omega = self.g
-
-        self.send_back_global_informations_and_update(cost_models)
+        self.omega_k.append(self.omega)
 
         self.h += self.parameters.learning_rate * delta
         return model_param
@@ -231,7 +252,7 @@ class GradientVanillaUpdate(AbstractFLUpdate):
 
         self.initialization(nb_it, model_param, cost_models[0].L, cost_models)
 
-        for worker, cost_model in self.workers_sub_set:
+        for worker, cost_model in self.get_set_of_workers(cost_models):
             # We send previously computed gradients,
             # and carry out the update step which has just been done on the central server.
             gradient_i = worker.local_update.compute_locally(cost_model, j)
@@ -245,7 +266,6 @@ class GradientVanillaUpdate(AbstractFLUpdate):
         model_param = model_param - self.v * self.step
 
         self.omega = self.g
-
-        self.send_back_global_informations_and_update(cost_models)
+        self.omega_k.append(self.omega)
 
         return model_param
