@@ -155,7 +155,7 @@ class BiQSGD(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
-                          quantization_param=1,
+                          quantization_param=quantization_param,
                           learning_rate=0,
                           momentum=momentum,
                           verbose=False,
