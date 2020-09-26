@@ -5,7 +5,6 @@ This python file provide tools to easily customize a gradient descent based on i
 It also provide predefine parameters to run classical algorithm without introducing an error.
 """
 from src.utils.Constants import NB_EPOCH, NB_DEVICES, DIM
-from src.models.CostModel import ACostModel, RMSEModel
 
 from math import sqrt
 
@@ -36,7 +35,6 @@ def step_formula_in_large_dimension(sto: bool, bi: bool, quantization_param: int
     """Default formula to compute the step size at each iteration.
 
     Two cases are handled, if it is a stochastic run or a full batch descent."""
-
     if batch_size >= 150 or not sto:
         return step_formula_when_using_big_batch_size(sto, bi, quantization_param)
     return bi_large_dim
@@ -47,9 +45,10 @@ def default_step_formula(sto: bool):
 
     Two cases are handled, if it is a stochastic run or a full batch descent."""
 
-    if sto:
-        return deacreasing_step_size
     return full_batch_step_size
+    # if sto:
+    #     return deacreasing_step_size
+    # return full_batch_step_size
 
 
 class Parameters:
@@ -79,7 +78,8 @@ class Parameters:
                  stochastic: bool = True,
                  streaming: bool = False,
                  compress_gradients: bool = True,
-                 double_use_memory: bool = False,
+                 use_memory: bool = False,
+                 use_double_memory: bool = False,
                  use_averaging: bool = False,
                  time_debug: bool = False) -> None:
         super().__init__()
@@ -102,7 +102,8 @@ class Parameters:
         self.stochastic = stochastic  # true if running a stochastic gradient descent
         self.streaming = streaming # True if each sample should be used only once !
         self.compress_gradients = compress_gradients
-        self.double_use_memory = double_use_memory  # Use a
+        self.use_memory = use_memory # use memory when sending to global server
+        self.double_use_memory = use_double_memory  # a memory at back communication
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
         self.time_debug = time_debug

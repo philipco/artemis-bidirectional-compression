@@ -69,14 +69,20 @@ class LocalGradientVanillaUpdate(AbstractLocalUpdate):
     def __init__(self, parameters: Parameters) -> None:
         super().__init__(parameters)
 
+        self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.delta_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
     def compute_locally(self, cost_model: ACostModel, j: int):
         self.compute_local_gradient(cost_model, j)
-        return self.g_i
+
+        self.delta_i = deepcopy(self.g_i - self.h_i)
+        self.h_i += self.parameters.learning_rate * self.delta_i
+        return self.delta_i
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
         for tensor in tensor_sent:
-            self.v = self.parameters.momentum * self.v + tensor
-            self.model_param = self.model_param - step * self.v
+            self.v = deepcopy(self.parameters.momentum * self.v + tensor)
+            self.model_param = deepcopy(self.model_param - step * self.v)
 
 
 class LocalDianaUpdate(AbstractLocalUpdate):
@@ -88,15 +94,15 @@ class LocalDianaUpdate(AbstractLocalUpdate):
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
         for tensor in tensor_sent:
-            self.v = self.parameters.momentum * self.v + tensor
-            self.model_param = self.model_param - step * self.v
+            self.v = deepcopy(self.parameters.momentum * self.v + tensor)
+            self.model_param = deepcopy(self.model_param - step * self.v)
 
     def compute_locally(self, cost_model: ACostModel, j: int):
         self.compute_local_gradient(cost_model, j)
         if self.g_i is None:
             return None
 
-        self.delta_i = self.g_i - self.h_i
+        self.delta_i = deepcopy(self.g_i - self.h_i)
         quantized_delta_i = s_quantization(self.delta_i, self.parameters.quantization_param)
         self.h_i += self.parameters.learning_rate * quantized_delta_i
         return quantized_delta_i
@@ -130,7 +136,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
                     "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
             # Updating the model with the new gradients.
-            self.v = self.parameters.momentum * self.v + decompressed_value
+            self.v = deepcopy(self.parameters.momentum * self.v + decompressed_value)
             self.model_param = deepcopy(self.model_param - step * self.v)
 
     def compute_locally(self, cost_model: ACostModel, j: int):
@@ -138,7 +144,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.delta_i = self.g_i - self.h_i
+        self.delta_i = deepcopy(self.g_i - self.h_i)
         quantized_delta_i = s_quantization(self.delta_i, self.parameters.quantization_param)
         self.h_i += self.parameters.learning_rate * quantized_delta_i
         return quantized_delta_i
