@@ -89,8 +89,11 @@ class Parameters:
         self.nb_devices = nb_devices  # Number of device on the network.
         self.fraction_sampled_workers = fraction_sampled_workers
         self.batch_size = batch_size  # Batch size.
-        self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
-            else step_formula_in_large_dimension(stochastic, bidirectional, quantization_param, batch_size)
+        if step_formula is None:
+            self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
+                else step_formula_in_large_dimension(stochastic, bidirectional, quantization_param, batch_size)
+        else:
+            self.step_formula = step_formula
         self.nb_epoch = nb_epoch  # number of epoch of the run
         self.regularization_rate = regularization_rate  # coefficient of regularization
         self.force_learning_rate = force_learning_rate
