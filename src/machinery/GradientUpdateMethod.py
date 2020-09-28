@@ -110,10 +110,22 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
     def initialization(self, nb_it: int, model_param: torch.FloatTensor, L: float, cost_models):
 
-        self.step = self.__step__(nb_it, L)
+        # Sampling workers until there is at least one in the subset.
+        self.workers_sub_set = []
+        if self.parameters.fraction_sampled_workers == 1:
+            self.workers_sub_set = [(self.workers[i], cost_models[i]) for i in range(self.parameters.nb_devices)]
+        else:
+            while not self.workers_sub_set:
+                s = np.random.binomial(1, self.parameters.fraction_sampled_workers, self.parameters.nb_devices)
+
+                self.workers_sub_set = [(self.workers[i], cost_models[i])
+                                        for i in range(self.parameters.nb_devices) if s[i]]
 
         if nb_it > 1:
             self.send_back_global_informations_and_update(cost_models)
+
+        # The step size must be updated after updating models (in the case that it is not constant).
+        self.step = self.__step__(nb_it, L)
 
         if nb_it == 1:
             if self.parameters.momentum != 0:
@@ -126,17 +138,6 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         self.all_delta_i = []
         self.all_delta_i = []
-
-        # Sampling workers until there is at least one in the subset.
-        self.workers_sub_set = []
-        if self.parameters.fraction_sampled_workers == 1:
-            self.workers_sub_set = [(self.workers[i], cost_models[i]) for i in range(self.parameters.nb_devices)]
-        else:
-            while not self.workers_sub_set:
-                s = np.random.binomial(1, self.parameters.fraction_sampled_workers, self.parameters.nb_devices)
-
-                self.workers_sub_set = [(self.workers[i], cost_models[i])
-                                        for i in range(self.parameters.nb_devices) if s[i]]
 
     def get_set_of_workers(self, cost_models, all=False):
         if all:
