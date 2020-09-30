@@ -87,7 +87,7 @@ def rebalancing_clusters(X_origin, Y_origin):
         lenghts = [len(y) for y in Y]
         min_lenght = min(lenghts), np.argmin(lenghts)
         max_lenght = max(lenghts), np.argmax(lenghts)
-        if min_lenght[0] * 6 < max_lenght[0]:
+        if min_lenght[0] * 10 < max_lenght[0]:
             print("Changing : ")
             print(min_lenght)
             print(max_lenght)
@@ -121,3 +121,5 @@ def check_data_clusterisation(X, Y, nb_devices:int = 10):
     fig, ax = plt.subplots(figsize=dim_tnse_fig)
     sns.scatterplot(X_embedded_check[:, 0], X_embedded_check[:, 1], ax=ax, hue=label, legend='full',
                     palette=palette(nb_devices)).set_title("Checking that data clusterisation on each device in correct")
+
+    ax.get_legend().remove()
