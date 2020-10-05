@@ -17,10 +17,11 @@ class ResultsOfSeveralDescents:
     """
 
     def __init__(self, all_descent, nb_devices_for_the_run):
-        self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in all_descent.values()]
+        if not all_descent[next(iter(all_descent))].artificial:
+            self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in all_descent.values()]
+            self.X_number_of_bits = [desc.theoretical_nb_bits for desc in all_descent.values()]
         self.all_losses = [desc.losses for desc in all_descent.values()]
         self.all_losses_averaged = [desc.averaged_losses for desc in all_descent.values()]
-        self.X_number_of_bits = [desc.theoretical_nb_bits for desc in all_descent.values()]
         self.nb_devices_for_the_run = nb_devices_for_the_run
         self.names = [names for names in all_descent]
 

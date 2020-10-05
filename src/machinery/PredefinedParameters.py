@@ -306,7 +306,7 @@ class SGDDoubleModelCompressionWithMem(PredefinedParameters):
 
 
 KIND_COMPRESSION = [VanillaSGD(),
-                    SGDWithMem(),
+                    # SGDWithMem(),
                     Qsgd(),
                     Diana(),
                     BiQSGD(),

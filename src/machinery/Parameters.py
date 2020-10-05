@@ -46,9 +46,6 @@ def default_step_formula(sto: bool):
     Two cases are handled, if it is a stochastic run or a full batch descent."""
 
     return full_batch_step_size
-    # if sto:
-    #     return deacreasing_step_size
-    # return full_batch_step_size
 
 
 class Parameters:
