@@ -20,12 +20,12 @@ nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 
 def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all_error=None,
-                    x_points=None, x_legend=None, one_on_two_points=True, xlabels=None):
+                    x_points=None, x_legend=None, one_on_two_points=True, xlabels=None, ylim=False):
     N_it = len(all_losses[0])
     plt.figure(figsize=figsize)
     it = 0
 
-    for i in range(len(all_losses)):
+    for i in range(min(len(all_losses), len(markers))):
         abscisse = [i for i in range(N_it)]
         error_distance = all_losses[i]
         lw = curve_size-1 if len(error_distance) > 40 else curve_size
@@ -57,7 +57,8 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
         title_precision = "\n(N=" + str(nb_devices) + ", d=" + str(nb_dim) + ", b=" + str(batch_size) + ")"
 
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
-    setup_plot(x_legend + title_precision, r"$\log_{10}(F(w^k) - F(w^*))$", xlog=(x_points is not None), xlabels=xlabels)
+    setup_plot(x_legend + title_precision, r"$\log_{10}(F(w^k) - F(w^*))$", xlog=(x_points is not None), xlabels=xlabels,
+               ylim=ylim)
 
 
 def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_dim, legend, obj_min, objective_keys,
@@ -86,10 +87,11 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
 
 
 def setup_plot(xlegends, ylegends, fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False,
-               xlabels=None):
+               xlabels=None, ylim=False):
     if ylog:
         plt.yscale("log")
-    # plt.ylim(top=1e-3)
+    if ylim:
+        plt.ylim(top=1)
     if xlog:
         plt.xscale("log")
     plt.yticks(fontsize=fontsize)
