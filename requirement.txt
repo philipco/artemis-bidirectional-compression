@@ -6,7 +6,7 @@ tensorflow<2.0
 Pillow
 matplotlib
 jupyter
-pandas
+pandas>0.25
 scikit-learn
 python3-tk # doesn't work with conda - sudo apt-get install python3-tk
 torch

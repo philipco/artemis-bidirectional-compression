@@ -20,12 +20,12 @@ nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 
 def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all_error=None,
-                    x_points=None, x_legend=None):
+                    x_points=None, x_legend=None, one_on_two_points=True, xlabels=None, ylim=False):
     N_it = len(all_losses[0])
     plt.figure(figsize=figsize)
     it = 0
 
-    for i in range(len(all_losses)):
+    for i in range(min(len(all_losses), len(markers))):
         abscisse = [i for i in range(N_it)]
         error_distance = all_losses[i]
         lw = curve_size-1 if len(error_distance) > 40 else curve_size
@@ -35,13 +35,16 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
             abscisse = x_points[i]
 
         if all_error is not None:
-            # if we plot error bar we don't take all elements
-            objectives_dist = [error_distance[0]] + list(error_distance[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [
-                error_distance[-1]]
-            abscisse = [abscisse[0]] + abscisse[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)] + [abscisse[-1]]
+            if one_on_two_points:
+                # if we plot error bar we don't take all elements
+                objectives_dist = [error_distance[0]] + list(error_distance[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [
+                    error_distance[-1]]
+                abscisse = [abscisse[0]] + abscisse[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)] + [abscisse[-1]]
 
-            error_to_plot = [all_error[i][0]] + list(all_error[i][i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [
-                all_error[i][-1]]
+                error_to_plot = [all_error[i][0]] + list(all_error[i][i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [
+                    all_error[i][-1]]
+            else:
+                objectives_dist, error_to_plot = error_distance, all_error[i]
             plt.errorbar(abscisse, objectives_dist, yerr=error_to_plot, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
 
         else:
@@ -54,7 +57,8 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
         title_precision = "\n(N=" + str(nb_devices) + ", d=" + str(nb_dim) + ", b=" + str(batch_size) + ")"
 
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
-    setup_plot(x_legend + title_precision, r"$\log_{10}(F(w^k) - F(w^*))$", xlog=(x_points is not None))
+    setup_plot(x_legend + title_precision, r"$\log_{10}(F(w^k) - F(w^*))$", xlog=(x_points is not None), xlabels=xlabels,
+               ylim=ylim)
 
 
 def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_dim, legend, obj_min, objective_keys,
@@ -82,16 +86,21 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
                xlog=False)
 
 
-def setup_plot(xlegends, ylegends, fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False):
+def setup_plot(xlegends, ylegends, fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False,
+               xlabels=None, ylim=False):
     if ylog:
         plt.yscale("log")
-    # plt.ylim(top=1e-3)
+    if ylim:
+        plt.ylim(top=1)
     if xlog:
         plt.xscale("log")
     plt.yticks(fontsize=fontsize)
     plt.grid()
-    # plt.xticks(np.arange(0, 401, step=100), fontsize=xticks_fontsize)
-    plt.xticks(fontsize=xticks_fontsize)
+    if xlabels:
+        plt.xticks([i for i in range(0, len(xlabels))], xlabels, rotation=40, fontsize=xticks_fontsize-3)
+    else:
+        plt.xticks(fontsize=xticks_fontsize)
+        # plt.xticks(np.arange(0, 401, step=100), fontsize=xticks_fontsize)
     plt.xlabel(xlegends, fontsize=fontsize)
     plt.ylabel(ylegends, fontsize=fontsize)
     plt.legend(loc='best', fontsize=fontsize_legend)

@@ -18,5 +18,9 @@ class Worker:
     def __init__(self, ID : int, parameters: Parameters, localUpdate) -> None:
         super().__init__()
         self.local_update = localUpdate(parameters)
+        self.idx_last_update = 0
         self.model_param = None
         self.ID = ID
+
+    def set_idx_last_update(self, j: int):
+        self.idx_last_update = j

@@ -24,7 +24,8 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                          use_averaging=False,
                          stochastic: bool = True,
                          streaming: bool = False,
-                         batch_size=1,
+                         batch_size: int = 1,
+                         fraction_sampled_workers: float = 1.,
                          logs_file: str = None) -> MultipleDescentRun:
     """
 
@@ -41,12 +42,9 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
 
     Returns:
     """
-    print(predefined_parameters.name())
-
     multiple_descent = MultipleDescentRun()
     for i in range(nb_run):
         start_time = time.time()
-        # gc.collect()
         params = predefined_parameters.define(n_dimensions=cost_models[0].X.shape[1],
                                               nb_devices=len(cost_models),
                                               quantization_param=quantization_param,
@@ -56,7 +54,8 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                                               cost_models=cost_models,
                                               stochastic=stochastic,
                                               streaming=streaming,
-                                              batch_size=batch_size)
+                                              batch_size=batch_size,
+                                              fraction_sampled_workers=fraction_sampled_workers)
         model_descent = predefined_parameters.type_FL()(params)
         model_descent.run(cost_models)
         multiple_descent.append(model_descent)

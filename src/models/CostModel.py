@@ -114,8 +114,8 @@ class LogisticModel(ACostModel):
 
     def __init__(self, X, Y, regularization: ARegularizationModel = NoRegularization()) -> None:
         super().__init__(X, Y, regularization)
-        assert torch.Tensor([-1, 1]).to(dtype=torch.float64).equal(torch.sort(torch.unique(Y))[0]), \
-            "Y values must be exactly -1 and 1."
+        assert torch.sort(torch.unique(Y))[0] in torch.Tensor([-1, 1]).to(dtype=torch.float64), \
+            "Y values must contains only -1 and 1."
 
     def cost(self, w: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         n_sample = self.X.shape[0]

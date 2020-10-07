@@ -61,22 +61,15 @@ class AGradientDescent(ABC):
         self.averaged_losses = []
         self.memory_info = None
 
-        #if self.parameters.quantization_param != 0:
-        self.parameters.omega_c = s_quantization_omega_c(
-                self.parameters.n_dimensions,
-                self.parameters.quantization_param
-            )
-        if self.parameters.quantization_param != 0:
-            # If learning_rate is None, we set it to optimal value.
-            if self.parameters.learning_rate == None:
+        if self.parameters.use_memory:
+            if self.parameters.quantization_param != 0:
+                self.parameters.omega_c = s_quantization_omega_c(
+                    self.parameters.n_dimensions,
+                    self.parameters.quantization_param
+                )
                 self.parameters.learning_rate = 1 / (2 * (self.parameters.omega_c + 1))
             else:
-                if not self.parameters.force_learning_rate:
-                    self.parameters.learning_rate *= 1 / (1 * (self.parameters.omega_c + 1))
-
-        # If quantization_param == 0, it means there is no compression,
-        # which means that we don't want to "predict" values with previous one,
-        # and thus, we put learning_rate to zero.
+                self.parameters.learning_rate = 0.1
         else:
             self.parameters.learning_rate = 0
 

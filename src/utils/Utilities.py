@@ -24,6 +24,7 @@ def number_of_bits_needed_to_communicates_no_compressed(nb_devices:int, d: int) 
     """Computing the theoretical number of bits used for a single way when using compression (with Elias encoding)."""
     return nb_devices * d * 32
 
+
 def compute_number_of_bits(type_params: Parameters, nb_epoch: int):
     """Computing the theoretical number of bits used by an algorithm (with Elias encoding)."""
     # Initialization, the first element needs to be removed at the end.
@@ -31,7 +32,7 @@ def compute_number_of_bits(type_params: Parameters, nb_epoch: int):
     nb_devices = type_params.nb_devices
     d = type_params.n_dimensions
     for i in range(nb_epoch):
-        if type_params.bidirectional:
+        if type_params.bidirectional and type_params.quantization_param != 0:
             s = type_params.quantization_param
             nb_bits = 2 * number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
         elif type_params.quantization_param != 0:

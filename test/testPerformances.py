@@ -10,7 +10,7 @@ import torch
 import numpy as np
 
 from src.machinery.GradientDescent import FL_VanillaSGD, ArtemisDescent
-from src.machinery.Parameters import Parameters
+from src.machinery.Parameters import Parameters, deacreasing_step_size
 from src.models.CostModel import RMSEModel, LogisticModel, build_several_cost_model
 from src.utils.Constants import generate_param
 from src.utils.DataPreparation import build_data_linear, build_data_logistic, add_bias_term
@@ -48,7 +48,7 @@ class PerformancesTest(unittest.TestCase):
         cls.linear_params = Parameters(n_dimensions=dim_test + 1,
                                        nb_devices=nb_devices,
                                        quantization_param=1,
-                                       step_formula=None,
+                                       step_formula=deacreasing_step_size,
                                        nb_epoch=nb_epoch,
                                        use_averaging=False,
                                        cost_models=cls.linear_cost_models,
@@ -75,7 +75,7 @@ class PerformancesTest(unittest.TestCase):
         cls.logistic_params = Parameters(n_dimensions=2,
                                          nb_devices=nb_devices,
                                          quantization_param=1,
-                                         step_formula=None,
+                                         step_formula=deacreasing_step_size,
                                          nb_epoch=nb_epoch,
                                          use_averaging=False,
                                          cost_models=cls.logistic_cost_models,

@@ -32,19 +32,5 @@ def generate_param(n_dimensions: int):
 
 TRUE_MODEL_PARAM = generate_param(DIM)
 
-step_formula_labels = ["4/L", "2/L", "1/L", "1/(2*L)", "1/(5*L)", "1/(2*L*(1+omega))", "1/(5*L*(1+omega))",
-                       "1/(10*L*(1+omega))"]  # range of step formula labels
-
-# range of step formula used in experiments
-step_formula = [(lambda it, L, omega, N: 4 / L),
-                (lambda it, L, omega, N: 2 / L),
-                (lambda it, L, omega, N: 1 / L),
-                (lambda it, L, omega, N: 1 / (2 * L)),
-                (lambda it, L, omega, N: 1 / (5 * L)),
-                (lambda it, L, omega, N: 1 / (2 * L * (1 + omega))),
-                (lambda it, L, omega, N: 1 / (5 * L * (1 + omega))),
-                (lambda it, L, omega, N: 1 / (10 * L * (1 + omega)))
-                ]
-
 DEVICE_RANGE = [1, 3, 10, 16, 20, 40]  # Range of device used in experiments
 DIMENSION_RANGE = [1, 4, 10, 16, 20, 160, 320]  # Range of dimension used in experiments
