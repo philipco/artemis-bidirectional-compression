@@ -25,6 +25,12 @@ class AbstractLocalUpdate(ABC):
         self.parameters = parameters
         # cost_model = cost_model
 
+        # Local memory.
+        self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+        # Local delta (information that is sent to central server).
+        self.delta_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
         self.g_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
         self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
@@ -66,12 +72,6 @@ class AbstractLocalUpdate(ABC):
 
 class LocalGradientVanillaUpdate(AbstractLocalUpdate):
 
-    def __init__(self, parameters: Parameters) -> None:
-        super().__init__(parameters)
-
-        self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.delta_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-
     def compute_locally(self, cost_model: ACostModel, j: int):
         self.compute_local_gradient(cost_model, j)
 
@@ -86,11 +86,6 @@ class LocalGradientVanillaUpdate(AbstractLocalUpdate):
 
 
 class LocalDianaUpdate(AbstractLocalUpdate):
-
-    def __init__(self, parameters: Parameters) -> None:
-        super().__init__(parameters)
-        self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.delta_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
         for tensor in tensor_sent:
@@ -113,8 +108,6 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
 
     def __init__(self, parameters: Parameters) -> None:
         super().__init__(parameters)
-        self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.delta_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         # For bidirectional compression :
         self.l_i = torch.zeros(parameters.n_dimensions, dtype=np.float)

@@ -28,6 +28,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                          fraction_sampled_workers: float = 1.,
                          logs_file: str = None) -> MultipleDescentRun:
     """
+    Run several time the same algorithm in the same conditions and gather all result in the MultipleDescentRun class.
 
     Args:
         predefined_parameters: predefined parameters
@@ -37,7 +38,6 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
         quantization_param:
         step_formula: lambda function to compute the step size at each iteration.
         use_averaging: true if using Polyak-Rupper averaging.
-        model: cost model of the problem (e.g least-square, logistic ...).
         stochastic: true if running stochastic descent.
 
     Returns:

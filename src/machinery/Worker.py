@@ -2,9 +2,6 @@
 Created by Philippenko, 6th March 2020.
 """
 
-import torch
-from copy import deepcopy
-
 from src.machinery.Parameters import Parameters
 
 

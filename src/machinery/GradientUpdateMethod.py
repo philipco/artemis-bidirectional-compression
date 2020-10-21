@@ -13,7 +13,6 @@ To add a new update scheme, just extend the abstract class AbstractGradientUpdat
 from __future__ import annotations
 
 from abc import ABC, abstractmethod, ABCMeta
-from copy import deepcopy
 
 import torch
 from typing import Tuple
@@ -73,14 +72,21 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
     def __init__(self, parameters: Parameters, workers) -> None:
         super().__init__(parameters)
 
+        # Delta sent from remote nodes to main server.
         self.all_delta_i = []
+
+        # Local memories hold on the central server.
         self.h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in range(self.parameters.nb_devices)]
 
+        # Omega : used to update the model on central server.
         self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
+        # Sequence of omega : the information that will be send to all active nodes.
         self.omega_k = []
 
+        # For the momentum.
         self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        # Sum of local compressed gradients.
         self.g = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         self.workers = workers
@@ -255,11 +261,13 @@ class GradientVanillaUpdate(AbstractFLUpdate):
                 self.all_delta_i.append(self.h[worker.ID] + delta_i)
                 self.h[worker.ID] += self.parameters.learning_rate * delta_i
 
+        # Aggregating all delta
         self.g = self.compute_aggregation(self.all_delta_i)
         self.v = self.parameters.momentum * self.v + self.g
 
         model_param = model_param - self.v * self.step
 
+        # We update omega (compression of the sum of compressed gradients).
         self.omega = self.g
         self.omega_k.append(self.omega)
 

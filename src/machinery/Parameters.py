@@ -84,7 +84,7 @@ class Parameters:
         self.federated = federated  # Boolean to say if we do federated learning or not.
         self.n_dimensions = n_dimensions  # Dimension of the problem.
         self.nb_devices = nb_devices  # Number of device on the network.
-        self.fraction_sampled_workers = fraction_sampled_workers
+        self.fraction_sampled_workers = fraction_sampled_workers # Probability of a worker to be active at each round.
         self.batch_size = batch_size  # Batch size.
         if step_formula is None:
             self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
@@ -97,16 +97,16 @@ class Parameters:
         self.momentum = momentum  # momentum coefficient
         self.quantization_param = quantization_param  # quantization parameter
         self.omega_c = 0  # quantization constant involved in the variance inequality of the scheme
-        self.learning_rate = learning_rate
+        self.learning_rate = learning_rate  # Learning rate used when updating memory.
         self.bidirectional = bidirectional
         self.stochastic = stochastic  # true if running a stochastic gradient descent
-        self.streaming = streaming # True if each sample should be used only once !
+        self.streaming = streaming  # True if each sample should be used only once !
         self.compress_gradients = compress_gradients
-        self.use_memory = use_memory # use memory when sending to global server
+        self.use_memory = use_memory  # use memory when sending to global server
         self.double_use_memory = use_double_memory  # a memory at back communication
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
-        self.time_debug = time_debug
+        self.time_debug = time_debug  # True is one want to debug the time spent in each procedure.
 
     def print(self):
         print("federated", self.federated)
