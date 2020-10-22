@@ -4,11 +4,10 @@ Created by Philippenko, 7th July 2020.
 
 from src.machinery.GradientDescent import ArtemisDescent, FL_VanillaSGD, DianaDescent
 from src.machinery.Parameters import Parameters
-from src.models.CostModel import ACostModel, RMSEModel
 from src.utils.Constants import NB_EPOCH
 
 
-class PredefinedParameters():
+class PredefinedParameters:
     """Abstract class to predefine (no customizable) parameters required by a given type of algorithms (e.g Artemis, QSGD ...)
 
     Keep high degree of customization.
@@ -18,7 +17,6 @@ class PredefinedParameters():
         """Name of the predefined parameters.
         """
         return "empty"
-
 
     def type_FL(self):
         return ArtemisDescent
@@ -44,6 +42,7 @@ class PredefinedParameters():
             Build parameters.
         """
         pass
+
 
 class SGDWithMem(PredefinedParameters):
     """Predefine parameters to run SGD algorithm in a federated settings.
@@ -306,7 +305,6 @@ class SGDDoubleModelCompressionWithMem(PredefinedParameters):
 
 
 KIND_COMPRESSION = [VanillaSGD(),
-                    # SGDWithMem(),
                     Qsgd(),
                     Diana(),
                     BiQSGD(),

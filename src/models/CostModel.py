@@ -9,6 +9,9 @@ To add a new one, just extend the abstract class ACostModel which contains metho
 4. to compute the gradient
 
 Once implemented, pass this new cost model as parameter of a (multiple) gradient descent run.
+
+Warning: the matrix norm used is not the canonical Frobenius norm, but the L2 norm as defined by PyTorch,
+            i.e the norm of the norm of each vectors in the matrix.
 """
 import scipy.sparse as sp
 import torch
@@ -130,6 +133,7 @@ class LogisticModel(ACostModel):
 
     def grad(self, w: torch.FloatTensor) -> torch.FloatTensor:
         n_sample = self.X.shape[0]
+        # Handle the case if we are using a scipy sparse matrix.
         if isinstance(self.X, sp.csc.csc_matrix):
             s = torch.sigmoid((self.Y * self.X.dot(w)))
             grad = torch.FloatTensor(self.X.T.dot((s - 1) * self.Y) / n_sample)
@@ -142,6 +146,7 @@ class LogisticModel(ACostModel):
     def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor):
         n_sample = x.shape[0]
         start = time.time()
+        # Handle the case if we are using a scipy sparse matrix.
         if isinstance(self.X, sp.csc.csc_matrix):
             s = torch.sigmoid((y * x.dot(w)))
             grad = torch.FloatTensor(x.T.dot((s - 1) * y) / n_sample)
@@ -158,10 +163,11 @@ class LogisticModel(ACostModel):
     def lips(self):
         n_sample = self.X.shape[0]
         start = time.time()
+        # Handle the case if we are using a scipy sparse matrix.
         if (isinstance(self.X, sp.csc.csc_matrix)):
-            L = sp.linalg.norm(self.X.T.dot(self.X)) / (4 * n_sample) + self.regularization.regularization_rate
+            L = sp.linalg.norm(self.X.T.dot(self.X)) / (4 * n_sample)
         else:
-            L = (torch.norm(self.X.T.mm(self.X), p=2) / (4 * n_sample)).item() + self.regularization.regularization_rate
+            L = (torch.norm(self.X.T.mm(self.X), p=2) / (4 * n_sample)).item()
         end = time.time()
         self.lips_times += (end - start)
         return L
@@ -204,8 +210,7 @@ class RMSEModel(ACostModel):
     def lips(self):
         n_sample = self.X.shape[0]
         start = time.time()
-        L = (2 * torch.norm(self.X.T.mm(self.X),
-                            p=2) / n_sample).item() + 2 * self.regularization.regularization_rate
+        L = (2 * torch.norm(self.X.T.mm(self.X), p=2) / n_sample).item()
         end = time.time()
         self.lips_times += (end - start)
         return L

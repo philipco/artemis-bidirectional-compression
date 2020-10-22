@@ -10,6 +10,10 @@ import numpy as np
 
 
 class MultipleDescentRun:
+    """
+    This class gathers the result of multiple gradient descents performed in the same condition with the aim to later
+    average the loss, and compute the variance.
+    """
 
     def __init__(self):
         self.multiple_descent = []

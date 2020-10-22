@@ -15,6 +15,11 @@ from src.utils.Constants import DIM, NB_OF_POINTS_BY_DEVICE, BIAS
 
 
 def add_bias_term(X):
+    """Add a bias term in the dataset.
+
+    :param X: dataset
+    :return: dataset with an additional columns of 1 at the beginning.
+    """
     newX = [torch.cat((torch.ones(len(x), 1).to(dtype=torch.float64), x), 1) for x in X]
     return newX
 
