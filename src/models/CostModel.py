@@ -9,6 +9,9 @@ To add a new one, just extend the abstract class ACostModel which contains metho
 4. to compute the gradient
 
 Once implemented, pass this new cost model as parameter of a (multiple) gradient descent run.
+
+Warning: the matrix norm used is not the canonical Frobenius norm, but the L2 norm as defined by PyTorch,
+            i.e the norm of the norm of each vectors in the matrix.
 """
 import scipy.sparse as sp
 import torch
