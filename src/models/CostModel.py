@@ -162,9 +162,9 @@ class LogisticModel(ACostModel):
         start = time.time()
         # Handle the case if we are using a scipy sparse matrix.
         if (isinstance(self.X, sp.csc.csc_matrix)):
-            L = sp.linalg.norm(self.X.T.dot(self.X)) / (4 * n_sample) + self.regularization.regularization_rate
+            L = sp.linalg.norm(self.X.T.dot(self.X)) / (4 * n_sample)
         else:
-            L = (torch.norm(self.X.T.mm(self.X), p=2) / (4 * n_sample)).item() + self.regularization.regularization_rate
+            L = (torch.norm(self.X.T.mm(self.X), p=2) / (4 * n_sample)).item()
         end = time.time()
         self.lips_times += (end - start)
         return L
@@ -207,8 +207,7 @@ class RMSEModel(ACostModel):
     def lips(self):
         n_sample = self.X.shape[0]
         start = time.time()
-        L = (2 * torch.norm(self.X.T.mm(self.X),
-                            p=2) / n_sample).item() + 2 * self.regularization.regularization_rate
+        L = (2 * torch.norm(self.X.T.mm(self.X), p=2) / n_sample).item()
         end = time.time()
         self.lips_times += (end - start)
         return L

@@ -7,7 +7,7 @@ at Ecole Polytechnique.
 **To the attention of AISTAT reviewers.**
 To keep anonymity during the review process, we used a repository anonymizer. 
 Unfortunately, its interface doesn't allow to open notebooks in the browser. 
-Thus, fornotebook visualization, we refer to the zip fil provided in the supplementae material. 
+Thus, for notebook visualization, we refer to the zip file provided in the supplementary material. 
 ## Experimentation
 
 We provide all the notebooks used to generated figures in our article in the folder `notebook/`. 
@@ -15,7 +15,7 @@ To regenerate all the figures, just restart the notebook.
 However we warn that they need to run for about 2hours to 12hours. 
 Yet, it is possible (using pickle) to load already generated data and to explore them. To do it: 
 
-1. Load pickle methods: `from src.utils.Utilities import pickle_loader, pickle_saver`
+1. Load pickle methods: `from src.utils.Utilities import pickle_loader`
 2. Load data: `pickle_loader(<the-file-you-want-to-load>)`
 
 ## Code structuration
@@ -34,7 +34,7 @@ flexibility. Artemis can be ran with various features, namely:
 5. With one or two memories (one for each way)
 6. With or without momentum
 7. With or without Polyak-Ruppert averaging
-8. With or without devices sampling.
+8. With or without devices sampling
 9. ...
 
 Other features are planned to be coded to enhance the code and the possibilities. In this perspective, the code 
