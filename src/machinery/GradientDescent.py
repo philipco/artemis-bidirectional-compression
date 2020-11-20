@@ -148,6 +148,7 @@ class AGradientDescent(ABC):
             # This is not the loop carried out on local remote devices.
             # Hence, there is a communication between all devices during this loop.
             # If we use compression, of course all communication are compressed !
+            print("LOOP : {0}".format(i))
             for j in range(0, math.floor(number_of_inside_it)):
                 in_loop = time.time()
                 full_iterations += 1

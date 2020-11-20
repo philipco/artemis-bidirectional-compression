@@ -39,6 +39,8 @@ class AbstractLocalUpdate(ABC):
             [(-1 ** i) / (2 * self.parameters.n_dimensions) for i in range(self.parameters.n_dimensions)]) \
             .to(dtype=torch.float64)
 
+        self.error_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
     def set_initial_v(self, v):
         self.v = v
 
@@ -129,15 +131,19 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
                     "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
             # Updating the model with the new gradients.
-            self.v = deepcopy(self.parameters.momentum * self.v + decompressed_value)
-            self.model_param = deepcopy(self.model_param - step * self.v)
+            self.v = self.parameters.momentum * self.v + decompressed_value
+            self.model_param = self.model_param - step * self.v
+            print("=> local model param")
+            print(self.model_param)
 
     def compute_locally(self, cost_model: ACostModel, j: int):
         self.compute_local_gradient(cost_model, j)
         if self.g_i is None:
             return None
 
-        self.delta_i = deepcopy(self.g_i - self.h_i)
+        zeros = torch.zeros(self.parameters.n_dimensions, dtype=np.float)
+        self.delta_i = self.g_i - self.h_i + (zeros, self.error_i)[self.parameters.error_feedback]
         quantized_delta_i = s_quantization(self.delta_i, self.parameters.quantization_param)
+        self.error_i = self.error_i + (zeros, self.g_i - self.h_i - quantized_delta_i)[self.parameters.error_feedback]
         self.h_i += self.parameters.learning_rate * quantized_delta_i
         return quantized_delta_i

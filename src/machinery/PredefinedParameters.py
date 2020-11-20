@@ -226,6 +226,35 @@ class Artemis(PredefinedParameters):
                           use_memory=True
                           )
 
+class RArtemis(PredefinedParameters):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "RArtemis"
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, quantization_param: int = 0,
+               step_formula=None, momentum: float = 0, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
+        return Parameters(n_dimensions=n_dimensions,
+                          nb_devices=nb_devices,
+                          nb_epoch=nb_epoch,
+                          fraction_sampled_workers=fraction_sampled_workers,
+                          step_formula=step_formula,
+                          quantization_param=quantization_param,
+                          momentum=momentum,
+                          stochastic=stochastic,
+                          streaming=streaming,
+                          batch_size=batch_size,
+                          cost_models=cost_models,
+                          use_averaging=use_averaging,
+                          bidirectional=True,
+                          use_double_memory=False,
+                          compress_gradients=True,
+                          use_memory=True,
+                          randomized=True
+                          )
+
 
 class DoreVariant(PredefinedParameters):
     """Predefine parameters to run a variant of algorithm.
@@ -310,3 +339,5 @@ KIND_COMPRESSION = [VanillaSGD(),
                     BiQSGD(),
                     Artemis()
                     ]
+
+KIND_COMPRESSION_RANDOMIZED = [Artemis(), RArtemis()]
