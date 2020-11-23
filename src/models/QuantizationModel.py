@@ -3,6 +3,8 @@ Created by Constantin Philippenko, 6th March 2020.
 
 This python file provide facilities to quantize tensors.
 """
+import random
+from abc import ABC, abstractmethod
 
 import torch
 from scipy.stats import bernoulli
@@ -10,36 +12,90 @@ from torch.distributions.bernoulli import Bernoulli
 from math import sqrt
 
 
-def s_quantization(x: torch.FloatTensor, s: int) -> torch.FloatTensor:
-    """Implement the s-quantization
-
-    Args:
-        x: the tensor to be quantized.
-        s: the parameter of quantization.
-
-    Returns:
-        The quantizated tensor.
+class CompressionModel(ABC):
     """
-    if s == 0:
-        return x
-    norm_x = torch.norm(x, p=2)
-    if norm_x == 0:
-        return x
-    ratio = torch.abs(x) / norm_x
-    l = torch.floor(ratio * s)
-    p = ratio * s - l
-    sampled = Bernoulli(p).sample()
-    qtzt = torch.sign(x) * norm_x * (l + sampled) / s
-    return qtzt
+    """
+    
+    def __init__(self, level: int, dim: int):
+        self.level = level
+        self.dim = dim
+        self.omega_c = self.__compute_omega_c__(dim)
+    
+    @abstractmethod
+    def compress(self, vector: torch.FloatTensor):
+        pass
+
+    @abstractmethod
+    def __compute_omega_c__(self, dim: int):
+        pass
 
 
-def s_quantization_omega_c(dim: int, s: int):
-    """Return the value of omega_c (involved in variance) of the s-quantization."""
-    # If s==0, it means that there is no compression.
-    # But for the need of experiments, we may need to compute the quantization constant associated with s=1.
-    if s==0:
-        return sqrt(dim)
-    return min(dim / s*s, sqrt(dim) / s)
+class TopKSparsification(CompressionModel):
+
+    def compress(self, vector: torch.FloatTensor):
+        assert 0 < self.level < 100, "k must be expressend in percent."
+        if self.level == 0:
+            return vector
+        nb_of_component_to_select = int(len(vector) * self.level / 100)
+        values, indices = torch.topk(abs(vector), 3)
+        compression = torch.zeros_like(vector)
+        for i in indices:
+            compression[i.item()] = vector[i.item()]
+        return compression
+
+    def __compute_omega_c__(self, dim: int):
+        return self.level/dim
+
+
+class RandomSparsification(CompressionModel):
+
+    def compress(self, vector: torch.FloatTensor):
+        assert 0 < self.level < 100, "k must be expressed in percent."
+        if self.level == 0:
+            return vector
+        nb_of_component_to_select = int(len(vector) * self.level / 100)
+        indices = random.sample(range(len(vector)), nb_of_component_to_select)
+        compression = torch.zeros_like(vector)
+        for i in indices:
+            compression[i] = vector[i]
+        return compression
+
+    def __compute_omega_c__(self, dim: int):
+        return self.level/dim
+
+
+class SQantization(CompressionModel):
+
+    def compress(self, vector: torch.FloatTensor) -> torch.FloatTensor:
+        """Implement the s-quantization
+
+        Args:
+            x: the tensor to be quantized.
+            s: the parameter of quantization.
+
+        Returns:
+            The quantizated tensor.
+        """
+        self.level = 1
+        if self.level == 0:
+            return vector
+        norm_x = torch.norm(vector, p=2)
+        if norm_x == 0:
+            return vector
+        ratio = torch.abs(vector) / norm_x
+        l = torch.floor(ratio * self.level)
+        p = ratio * self.level - l
+        sampled = Bernoulli(p).sample()
+        qtzt = torch.sign(vector) * norm_x * (l + sampled) / self.level
+        return qtzt
+
+    def __compute_omega_c__(self, dim: int):
+        """Return the value of omega_c (involved in variance) of the s-quantization."""
+        # If s==0, it means that there is no compression.
+        # But for the need of experiments, we may need to compute the quantization constant associated with s=1.
+        if self.level==0:
+            return sqrt(dim)
+        return min(dim / self.level*self.level, sqrt(dim) / self.level)
 
 
 def one_bit_quantization(x, _):

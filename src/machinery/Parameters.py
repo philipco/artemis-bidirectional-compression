@@ -4,6 +4,7 @@ Created by Philippenko, 12th March 2020.
 This python file provide tools to easily customize a gradient descent based on its hyperparameters.
 It also provide predefine parameters to run classical algorithm without introducing an error.
 """
+from src.models.QuantizationModel import CompressionModel, RandomSparsification
 from src.utils.Constants import NB_EPOCH, NB_DEVICES, DIM
 
 from math import sqrt
@@ -67,7 +68,7 @@ class Parameters:
                  nb_epoch: int = NB_EPOCH,
                  regularization_rate: int = 0,
                  momentum: int = 0,
-                 quantization_param: int = None,
+                 compression_model: CompressionModel = None,
                  learning_rate: int = None,
                  force_learning_rate: bool = False,
                  bidirectional: bool = False,
@@ -90,15 +91,17 @@ class Parameters:
         self.batch_size = batch_size  # Batch size.
         if step_formula is None:
             self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
-                else step_formula_in_large_dimension(stochastic, bidirectional, quantization_param, batch_size)
+                else step_formula_in_large_dimension(stochastic, bidirectional, compression_model.level, batch_size)
         else:
             self.step_formula = step_formula
         self.nb_epoch = nb_epoch  # number of epoch of the run
         self.regularization_rate = regularization_rate  # coefficient of regularization
         self.force_learning_rate = force_learning_rate
         self.momentum = momentum  # momentum coefficient
-        self.quantization_param = quantization_param  # quantization parameter
-        self.omega_c = 0  # quantization constant involved in the variance inequality of the scheme
+        if compression_model == None:
+            self.compression_model = RandomSparsification(10, n_dimensions)
+        else:
+            self.compression_model = compression_model  # quantization parameter
         self.learning_rate = learning_rate  # Learning rate used when updating memory.
         self.bidirectional = bidirectional
         self.stochastic = stochastic  # true if running a stochastic gradient descent
