@@ -13,7 +13,6 @@ import numpy as np
 
 from src.models.CostModel import ACostModel
 from src.machinery.Parameters import Parameters
-from src.models.QuantizationModel import s_quantization
 
 from abc import ABC, abstractmethod
 
@@ -100,7 +99,7 @@ class LocalDianaUpdate(AbstractLocalUpdate):
             return None
 
         self.delta_i = deepcopy(self.g_i - self.h_i)
-        quantized_delta_i = s_quantization(self.delta_i, self.parameters.quantization_param)
+        quantized_delta_i = self.parameters.compression_model.compress(self.delta_i)
         self.h_i += self.parameters.learning_rate * quantized_delta_i
         return quantized_delta_i
 
@@ -132,18 +131,14 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
 
             # Updating the model with the new gradients.
             self.v = self.parameters.momentum * self.v + decompressed_value
-            self.model_param = self.model_param - step * self.v
-            print("=> local model param")
-            print(self.model_param)
+            self.model_param = self.model_param - self.v
 
     def compute_locally(self, cost_model: ACostModel, j: int):
         self.compute_local_gradient(cost_model, j)
         if self.g_i is None:
             return None
 
-        zeros = torch.zeros(self.parameters.n_dimensions, dtype=np.float)
-        self.delta_i = self.g_i - self.h_i + (zeros, self.error_i)[self.parameters.error_feedback]
-        quantized_delta_i = s_quantization(self.delta_i, self.parameters.quantization_param)
-        self.error_i = self.error_i + (zeros, self.g_i - self.h_i - quantized_delta_i)[self.parameters.error_feedback]
+        self.delta_i = self.g_i - self.h_i
+        quantized_delta_i = self.parameters.compression_model.compress(self.delta_i)
         self.h_i += self.parameters.learning_rate * quantized_delta_i
         return quantized_delta_i

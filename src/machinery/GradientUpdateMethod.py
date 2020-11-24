@@ -20,7 +20,6 @@ from typing import Tuple
 import numpy as np
 
 from src.machinery.Parameters import Parameters
-from src.models.QuantizationModel import s_quantization
 
 
 class AbstractGradientUpdate(ABC):
@@ -63,7 +62,7 @@ class AbstractGradientUpdate(ABC):
         """Compute the step size at iteration *it*."""
         if it == 0:
             return 0
-        step = self.parameters.step_formula(it, L, self.parameters.omega_c,
+        step = self.parameters.step_formula(it, L, self.parameters.compression_model.omega_c,
                                             self.parameters.nb_devices)
         return step
 
@@ -163,12 +162,12 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
     def build_randomized_omega(self, cost_models):
         randomized_omega_k = []
         for (worker, cost_model) in self.get_set_of_workers(cost_models):
-            randomized_omega_k.append(s_quantization(self.value_to_compress[worker.ID], self.parameters.quantization_param))
+            randomized_omega_k.append(self.parameters.compression_model.compress(self.value_to_compress[worker.ID]))
         self.omega = randomized_omega_k
         self.omega_k.append(self.omega)
 
     def build_omega(self):
-        self.omega = s_quantization(self.value_to_compress, self.parameters.quantization_param)
+        self.omega = self.parameters.compression_model.compress(self.value_to_compress)
         self.omega_k.append(self.omega)
 
     def send_back_global_informations_and_update(self, cost_models):
@@ -186,8 +185,6 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                     cpt += 1
             else:
                 model_to_send = self.omega_k[worker.idx_last_update:]
-            print("model to send to worker {}".format(worker.ID))
-            print(model_to_send)
             worker.local_update.send_global_informations_and_update_local_param(model_to_send, self.step)
             if self.parameters.fraction_sampled_workers == 1.:
                 assert len(self.omega_k[worker.idx_last_update:]) == 1
@@ -240,10 +237,10 @@ class ArtemisUpdate(AbstractFLUpdate):
 
         # We update omega (compression of the sum of compressed gradients).
         if self.parameters.randomized:
-            self.value_to_compress = [(self.g - self.l) + self.all_error_i[i]
+            self.value_to_compress = [self.step * (self.g - self.l) + self.all_error_i[i]
                                       for i in range(self.parameters.nb_devices)]
         else:
-            self.value_to_compress = (self.g - self.l) + self.all_error_i
+            self.value_to_compress = self.step * (self.g - self.l) + self.all_error_i
 
         if self.parameters.randomized:
             self.build_randomized_omega(cost_models)
@@ -261,7 +258,7 @@ class ArtemisUpdate(AbstractFLUpdate):
             self.update_randomized_model()
         else:
             self.update_model()
-        model_param = model_param - self.v * self.step
+        model_param = model_param - self.v
 
         # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
         if self.parameters.double_use_memory:

@@ -4,7 +4,7 @@ Created by Philippenko, 12th March 2020.
 This python file provide tools to easily customize a gradient descent based on its hyperparameters.
 It also provide predefine parameters to run classical algorithm without introducing an error.
 """
-from src.models.QuantizationModel import CompressionModel, RandomSparsification
+from src.models.CompressionModel import CompressionModel, RandomSparsification, SQuantization
 from src.utils.Constants import NB_EPOCH, NB_DEVICES, DIM
 
 from math import sqrt
@@ -89,11 +89,6 @@ class Parameters:
         self.nb_devices = nb_devices  # Number of device on the network.
         self.fraction_sampled_workers = fraction_sampled_workers # Probability of a worker to be active at each round.
         self.batch_size = batch_size  # Batch size.
-        if step_formula is None:
-            self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
-                else step_formula_in_large_dimension(stochastic, bidirectional, compression_model.level, batch_size)
-        else:
-            self.step_formula = step_formula
         self.nb_epoch = nb_epoch  # number of epoch of the run
         self.regularization_rate = regularization_rate  # coefficient of regularization
         self.force_learning_rate = force_learning_rate
@@ -102,6 +97,11 @@ class Parameters:
             self.compression_model = RandomSparsification(10, n_dimensions)
         else:
             self.compression_model = compression_model  # quantization parameter
+        if step_formula is None:
+            self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
+                else step_formula_in_large_dimension(stochastic, bidirectional, self.compression_model.level, batch_size)
+        else:
+            self.step_formula = step_formula
         self.learning_rate = learning_rate  # Learning rate used when updating memory.
         self.bidirectional = bidirectional
         self.stochastic = stochastic  # true if running a stochastic gradient descent
@@ -119,7 +119,6 @@ class Parameters:
         print("federated", self.federated)
         print("nb devices:", self.nb_devices)
         print("nb dimension:", self.n_dimensions)
-        print("quantization param:", self.quantization_param)
         print("regularization rate:", self.regularization_rate)
         print("cost model", self.cost_model)
         print("omega_c", self.omega_c)

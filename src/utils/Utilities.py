@@ -32,11 +32,11 @@ def compute_number_of_bits(type_params: Parameters, nb_epoch: int):
     nb_devices = type_params.nb_devices
     d = type_params.n_dimensions
     for i in range(nb_epoch):
-        if type_params.bidirectional and type_params.quantization_param != 0:
-            s = type_params.quantization_param
+        if type_params.bidirectional and type_params.compression_model.level != 0:
+            s = type_params.compression_model.level
             nb_bits = 2 * number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
-        elif type_params.quantization_param != 0:
-            s = type_params.quantization_param
+        elif type_params.compression_model.level != 0:
+            s = type_params.compression_model.level
             nb_bits = number_of_bits_needed_to_communicates_no_compressed(nb_devices, d) \
                    + number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
         else:

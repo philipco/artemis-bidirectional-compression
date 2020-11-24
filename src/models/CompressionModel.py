@@ -64,7 +64,7 @@ class RandomSparsification(CompressionModel):
         return self.level/dim
 
 
-class SQantization(CompressionModel):
+class SQuantization(CompressionModel):
 
     def compress(self, vector: torch.FloatTensor) -> torch.FloatTensor:
         """Implement the s-quantization
@@ -76,7 +76,6 @@ class SQantization(CompressionModel):
         Returns:
             The quantizated tensor.
         """
-        self.level = 1
         if self.level == 0:
             return vector
         norm_x = torch.norm(vector, p=2)

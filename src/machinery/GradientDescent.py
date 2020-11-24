@@ -30,7 +30,6 @@ import psutil
 
 from src.machinery.GradientUpdateMethod import ArtemisUpdate, AbstractGradientUpdate, GradientVanillaUpdate, DianaUpdate
 from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate
-from src.models.QuantizationModel import s_quantization_omega_c
 from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
 from src.utils.Constants import MAX_LOSS
@@ -144,7 +143,6 @@ class AGradientDescent(ABC):
             # This is not the loop carried out on local remote devices.
             # Hence, there is a communication between all devices during this loop.
             # If we use compression, of course all communication are compressed !
-            print("LOOP : {0}".format(i))
             for j in range(0, math.floor(number_of_inside_it)):
                 in_loop = time.time()
                 full_iterations += 1
