@@ -19,6 +19,7 @@ class MultipleDescentRun:
         self.multiple_descent = []
         self.losses = []
         self.averaged_losses = []
+        self.norm_error_feedback = []
         self.theoretical_nb_bits = []
         self.artificial = False
 
@@ -31,6 +32,7 @@ class MultipleDescentRun:
         self.multiple_descent.append(new_descent)
         self.losses = [d.losses for d in self.multiple_descent]
         self.averaged_losses = [d.averaged_losses for d in self.multiple_descent]
+        self.norm_error_feedback = [d.norm_error_feedback for d in self.multiple_descent]
 
     def append_list(self, my_list, my_list_averaged):
         number_points = len(my_list[0])

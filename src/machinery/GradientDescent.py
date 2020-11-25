@@ -55,6 +55,7 @@ class AGradientDescent(ABC):
         super().__init__()
         self.parameters = parameters
         self.losses = []
+        self.norm_error_feedback = []
         self.model_params = []
         self.averaged_model_params = []
         self.averaged_losses = []
@@ -70,6 +71,9 @@ class AGradientDescent(ABC):
 
         # Creating each worker of the network.
         self.workers = [Worker(i, parameters, self.__local_update__()) for i in range(self.parameters.nb_devices)]
+
+        # Call for the update method of the gradient descent.
+        self.update = self.__update_method__()
 
     @abstractmethod
     def __update_method__(self) -> AbstractGradientUpdate:
@@ -108,22 +112,19 @@ class AGradientDescent(ABC):
         inside_loop_time = 0
         averaging_time = 0
 
-        # Call for the update method of the gradient descent.
-        update = self.__update_method__()
-
         # Initialization
         current_model_param = torch.FloatTensor(
             [(-1 ** i) / (2 * self.parameters.n_dimensions) for i in range(self.parameters.n_dimensions)])\
             .to(dtype=torch.float64)
 
         self.model_params.append(current_model_param)
-        self.losses.append(update.compute_cost(current_model_param, cost_models))
+        self.losses.append(self.update.compute_cost(current_model_param, cost_models))
 
         if self.parameters.use_averaging:
             self.averaged_model_params.append(self.model_params[-1])
             self.averaged_losses.append(self.losses[-1])
 
-        full_iterations = 0
+        full_nb_iterations = 0
 
         if self.parameters.streaming:
             nb_epoch = min([cost_models[i].X.shape[0] for i in range(len(cost_models))])
@@ -145,18 +146,26 @@ class AGradientDescent(ABC):
             # If we use compression, of course all communication are compressed !
             for j in range(0, math.floor(number_of_inside_it)):
                 in_loop = time.time()
-                full_iterations += 1
+                full_nb_iterations += 1
                 # If in streaming mode, we send the epoch numerous, else the numerous of the inside iteration.
-                current_model_param = update.compute(current_model_param, cost_models, full_iterations, (j, i)[self.parameters.streaming])
+                current_model_param = self.update.compute(current_model_param, cost_models, full_nb_iterations, (j, i)[self.parameters.streaming])
                 inside_loop_time += (time.time() - in_loop)
 
             self.model_params.append(current_model_param)
-            self.losses.append(update.compute_cost(self.model_params[-1], cost_models))
+            self.losses.append(self.update.compute_cost(self.model_params[-1], cost_models))
+            if self.parameters.randomized:
+                self.norm_error_feedback.append(torch.norm(torch.mean(torch.stack(self.update.all_error_i[-1]), dim=0), p=2))
+            else:
+                self.norm_error_feedback.append(torch.norm(self.update.all_error_i[-1], p=2))
+
+            # The norm of error feedback has not been initialized. We Initilize it now witht the first value.
+            if len(self.norm_error_feedback) == 1:
+                self.norm_error_feedback.append(self.norm_error_feedback[0])
 
             start_averaging_time = time.time()
             if self.parameters.use_averaging:
                 self.averaged_model_params.append(torch.mean(torch.stack(self.model_params), 0))
-                self.averaged_losses.append(update.compute_cost(self.averaged_model_params[-1], cost_models))
+                self.averaged_losses.append(self.update.compute_cost(self.averaged_model_params[-1], cost_models))
             averaging_time += time.time() - start_averaging_time
 
             if self.parameters.verbose:
@@ -193,6 +202,8 @@ class AGradientDescent(ABC):
         # Otherwise it may later cause issues.
         if len(self.losses) != self.parameters.nb_epoch:
             self.losses = self.losses + [self.losses[-1] for i in range(self.parameters.nb_epoch - len(self.losses))]
+        if len(self.norm_error_feedback) != self.parameters.nb_epoch:
+            self.norm_error_feedback = self.norm_error_feedback + [self.norm_error_feedback[-1] for i in range(self.parameters.nb_epoch - len(self.norm_error_feedback))]
         if len(self.averaged_losses) != self.parameters.nb_epoch and self.parameters.use_averaging == True:
             self.averaged_losses = self.averaged_losses + [self.averaged_losses[-1] for i in range(self.parameters.nb_epoch - len(self.averaged_losses))]
 

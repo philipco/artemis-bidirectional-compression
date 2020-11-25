@@ -92,11 +92,13 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         self.workers = workers
         self.workers_sub_set = None
 
+        # all_error_i is a list of accumulated error. In the case of randomization, their is one accumulated
+        # error by remote node.
         if self.parameters.randomized:
-            self.all_error_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)
-                                for i in range(self.parameters.nb_devices)]
+            self.all_error_i = [[torch.zeros(parameters.n_dimensions, dtype=np.float)
+                                for i in range(self.parameters.nb_devices)]]
         else:
-            self.all_error_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+            self.all_error_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
 
     def compute_aggregation(self, local_information_to_aggregate):
         # In Artemis there is no weight associated with the aggregation, all nodes must have the same weight equal
@@ -214,16 +216,16 @@ class ArtemisUpdate(AbstractFLUpdate):
         # Memory for bidirectional compression:
         self.l = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
-    def compute(self, model_param: torch.FloatTensor, cost_models, nb_it: int, j: int) \
+    def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
-        self.initialization(nb_it, model_param, cost_models[0].L, cost_models)
+        self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
         # Warning, if one wants to run the case when subset are updating, but then al devices are updated,
         # the following lines must be changed.
         for worker, cost_model in self.get_set_of_workers(cost_models):
             # We get all the compressed gradient computed on each worker.
-            compressed_delta_i = worker.local_update.compute_locally(cost_model, j)
+            compressed_delta_i = worker.local_update.compute_locally(cost_model, nb_inside_it)
 
             # If nothing is returned by the device, this device does not participate to the learning at this iterations.
             # This may happened if it is considered that during one epoch each devices should run through all its data
@@ -237,10 +239,10 @@ class ArtemisUpdate(AbstractFLUpdate):
 
         # We update omega (compression of the sum of compressed gradients).
         if self.parameters.randomized:
-            self.value_to_compress = [self.step * (self.g - self.l) + self.all_error_i[i]
+            self.value_to_compress = [(self.g - self.l) + self.all_error_i[-1][i]
                                       for i in range(self.parameters.nb_devices)]
         else:
-            self.value_to_compress = self.step * (self.g - self.l) + self.all_error_i
+            self.value_to_compress = (self.g - self.l) + self.all_error_i[-1]
 
         if self.parameters.randomized:
             self.build_randomized_omega(cost_models)
@@ -248,17 +250,17 @@ class ArtemisUpdate(AbstractFLUpdate):
             self.build_omega()
 
         if self.parameters.randomized and self.parameters.error_feedback:
-            self.all_error_i = [self.value_to_compress[i] - self.omega[i]
-                                for i in range(self.parameters.nb_devices)]
+            self.all_error_i.append([self.value_to_compress[i] - self.omega[i]
+                                for i in range(self.parameters.nb_devices)])
         elif self.parameters.error_feedback:
-            self.all_error_i = self.value_to_compress - self.omega
+            self.all_error_i.append(self.value_to_compress - self.omega)
 
         # Updating the model with the new gradients.
         if self.parameters.randomized:
             self.update_randomized_model()
         else:
             self.update_model()
-        model_param = model_param - self.v
+        model_param = model_param - self.step * self.v
 
         # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
         if self.parameters.double_use_memory:

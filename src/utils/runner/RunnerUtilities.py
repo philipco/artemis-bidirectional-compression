@@ -47,7 +47,6 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
         start_time = time.time()
         params = predefined_parameters.define(n_dimensions=cost_models[0].X.shape[1],
                                               nb_devices=len(cost_models),
-                                              quantization_param=quantization_param,
                                               step_formula=step_formula,
                                               nb_epoch=nb_epoch,
                                               use_averaging=use_averaging,

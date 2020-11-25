@@ -67,7 +67,7 @@ class Parameters:
                  step_formula=None,
                  nb_epoch: int = NB_EPOCH,
                  regularization_rate: int = 0,
-                 momentum: int = 0,
+                 momentum: float = 0,
                  compression_model: CompressionModel = None,
                  learning_rate: int = None,
                  force_learning_rate: bool = False,

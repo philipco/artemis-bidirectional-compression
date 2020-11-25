@@ -131,7 +131,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
 
             # Updating the model with the new gradients.
             self.v = self.parameters.momentum * self.v + decompressed_value
-            self.model_param = self.model_param - self.v
+            self.model_param = self.model_param - step * self.v
 
     def compute_locally(self, cost_model: ACostModel, j: int):
         self.compute_local_gradient(cost_model, j)
