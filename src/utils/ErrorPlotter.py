@@ -44,7 +44,7 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
                 error_to_plot = [all_error[i][0]] + list(all_error[i][i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [
                     all_error[i][-1]]
             else:
-                objectives_dist, error_to_plot = error_distance, all_error
+                objectives_dist, error_to_plot = error_distance, all_error[i]
             plt.errorbar(abscisse, objectives_dist, yerr=error_to_plot, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
 
         else:
@@ -59,7 +59,7 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
 
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
     setup_plot(x_legend + title_precision, ylegends=ylegends, xlog=(x_points is not None), xlabels=xlabels,
-               ylim=ylim)
+               ylim=True)
 
 
 def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_dim, legend, obj_min, objective_keys,

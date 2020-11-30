@@ -178,7 +178,7 @@ class AGradientDescent(ABC):
             if self.losses[-1] == math.inf:
                 self.losses[-1] = MAX_LOSS
                 break
-            if (self.losses[-1] > 1e9):
+            elif (self.losses[-1] > 1e9):
                 self.losses[-1] = MAX_LOSS
                 break
         end_time = time.time()

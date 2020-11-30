@@ -33,7 +33,7 @@ class CompressionModel(ABC):
 class TopKSparsification(CompressionModel):
 
     def compress(self, vector: torch.FloatTensor):
-        assert 0 < self.level < 100, "k must be expressend in percent."
+        assert 0 <= self.level < 100, "k must be expressend in percent."
         if self.level == 0:
             return vector
         nb_of_component_to_select = int(len(vector) * self.level / 100)
@@ -49,15 +49,20 @@ class TopKSparsification(CompressionModel):
 
 class RandomSparsification(CompressionModel):
 
+    def __init__(self, level: int, dim: int, biased = True):
+        super().__init__(level, dim)
+        self.biased = biased
+
     def compress(self, vector: torch.FloatTensor):
-        assert 0 < self.level < 100, "k must be expressed in percent."
+        assert 0 <= self.level < 100, "k must be expressed in percent."
         if self.level == 0:
             return vector
-        nb_of_component_to_select = int(len(vector) * self.level / 100)
-        indices = random.sample(range(len(vector)), nb_of_component_to_select)
+        proba = self.level/100
+        indices = bernoulli.rvs(proba, size=len(vector))
         compression = torch.zeros_like(vector)
-        for i in indices:
-            compression[i] = vector[i]
+        for i in range(len(vector)):
+            if indices[i]:
+                compression[i] = vector[i] * [1/proba, 1][self.biased]
         return compression
 
     def __compute_omega_c__(self, dim: int):

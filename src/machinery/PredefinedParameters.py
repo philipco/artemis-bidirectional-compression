@@ -4,6 +4,7 @@ Created by Philippenko, 7th July 2020.
 
 from src.machinery.GradientDescent import ArtemisDescent, FL_VanillaSGD, DianaDescent
 from src.machinery.Parameters import Parameters
+from src.models.CompressionModel import CompressionModel, RandomSparsification
 from src.utils.Constants import NB_EPOCH
 
 
@@ -21,7 +22,7 @@ class PredefinedParameters:
     def type_FL(self):
         return ArtemisDescent
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1.,
                use_averaging=False, stochastic=True, streaming=False, batch_size=1):
         """Define parameters to be used during the descent.
@@ -53,7 +54,7 @@ class SGDWithMem(PredefinedParameters):
     def type_FL(self):
         return FL_VanillaSGD
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel, 
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -61,7 +62,7 @@ class SGDWithMem(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
-                          quantization_param=0,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -82,7 +83,7 @@ class VanillaSGD(PredefinedParameters):
     def type_FL(self):
         return FL_VanillaSGD
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -90,7 +91,7 @@ class VanillaSGD(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
-                          quantization_param=0,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -111,7 +112,7 @@ class Qsgd(PredefinedParameters):
     def type_FL(self):
         return DianaDescent
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -119,6 +120,7 @@ class Qsgd(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           learning_rate=0,
                           stochastic=stochastic,
                           streaming=streaming,
@@ -137,7 +139,7 @@ class Diana(PredefinedParameters):
     def type_FL(self):
         return DianaDescent
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -145,6 +147,7 @@ class Diana(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -168,7 +171,7 @@ class BiQSGD(PredefinedParameters):
     def type_FL(self):
         return ArtemisDescent
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -176,6 +179,7 @@ class BiQSGD(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           learning_rate=0,
                           stochastic=stochastic,
                           streaming=streaming,
@@ -195,7 +199,7 @@ class Artemis(PredefinedParameters):
     def name(self) -> str:
         return "Artemis"
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -203,6 +207,7 @@ class Artemis(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -223,7 +228,7 @@ class RArtemis(PredefinedParameters):
     def name(self) -> str:
         return "RArtemis-Feed"
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -231,6 +236,7 @@ class RArtemis(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -253,7 +259,7 @@ class DoreVariant(PredefinedParameters):
     def name(self) -> str:
         return "Dore"
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -261,6 +267,7 @@ class DoreVariant(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -274,7 +281,7 @@ class DoreVariant(PredefinedParameters):
 
 class SGDDoubleModelCompressionWithoutMem(PredefinedParameters):
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,
                fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
@@ -283,6 +290,7 @@ class SGDDoubleModelCompressionWithoutMem(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -296,7 +304,7 @@ class SGDDoubleModelCompressionWithoutMem(PredefinedParameters):
 
 class SGDDoubleModelCompressionWithMem(PredefinedParameters):
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,
                fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
@@ -305,6 +313,7 @@ class SGDDoubleModelCompressionWithMem(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -330,7 +339,7 @@ class Try1(PredefinedParameters):
     def name(self) -> str:
         return "Mem-Feed"
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -338,6 +347,7 @@ class Try1(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -358,7 +368,7 @@ class Try2(PredefinedParameters):
     def name(self) -> str:
         return "Mem-Rand"
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -366,6 +376,7 @@ class Try2(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -386,7 +397,7 @@ class Try3(PredefinedParameters):
     def name(self) -> str:
         return "Feed-Rand"
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -394,6 +405,7 @@ class Try3(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -414,7 +426,7 @@ class Try4(PredefinedParameters):
     def name(self) -> str:
         return "Mem-Feed-Rand"
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         return Parameters(n_dimensions=n_dimensions,
@@ -422,6 +434,7 @@ class Try4(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -435,32 +448,52 @@ class Try4(PredefinedParameters):
                           randomized=True
                           )
 
-class BiQSGD_Feed(PredefinedParameters):
+class BiQSGD_Feed(BiQSGD):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
         return "BiQSGD-Feed"
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int,
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          use_double_memory=False,
-                          compress_gradients=True,
-                          use_memory=False,
-                          error_feedback=True,
-                          randomized=False
-                          )
+        parameters = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
+               stochastic, streaming, batch_size)
+        parameters.error_feedback = True
+        return parameters
+
+class BiQSGD_b(BiQSGD):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "BiQSGD-unb."
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
+        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=False),
+               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
+               stochastic, streaming, batch_size)
+        return parameters
+
+class BiQSGD_Feed_b(BiQSGD):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "BiQSGD-Feed-unb."
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
+        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=False),
+               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
+               stochastic, streaming, batch_size)
+        parameters.error_feedback = True
+        return parameters
+
 
 KIND_COMPRESSION_RANDOMIZED = [Artemis(), Try1(), Try2(), Try3(), Try4(), BiQSGD_Feed()]
