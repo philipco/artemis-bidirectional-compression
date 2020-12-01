@@ -1,12 +1,12 @@
 """
 Created by Philippenko, 2 January 2020
 """
-from src.machinery.GradientDescent import FL_VanillaSGD
+from src.machinery.GradientDescent import SGD_Descent
 from src.models.CostModel import RMSEModel, build_several_cost_model
 from src.machinery.Parameters import Parameters
 from src.machinery.PredefinedParameters import Artemis, Diana
 
-from src.utils.DataPreparation import build_data_linear
+from src.utils.data.DataPreparation import build_data_linear
 from src.utils.Constants import generate_param
 from src.utils.ErrorPlotter import plot_error_dist
 
@@ -34,15 +34,15 @@ if __name__ == '__main__':
     cost_models = build_several_cost_model(RMSEModel, X, Y, nb_devices)
 
     # 3) Computing objective function.
-    obj_min_descent = FL_VanillaSGD(Parameters(n_dimensions=dim_notebook,
-                                               nb_devices=nb_devices_for_the_run,
-                                               nb_epoch=600,
-                                               momentum=0.,
-                                               verbose=True,
-                                               cost_models=cost_models,
-                                               stochastic=False,
-                                               bidirectional=False
-                                               ))
+    obj_min_descent = SGD_Descent(Parameters(n_dimensions=dim_notebook,
+                                             nb_devices=nb_devices_for_the_run,
+                                             nb_epoch=600,
+                                             momentum=0.,
+                                             verbose=True,
+                                             cost_models=cost_models,
+                                             stochastic=False,
+                                             bidirectional=False
+                                             ))
     obj_min_descent.run(cost_models)
     obj_min = obj_min_descent.losses[-1]
 

@@ -32,6 +32,7 @@ from src.machinery.GradientUpdateMethod import ArtemisUpdate, AbstractGradientUp
 from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate
 from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
+from src.models.CompressionModel import SQuantization
 from src.utils.Constants import MAX_LOSS
 
 
@@ -241,7 +242,12 @@ class ArtemisDescent(AGradientDescent):
         return "Artemis"
 
 
-class FL_VanillaSGD(AGradientDescent):
+class SGD_Descent(AGradientDescent):
+
+    def __init__(self, parameters: Parameters) -> None:
+        super().__init__(parameters)
+        # Vanilla SGD doesn't carry out any compression.
+        self.parameters.compression_model = SQuantization(0, self.parameters.n_dimensions)
 
     def __local_update__(self):
         return LocalGradientVanillaUpdate

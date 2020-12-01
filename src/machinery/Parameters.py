@@ -4,13 +4,14 @@ Created by Philippenko, 12th March 2020.
 This python file provide tools to easily customize a gradient descent based on its hyperparameters.
 It also provide predefine parameters to run classical algorithm without introducing an error.
 """
-from src.models.CompressionModel import CompressionModel, RandomSparsification, SQuantization
+from src.models.CompressionModel import CompressionModel, RandomSparsification
 from src.utils.Constants import NB_EPOCH, NB_DEVICES, DIM
 
 from math import sqrt
 
 
 def full_batch_step_size(it, L, omega, N): return 1 / L
+def deacreasing_step_size(it, L, omega, N): return 1 / (L * sqrt(it))
 
 
 def default_step_formula(sto: bool):

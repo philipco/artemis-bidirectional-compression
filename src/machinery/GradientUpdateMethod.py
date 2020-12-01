@@ -242,7 +242,7 @@ class ArtemisUpdate(AbstractFLUpdate):
             self.value_to_compress = [(self.g - self.l) + self.all_error_i[-1][i]
                                       for i in range(self.parameters.nb_devices)]
         else:
-            self.value_to_compress = (self.g - self.l) + self.all_error_i[-1]
+            self.value_to_compress = (self.g - self.l) #+ self.all_error_i[-1]
 
         if self.parameters.randomized:
             self.build_randomized_omega(cost_models)
@@ -252,8 +252,8 @@ class ArtemisUpdate(AbstractFLUpdate):
         if self.parameters.randomized and self.parameters.error_feedback:
             self.all_error_i.append([self.value_to_compress[i] - self.omega[i]
                                 for i in range(self.parameters.nb_devices)])
-        elif self.parameters.error_feedback:
-            self.all_error_i.append(self.value_to_compress - self.omega)
+        # elif self.parameters.error_feedback:
+            #self.all_error_i.append(self.value_to_compress - self.omega)
 
         # Updating the model with the new gradients.
         if self.parameters.randomized:

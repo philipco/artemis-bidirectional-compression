@@ -2,7 +2,7 @@
 Created by Philippenko, 7th July 2020.
 """
 
-from src.machinery.GradientDescent import ArtemisDescent, FL_VanillaSGD, DianaDescent
+from src.machinery.GradientDescent import ArtemisDescent, SGD_Descent, DianaDescent, AGradientDescent
 from src.machinery.Parameters import Parameters
 from src.models.CompressionModel import CompressionModel, RandomSparsification, SQuantization
 from src.utils.Constants import NB_EPOCH
@@ -19,12 +19,12 @@ class PredefinedParameters:
         """
         return "empty"
 
-    def type_FL(self):
+    def type_FL(self) -> AGradientDescent:
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1.,
-               use_averaging=False, stochastic=True, streaming=False, batch_size=1):
+               use_averaging=False, stochastic=True, streaming=False, batch_size=1) -> Parameters:
         """Define parameters to be used during the descent.
 
         Args:
@@ -44,35 +44,6 @@ class PredefinedParameters:
         pass
 
 
-class SGDWithMem(PredefinedParameters):
-    """Predefine parameters to run SGD algorithm in a federated settings.
-    """
-
-    def name(self):
-        return "SGD-M"
-
-    def type_FL(self):
-        return FL_VanillaSGD
-
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel, 
-               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          bidirectional=False,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          use_memory=True
-                          )
-
-
 class VanillaSGD(PredefinedParameters):
     """Predefine parameters to run SGD algorithm in a federated settings.
     """
@@ -80,18 +51,18 @@ class VanillaSGD(PredefinedParameters):
     def name(self):
         return "SGD"
 
-    def type_FL(self):
-        return FL_VanillaSGD
+    def type_FL(self) -> AGradientDescent:
+        return SGD_Descent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
-                          compression_model=SQuantization(0, n_dimensions),
+                          compression_model=compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -102,67 +73,47 @@ class VanillaSGD(PredefinedParameters):
                           )
 
 
-class Qsgd(PredefinedParameters):
+class Qsgd(VanillaSGD):
     """Predefine parameters to run QSGD algorithm.
     """
 
     def name(self) -> str:
         return r"QSGD"
 
-    def type_FL(self):
+    def type_FL(self) -> AGradientDescent:
         return DianaDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          learning_rate=0,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=False,
-                          use_memory=False
-                          )
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        return params
 
 
-class Diana(PredefinedParameters):
+class Diana(VanillaSGD):
     """Predefine parameters to run Diana algorithm.
     """
-
-    def type_FL(self):
-        return DianaDescent
-
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          bidirectional=False,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          use_memory=True
-                          )
 
     def name(self) -> str:
         return "Diana"
 
+    def type_FL(self):
+        return DianaDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.use_memory = True
+        return params
+
 
 class BiQSGD(Qsgd):
-    """Predefine parameters to run Artemis algorithm.
+    """Predefine parameters to run BiQSGD algorithm.
     """
 
     def name(self) -> str:
@@ -173,41 +124,31 @@ class BiQSGD(Qsgd):
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.bidirectional = True
         return params
 
-class Artemis(PredefinedParameters):
+class Artemis(Diana):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
         return "Artemis"
 
+    def type_FL(self):
+        return ArtemisDescent
+
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          use_double_memory=False,
-                          compress_gradients=True,
-                          use_memory=True,
-                          randomized=False,
-                          error_feedback=False
-                          )
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.bidirectional = True
+        return params
 
 class RArtemis(Artemis):
     """Predefine parameters to run Artemis algorithm.
@@ -218,7 +159,7 @@ class RArtemis(Artemis):
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                stochastic, streaming, batch_size)
@@ -234,86 +175,12 @@ class RArtemisEF(RArtemis):
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                stochastic, streaming, batch_size)
         params.error_feedback = True
         return params
-
-class DoreVariant(PredefinedParameters):
-    """Predefine parameters to run a variant of algorithm.
-    This variant use
-    """
-
-    def name(self) -> str:
-        return "Dore"
-
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          use_double_memory=True,
-                          compress_gradients=True
-                          )
-
-
-class SGDDoubleModelCompressionWithoutMem(PredefinedParameters):
-
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,
-               fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          use_double_memory=False,
-                          compress_gradients=False
-                          )
-
-
-class SGDDoubleModelCompressionWithMem(PredefinedParameters):
-
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,
-               fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          use_double_memory=True,
-                          compress_gradients=False
-                          )
-
 
 KIND_COMPRESSION = [VanillaSGD(),
                     Qsgd(),
