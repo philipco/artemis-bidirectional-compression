@@ -58,7 +58,7 @@ def prepare_noniid_dataset(data, pivot_label: str, filename: str, nb_cluster: in
     print("Finding non-iid clusters in the TNSE represesentation: {0}.pkl".format(tsne_file))
     predicted_cluster = find_cluster(embedded_data, nb_cluster)
     # With the found clusters, splitting data.
-    X, Y = clustering_data(data, predicted_cluster, pivot_label, nb_cluster, scale_Y=True)
+    X, Y = clustering_data(data, predicted_cluster, pivot_label, nb_cluster)
 
     if double_check:
         print("Checking data cluserization, wait until completion before seeing the plots.")
@@ -85,8 +85,8 @@ def prepare_superconduct(nb_devices: int, iid: bool = True, double_check: bool =
     print(data.head())
 
     if iid:
-        X_merged = torch.tensor(X_data, dtype=torch.float64)
-        Y_merged = torch.tensor(Y_data, dtype=torch.float64)
+        X_merged = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
+        Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
     else:
         X, Y = prepare_noniid_dataset(data, "critical_temp", "superconduct", nb_devices, double_check)
@@ -138,8 +138,8 @@ def prepare_quantum(nb_devices: int, iid: bool = True, double_check: bool =False
 
     if iid:
         # Transforming into torch.FloatTensor
-        X_merged = torch.tensor(X_data, dtype=torch.float64)
-        Y_merged = torch.tensor(Y_data, dtype=torch.float64)
+        X_merged = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
+        Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
     else:
         X, Y = prepare_noniid_dataset(data, "state", "quantum", nb_devices, double_check)

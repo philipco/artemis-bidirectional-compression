@@ -47,11 +47,11 @@ def find_cluster(embedded_data, nb_cluster: int = 10):
     return predicted_cluster
 
 
-def clustering_data(data, predicted_cluster, column_name: str, nb_cluster: int = 10, scale_Y: bool = False):
+def clustering_data(data, predicted_cluster, column_name: str, nb_cluster: int = 10):
 
     # Separing features and labels
-    X_data = data.loc[:, data.columns != column_name].to_numpy()
     Y_data = data.loc[:, data.columns == column_name].values
+    X_data = data.loc[:, data.columns != column_name].to_numpy()
 
     X, Y = [], []
     for i in range(nb_cluster):
