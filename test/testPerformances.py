@@ -13,7 +13,7 @@ from src.machinery.GradientDescent import FL_VanillaSGD, ArtemisDescent
 from src.machinery.Parameters import Parameters, deacreasing_step_size
 from src.models.CostModel import RMSEModel, LogisticModel, build_several_cost_model
 from src.utils.Constants import generate_param
-from src.utils.DataPreparation import build_data_linear, build_data_logistic, add_bias_term
+from src.utils.data.DataPreparation import build_data_linear, build_data_logistic, add_bias_term
 from src.utils.runner.RunnerUtilities import single_run_descent
 
 nb_epoch = 20

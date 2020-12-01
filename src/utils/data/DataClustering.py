@@ -5,6 +5,7 @@ Created by Philippenko, 24th July 2020.
 from copy import deepcopy
 
 import torch
+from sklearn.cluster import SpectralClustering
 from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 
@@ -13,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import scale
 
-from src.utils.DataPreparation import add_bias_term
+from src.utils.data.DataPreparation import add_bias_term
 
 dim_tnse_fig = (12, 9)
 
@@ -49,15 +50,8 @@ def find_cluster(embedded_data, nb_cluster: int = 10):
 def clustering_data(data, predicted_cluster, column_name: str, nb_cluster: int = 10, scale_Y: bool = False):
 
     # Separing features and labels
-    X_data = data.loc[:, data.columns != column_name]
-    Y_data = data.loc[:, data.columns == column_name]
-
-    # Data normalisation
-    X_data = scale(X_data)
-    if scale_Y:
-        Y_data = scale(Y_data)
-    else:
-        Y_data = Y_data.values
+    X_data = data.loc[:, data.columns != column_name].to_numpy()
+    Y_data = data.loc[:, data.columns == column_name].values
 
     X, Y = [], []
     for i in range(nb_cluster):

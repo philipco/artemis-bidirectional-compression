@@ -4,7 +4,7 @@ Created by Philippenko, 7th July 2020.
 
 from src.machinery.GradientDescent import ArtemisDescent, FL_VanillaSGD, DianaDescent
 from src.machinery.Parameters import Parameters
-from src.models.CompressionModel import CompressionModel, RandomSparsification
+from src.models.CompressionModel import CompressionModel, RandomSparsification, SQuantization
 from src.utils.Constants import NB_EPOCH
 
 
@@ -91,7 +91,7 @@ class VanillaSGD(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
-                          compression_model=compression_model,
+                          compression_model=SQuantization(0, n_dimensions),
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -161,8 +161,8 @@ class Diana(PredefinedParameters):
         return "Diana"
 
 
-class BiQSGD(PredefinedParameters):
-    """Predefine parameters to run Bi-QSGD algorithm.
+class BiQSGD(Qsgd):
+    """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
@@ -172,25 +172,13 @@ class BiQSGD(PredefinedParameters):
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          learning_rate=0,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          use_double_memory=False,
-                          compress_gradients=True,
-                          use_memory=False
-                          )
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.bidirectional = True
+        return params
 
 class Artemis(PredefinedParameters):
     """Predefine parameters to run Artemis algorithm.
@@ -221,35 +209,37 @@ class Artemis(PredefinedParameters):
                           error_feedback=False
                           )
 
-class RArtemis(PredefinedParameters):
+class RArtemis(Artemis):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "RArtemis-Feed"
+        return "RArtemis"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          use_double_memory=False,
-                          compress_gradients=True,
-                          use_memory=True,
-                          randomized=True,
-                          error_feedback=True
-                          )
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+               step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+               stochastic, streaming, batch_size)
+        params.randomized = True
+        return params
 
+class RArtemisEF(RArtemis):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "RArtemisEF"
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+               step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+               stochastic, streaming, batch_size)
+        params.error_feedback = True
+        return params
 
 class DoreVariant(PredefinedParameters):
     """Predefine parameters to run a variant of algorithm.
@@ -361,7 +351,7 @@ class Try1(PredefinedParameters):
                           randomized=False
                           )
 
-class Try2(PredefinedParameters):
+class RArtemis(PredefinedParameters):
     """Predefine parameters to run Artemis algorithm.
     """
 
@@ -448,23 +438,38 @@ class Try4(PredefinedParameters):
                           randomized=True
                           )
 
-class BiQSGD_Feed(BiQSGD):
+class BiQSGD_b(BiQSGD):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "BiQSGD-Feed"
+        return "BiQSGD_b"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
+               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
+               stochastic, streaming, batch_size)
+        return parameters
+
+class BiQSGD_Feed_b(BiQSGD):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "BiQSGD-Feed_b"
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
+        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
                step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
                stochastic, streaming, batch_size)
         parameters.error_feedback = True
         return parameters
 
-class BiQSGD_b(BiQSGD):
+class BiQSGD_unb(BiQSGD):
     """Predefine parameters to run Artemis algorithm.
     """
 
@@ -479,7 +484,7 @@ class BiQSGD_b(BiQSGD):
                stochastic, streaming, batch_size)
         return parameters
 
-class BiQSGD_Feed_b(BiQSGD):
+class BiQSGD_Feed_unb(BiQSGD):
     """Predefine parameters to run Artemis algorithm.
     """
 
@@ -496,4 +501,4 @@ class BiQSGD_Feed_b(BiQSGD):
         return parameters
 
 
-KIND_COMPRESSION_RANDOMIZED = [Artemis(), Try1(), Try2(), Try3(), Try4(), BiQSGD_Feed()]
+KIND_COMPRESSION_RANDOMIZED = [Artemis(), Try1()]#, Try2(), Try3(), Try4(), BiQSGD_Feed()]

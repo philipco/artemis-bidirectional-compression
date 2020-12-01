@@ -59,7 +59,7 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
 
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
     setup_plot(x_legend + title_precision, ylegends=ylegends, xlog=(x_points is not None), xlabels=xlabels,
-               ylim=True)
+               ylim=ylim)
 
 
 def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_dim, legend, obj_min, objective_keys,
