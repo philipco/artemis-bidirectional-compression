@@ -54,7 +54,7 @@ class Parameters:
                  use_averaging: bool = False,
                  time_debug: bool = False,
                  randomized: bool = False,
-                 error_feedback: bool = True) -> None:
+                 error_feedback: bool = False) -> None:
         super().__init__()
         self.cost_models = cost_models  # Cost model to use for gradient descent.
         self.federated = federated  # Boolean to say if we do federated learning or not.
