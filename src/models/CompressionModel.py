@@ -3,7 +3,6 @@ Created by Constantin Philippenko, 6th March 2020.
 
 This python file provide facilities to quantize tensors.
 """
-import random
 from abc import ABC, abstractmethod
 
 import torch
@@ -31,6 +30,10 @@ class CompressionModel(ABC):
 
 
 class TopKSparsification(CompressionModel):
+
+    def __init__(self, level: int, dim: int):
+        super().__init__(level, dim)
+        self.biased = True
 
     def compress(self, vector: torch.FloatTensor):
         assert 0 <= self.level < 100, "k must be expressend in percent."
@@ -70,6 +73,10 @@ class RandomSparsification(CompressionModel):
 
 
 class SQuantization(CompressionModel):
+
+    def __init__(self, level: int, dim: int):
+        super().__init__(level, dim)
+        self.biased = False
 
     def compress(self, vector: torch.FloatTensor) -> torch.FloatTensor:
         """Implement the s-quantization
