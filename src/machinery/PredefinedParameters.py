@@ -4,7 +4,7 @@ Created by Philippenko, 7th July 2020.
 
 from src.machinery.GradientDescent import ArtemisDescent, SGD_Descent, DianaDescent, AGradientDescent
 from src.machinery.Parameters import Parameters
-from src.models.CompressionModel import CompressionModel, RandomSparsification, SQuantization
+from src.models.CompressionModel import *
 from src.utils.Constants import NB_EPOCH
 
 
@@ -189,128 +189,68 @@ KIND_COMPRESSION = [VanillaSGD(),
                     Artemis()
                     ]
 
-class Try1(PredefinedParameters):
+
+############################################ - Error Feedback - ############################################
+
+class BiQSGD_EF(BiQSGD):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "Mem-Feed"
+        return "BiQSGD_EF"
+
+    def type_FL(self):
+        return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          use_double_memory=False,
-                          compress_gradients=True,
-                          use_memory=True,
-                          error_feedback=True,
-                          randomized=False
-                          )
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.error_feedback = True
+        return params
 
-class RArtemis(PredefinedParameters):
+class ArtemisEF(Artemis):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "Mem-Rand"
+        return "ArtemisEF"
+
+    def type_FL(self):
+        return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          use_double_memory=False,
-                          compress_gradients=True,
-                          use_memory=True,
-                          error_feedback=False,
-                          randomized=True
-                          )
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.error_feedback = True
+        return params
 
-class Try3(PredefinedParameters):
-    """Predefine parameters to run Artemis algorithm.
-    """
+KIND_COMPRESSION_EF = [VanillaSGD(),
+                       BiQSGD(),
+                       BiQSGD_EF(),
+                       Artemis(),
+                       ArtemisEF()
+                    ]
 
-    def name(self) -> str:
-        return "Feed-Rand"
+KIND_COMPRESSION_RAND = [VanillaSGD(),
+                         BiQSGD(),
+                         Artemis(),
+                         ArtemisEF(),
+                         RArtemis(),
+                         RArtemisEF(),
+                         ]
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          use_double_memory=False,
-                          compress_gradients=True,
-                          use_memory=False,
-                          error_feedback=True,
-                          randomized=True
-                          )
+##################################### - Error Feedback and biased operators - #####################################
 
-class Try4(PredefinedParameters):
-    """Predefine parameters to run Artemis algorithm.
-    """
+class BiasedQsgd(BiQSGD):
 
     def name(self) -> str:
-        return "Mem-Feed-Rand"
-
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        return Parameters(n_dimensions=n_dimensions,
-                          nb_devices=nb_devices,
-                          nb_epoch=nb_epoch,
-                          fraction_sampled_workers=fraction_sampled_workers,
-                          step_formula=step_formula,
-                          compression_model=compression_model,
-                          stochastic=stochastic,
-                          streaming=streaming,
-                          batch_size=batch_size,
-                          cost_models=cost_models,
-                          use_averaging=use_averaging,
-                          bidirectional=True,
-                          use_double_memory=False,
-                          compress_gradients=True,
-                          use_memory=True,
-                          error_feedback=True,
-                          randomized=True
-                          )
-
-class BiQSGD_b(BiQSGD):
-    """Predefine parameters to run Artemis algorithm.
-    """
-
-    def name(self) -> str:
-        return "BiQSGD_b"
+        return "BiasedQsgd"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
@@ -320,12 +260,10 @@ class BiQSGD_b(BiQSGD):
                stochastic, streaming, batch_size)
         return parameters
 
-class BiQSGD_Feed_b(BiQSGD):
-    """Predefine parameters to run Artemis algorithm.
-    """
+class BiasedQsgdEF(BiQSGD):
 
     def name(self) -> str:
-        return "BiQSGD-Feed_b"
+        return "BiasedQsgdEF"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
@@ -336,36 +274,104 @@ class BiQSGD_Feed_b(BiQSGD):
         parameters.error_feedback = True
         return parameters
 
-class BiQSGD_unb(BiQSGD):
-    """Predefine parameters to run Artemis algorithm.
-    """
+class UnbiasedQsgd(BiQSGD):
 
     def name(self) -> str:
-        return "BiQSGD-unb."
+        return "UnbiasedQsgd"
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
+        parameters = super().define(cost_models, n_dimensions, nb_devices,
+                                    RandomSparsification(10, n_dimensions, biased=False),
+                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                    stochastic, streaming, batch_size)
+        return parameters
+
+class UnbiasedQsgdEF(BiQSGD):
+
+    def name(self) -> str:
+        return "UnbiasedQsgdEF"
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
+        parameters = super().define(cost_models, n_dimensions, nb_devices,
+                                    RandomSparsification(10, n_dimensions, biased=False),
+                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                    stochastic, streaming, batch_size)
+        parameters.error_feedback = True
+        return parameters
+
+KIND_COMPRESSION_BIASED = [VanillaSGD(),
+                       BiasedQsgd(),
+                       BiasedQsgdEF(),
+                       UnbiasedQsgd(),
+                       UnbiasedQsgdEF()
+                    ]
+
+################################### - Error Feedback, Memory and biased operators - ###################################
+
+class BiasedArtemis(Artemis):
+
+    def name(self) -> str:
+        return "BiasedArtemis"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=False),
+        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
                step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
                stochastic, streaming, batch_size)
         return parameters
 
-class BiQSGD_Feed_unb(BiQSGD):
-    """Predefine parameters to run Artemis algorithm.
-    """
+class BiasedArtemisEF(Artemis):
 
     def name(self) -> str:
-        return "BiQSGD-Feed-unb."
+        return "BiasedArtemisEF"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=False),
+        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
                step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
                stochastic, streaming, batch_size)
         parameters.error_feedback = True
         return parameters
 
+class UnbiasedArtemis(Artemis):
 
-KIND_COMPRESSION_RANDOMIZED = [Artemis(), Try1()]#, Try2(), Try3(), Try4(), BiQSGD_Feed()]
+    def name(self) -> str:
+        return "UnbiasedArtemis"
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
+        parameters = super().define(cost_models, n_dimensions, nb_devices,
+                                    RandomSparsification(10, n_dimensions, biased=False),
+                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                    stochastic, streaming, batch_size)
+        return parameters
+
+class UnbiasedArtemisEF(Artemis):
+
+    def name(self) -> str:
+        return "UnbiasedArtemisEF"
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1):
+        parameters = super().define(cost_models, n_dimensions, nb_devices,
+                                    RandomSparsification(10, n_dimensions, biased=False),
+                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                    stochastic, streaming, batch_size)
+        parameters.error_feedback = True
+        return parameters
+
+KIND_COMPRESSION_BIASED_MEM = [VanillaSGD(),
+                       BiasedArtemis(),
+                       BiasedArtemisEF(),
+                       UnbiasedArtemis(),
+                       UnbiasedArtemisEF()
+                               ]
+
