@@ -32,11 +32,11 @@ def compute_number_of_bits(type_params: Parameters, nb_epoch: int):
     nb_devices = type_params.nb_devices
     d = type_params.n_dimensions
     for i in range(nb_epoch):
-        if type_params.bidirectional and type_params.quantization_param != 0:
-            s = type_params.quantization_param
+        if type_params.bidirectional and type_params.compression_model.level != 0:
+            s = type_params.compression_model.level
             nb_bits = 2 * number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
-        elif type_params.quantization_param != 0:
-            s = type_params.quantization_param
+        elif type_params.compression_model.level != 0:
+            s = type_params.compression_model.level
             nb_bits = number_of_bits_needed_to_communicates_no_compressed(nb_devices, d) \
                    + number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
         else:
@@ -46,7 +46,7 @@ def compute_number_of_bits(type_params: Parameters, nb_epoch: int):
     return number_of_bits[1:]
 
 
-def pickle_saver(data, filename: str) -> None:
+def pickle_saver(data, filename: str, path: str = ".") -> None:
     """Save a python object into a pickle file.
 
     If a file with the same name already exists, remove it.
@@ -56,7 +56,7 @@ def pickle_saver(data, filename: str) -> None:
         data: the python object to save.
         filename: the filename where the object is saved.
     """
-    file_to_save = "pickle/{0}.pkl".format(filename)
+    file_to_save = "{0}/pickle/{1}.pkl".format(path, filename)
     if os.path.exists(file_to_save):
         os.remove(file_to_save)
     pickle_out = open(file_to_save, "wb")
@@ -64,7 +64,7 @@ def pickle_saver(data, filename: str) -> None:
     pickle_out.close()
 
 
-def pickle_loader(filename: str):
+def pickle_loader(filename: str, path: str = "."):
     """Load a python object saved with pickle.
 
     Args:
@@ -73,8 +73,11 @@ def pickle_loader(filename: str):
     Returns:
         The python object to load.
     """
-    pickle_in = open("pickle/{0}.pkl".format(filename), "rb")
+    pickle_in = open("{0}/pickle/{1}.pkl".format(path, filename), "rb")
     return pickle.load(pickle_in)
+
+def file_exist(filename: str, path: str = "."):
+    return os.path.isfile("{0}/{1}".format(path, filename))
 
 
 def check_memory_usage():

@@ -13,7 +13,6 @@ import numpy as np
 
 from src.models.CostModel import ACostModel
 from src.machinery.Parameters import Parameters
-from src.models.QuantizationModel import s_quantization
 
 from abc import ABC, abstractmethod
 
@@ -38,6 +37,8 @@ class AbstractLocalUpdate(ABC):
         self.model_param = torch.FloatTensor(
             [(-1 ** i) / (2 * self.parameters.n_dimensions) for i in range(self.parameters.n_dimensions)]) \
             .to(dtype=torch.float64)
+
+        self.error_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def set_initial_v(self, v):
         self.v = v
@@ -98,7 +99,7 @@ class LocalDianaUpdate(AbstractLocalUpdate):
             return None
 
         self.delta_i = deepcopy(self.g_i - self.h_i)
-        quantized_delta_i = s_quantization(self.delta_i, self.parameters.quantization_param)
+        quantized_delta_i = self.parameters.compression_model.compress(self.delta_i)
         self.h_i += self.parameters.learning_rate * quantized_delta_i
         return quantized_delta_i
 
@@ -129,15 +130,15 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
                     "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
             # Updating the model with the new gradients.
-            self.v = deepcopy(self.parameters.momentum * self.v + decompressed_value)
-            self.model_param = deepcopy(self.model_param - step * self.v)
+            self.v = self.parameters.momentum * self.v + decompressed_value
+            self.model_param = self.model_param - step * self.v
 
     def compute_locally(self, cost_model: ACostModel, j: int):
         self.compute_local_gradient(cost_model, j)
         if self.g_i is None:
             return None
 
-        self.delta_i = deepcopy(self.g_i - self.h_i)
-        quantized_delta_i = s_quantization(self.delta_i, self.parameters.quantization_param)
+        self.delta_i = self.g_i - self.h_i
+        quantized_delta_i = self.parameters.compression_model.compress(self.delta_i)
         self.h_i += self.parameters.learning_rate * quantized_delta_i
         return quantized_delta_i

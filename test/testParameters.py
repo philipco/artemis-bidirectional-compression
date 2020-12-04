@@ -9,7 +9,7 @@ import unittest
 import torch
 
 from src.machinery.Parameters import *
-from src.machinery.PredefinedParameters import BiQSGD, Diana, Artemis, Qsgd, VanillaSGD
+from src.machinery.PredefinedParameters import BiQSGD, Diana, Artemis, Qsgd, SGD_Descent
 from src.models.CostModel import RMSEModel
 from src.utils.Constants import DIM, NB_EPOCH, NB_DEVICES
 

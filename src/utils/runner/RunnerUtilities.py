@@ -10,6 +10,7 @@ from pathlib import Path
 from src.machinery.Parameters import Parameters
 from src.machinery.GradientDescent import AGradientDescent
 from src.machinery.PredefinedParameters import PredefinedParameters
+from src.models.CompressionModel import CompressionModel
 
 from src.utils.Constants import NB_EPOCH
 from src.utils.runner.MultipleDescentRun import MultipleDescentRun
@@ -17,9 +18,8 @@ from src.utils.runner.MultipleDescentRun import MultipleDescentRun
 nb_run = 5  # Number of gradient descent before averaging.
 
 
-def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_models,
+def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_models, compression_model: CompressionModel,
                          nb_epoch=NB_EPOCH,
-                         quantization_param: int = 1,
                          step_formula=None,
                          use_averaging=False,
                          stochastic: bool = True,
@@ -47,7 +47,6 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
         start_time = time.time()
         params = predefined_parameters.define(n_dimensions=cost_models[0].X.shape[1],
                                               nb_devices=len(cost_models),
-                                              quantization_param=quantization_param,
                                               step_formula=step_formula,
                                               nb_epoch=nb_epoch,
                                               use_averaging=use_averaging,
@@ -55,7 +54,8 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                                               stochastic=stochastic,
                                               streaming=streaming,
                                               batch_size=batch_size,
-                                              fraction_sampled_workers=fraction_sampled_workers)
+                                              fraction_sampled_workers=fraction_sampled_workers,
+                                              compression_model=compression_model)
         model_descent = predefined_parameters.type_FL()(params)
         model_descent.run(cost_models)
         multiple_descent.append(model_descent)

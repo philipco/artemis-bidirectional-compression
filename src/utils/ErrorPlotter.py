@@ -5,7 +5,6 @@ This python file provide facilities to plot the results of a (multiple) gradient
 """
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 markers = ["o", "v", "s", "p", "X", "d", "P", "*"]
 markersize = 2
@@ -20,7 +19,8 @@ nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 
 def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all_error=None,
-                    x_points=None, x_legend=None, one_on_two_points=True, xlabels=None, ylim=False):
+                    x_points=None, x_legend=None, one_on_two_points=True, xlabels=None,
+                    ylegends=r"$\log_{10}(F(w^k) - F(w^*))$", ylim=False):
     N_it = len(all_losses[0])
     plt.figure(figsize=figsize)
     it = 0
@@ -48,6 +48,7 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
             plt.errorbar(abscisse, objectives_dist, yerr=error_to_plot, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
 
         else:
+            objectives_dist = error_distance
             plt.plot(abscisse, objectives_dist, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
         it += 1
 
@@ -57,7 +58,7 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
         title_precision = "\n(N=" + str(nb_devices) + ", d=" + str(nb_dim) + ", b=" + str(batch_size) + ")"
 
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
-    setup_plot(x_legend + title_precision, r"$\log_{10}(F(w^k) - F(w^*))$", xlog=(x_points is not None), xlabels=xlabels,
+    setup_plot(x_legend + title_precision, ylegends=ylegends, xlog=(x_points is not None), xlabels=xlabels,
                ylim=ylim)
 
 
@@ -82,11 +83,10 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
 
     title_precision = "\n(d={0})".format(nb_dim)
 
-    setup_plot(x_legend + title_precision, r"$\log_{10}(F(w^k) - F(w^*))$", xticks_fontsize=15,
-               xlog=False)
+    setup_plot(x_legend + title_precision, xticks_fontsize=15, xlog=False)
 
 
-def setup_plot(xlegends, ylegends, fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False,
+def setup_plot(xlegends, ylegends=r"$\log_{10}(F(w^k) - F(w^*))$", fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False,
                xlabels=None, ylim=False):
     if ylog:
         plt.yscale("log")

@@ -4,40 +4,14 @@ Created by Philippenko, 12th March 2020.
 This python file provide tools to easily customize a gradient descent based on its hyperparameters.
 It also provide predefine parameters to run classical algorithm without introducing an error.
 """
+from src.models.CompressionModel import CompressionModel, RandomSparsification
 from src.utils.Constants import NB_EPOCH, NB_DEVICES, DIM
 
 from math import sqrt
 
 
-def constant_step_size_formula(bidirectional: bool, nb_devices: int, n_dimensions: int):
-    if sqrt(n_dimensions) >= nb_devices:
-        if bidirectional:
-            return lambda it, L, omega, N: N / (4 * omega * L * (omega + 1))
-            # If omega = 0, it means we don't use compression and hence, the step size can be bigger.
-        return lambda it, L, omega, N: 1 / (L * sqrt(it))  # N / (4 * omega * L) if omega != 0 else N / (2 * L)
-    else:
-        if bidirectional:
-            return lambda it, L, omega, N: 1 / (5 * L * (omega + 1))
-        # If omega = 0, it means we don't use compression and hence, the step size can be bigger.
-        return lambda it, L, omega, N: 1 / (5 * L) if omega != 0 else 1 / (2 * L)
-
 def full_batch_step_size(it, L, omega, N): return 1 / L
-def bi_large_dim(it, L, omega, N): return N / (4 * omega * (omega + 1) * L)
-def uni_large_dim(it, L, omega, N): return N / (4 * omega * L)
 def deacreasing_step_size(it, L, omega, N): return 1 / (L * sqrt(it))
-def large_batch_in_large_dim(it, L, omega, N): return N / (8 * L)
-
-
-def step_formula_when_using_big_batch_size(sto: bool, bi: bool, quantization_param: int): return large_batch_in_large_dim
-
-
-def step_formula_in_large_dimension(sto: bool, bi: bool, quantization_param: int, batch_size: int):
-    """Default formula to compute the step size at each iteration.
-
-    Two cases are handled, if it is a stochastic run or a full batch descent."""
-    if batch_size >= 150 or not sto:
-        return step_formula_when_using_big_batch_size(sto, bi, quantization_param)
-    return bi_large_dim
 
 
 def default_step_formula(sto: bool):
@@ -66,8 +40,8 @@ class Parameters:
                  step_formula=None,
                  nb_epoch: int = NB_EPOCH,
                  regularization_rate: int = 0,
-                 momentum: int = 0,
-                 quantization_param: int = None,
+                 momentum: float = 0,
+                 compression_model: CompressionModel = None,
                  learning_rate: int = None,
                  force_learning_rate: bool = False,
                  bidirectional: bool = False,
@@ -78,7 +52,9 @@ class Parameters:
                  use_memory: bool = False,
                  use_double_memory: bool = False,
                  use_averaging: bool = False,
-                 time_debug: bool = False) -> None:
+                 time_debug: bool = False,
+                 randomized: bool = False,
+                 error_feedback: bool = False) -> None:
         super().__init__()
         self.cost_models = cost_models  # Cost model to use for gradient descent.
         self.federated = federated  # Boolean to say if we do federated learning or not.
@@ -86,17 +62,18 @@ class Parameters:
         self.nb_devices = nb_devices  # Number of device on the network.
         self.fraction_sampled_workers = fraction_sampled_workers # Probability of a worker to be active at each round.
         self.batch_size = batch_size  # Batch size.
-        if step_formula is None:
-            self.step_formula = default_step_formula(stochastic) if sqrt(n_dimensions) < 0.5 * nb_devices \
-                else step_formula_in_large_dimension(stochastic, bidirectional, quantization_param, batch_size)
-        else:
-            self.step_formula = step_formula
         self.nb_epoch = nb_epoch  # number of epoch of the run
         self.regularization_rate = regularization_rate  # coefficient of regularization
         self.force_learning_rate = force_learning_rate
         self.momentum = momentum  # momentum coefficient
-        self.quantization_param = quantization_param  # quantization parameter
-        self.omega_c = 0  # quantization constant involved in the variance inequality of the scheme
+        if compression_model == None:
+            self.compression_model = RandomSparsification(10, n_dimensions)
+        else:
+            self.compression_model = compression_model  # quantization parameter
+        if step_formula is None:
+            self.step_formula = default_step_formula(stochastic)
+        else:
+            self.step_formula = step_formula
         self.learning_rate = learning_rate  # Learning rate used when updating memory.
         self.bidirectional = bidirectional
         self.stochastic = stochastic  # true if running a stochastic gradient descent
@@ -107,12 +84,13 @@ class Parameters:
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
         self.time_debug = time_debug  # True is one want to debug the time spent in each procedure.
+        self.randomized = randomized
+        self.error_feedback = error_feedback
 
     def print(self):
         print("federated", self.federated)
         print("nb devices:", self.nb_devices)
         print("nb dimension:", self.n_dimensions)
-        print("quantization param:", self.quantization_param)
         print("regularization rate:", self.regularization_rate)
         print("cost model", self.cost_model)
         print("omega_c", self.omega_c)
