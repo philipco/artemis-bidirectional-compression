@@ -20,6 +20,7 @@ class ResultsOfSeveralDescents:
         if not all_descent[next(iter(all_descent))].artificial:
             self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in all_descent.values()]
             self.X_number_of_bits = [desc.theoretical_nb_bits for desc in all_descent.values()]
+            self.omega_c = [desc.omega_c for desc in all_descent.values()]
         self.all_losses = [desc.losses for desc in all_descent.values()]
         self.all_losses_averaged = [desc.averaged_losses for desc in all_descent.values()]
         self.norm_error_feedback = [desc.norm_error_feedback for desc in all_descent.values()]

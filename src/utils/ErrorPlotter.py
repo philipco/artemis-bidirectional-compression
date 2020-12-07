@@ -20,7 +20,7 @@ nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all_error=None,
                     x_points=None, x_legend=None, one_on_two_points=True, xlabels=None,
-                    ylegends=r"$\log_{10}(F(w^k) - F(w^*))$", ylim=False):
+                    ylegends=r"$\log_{10}(F(w^k) - F(w^*))$", ylim=False, omega_c = None):
     N_it = len(all_losses[0])
     plt.figure(figsize=figsize)
     it = 0
@@ -45,7 +45,10 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
                     all_error[i][-1]]
             else:
                 objectives_dist, error_to_plot = error_distance, all_error[i]
-            plt.errorbar(abscisse, objectives_dist, yerr=error_to_plot, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
+            legend_i = legend[i]
+            if omega_c:
+                legend_i = legend_i + " {0}".format(str(omega_c[i]))[:4]
+            plt.errorbar(abscisse, objectives_dist, yerr=error_to_plot, label=legend_i, lw=lw, marker=markers[it], markersize=ms)
 
         else:
             objectives_dist = error_distance

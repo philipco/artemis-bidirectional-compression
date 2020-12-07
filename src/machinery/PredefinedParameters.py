@@ -8,6 +8,12 @@ from src.models.CompressionModel import *
 from src.utils.Constants import NB_EPOCH
 
 
+def build_compression_operator(biased, n_dimensions):
+    if biased:
+        return RandomSparsification(2, n_dimensions, biased=biased)
+    else:
+        return RandomSparsification(2, n_dimensions, biased=biased)
+
 class PredefinedParameters:
     """Abstract class to predefine (no customizable) parameters required by a given type of algorithms (e.g Artemis, QSGD ...)
 
@@ -252,12 +258,16 @@ class BiasedQsgd(BiQSGD):
     def name(self) -> str:
         return "BiasedQsgd"
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.biased = True
+
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
-               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
-               stochastic, streaming, batch_size)
+        parameters = super().define(cost_models, n_dimensions, nb_devices,
+                                    build_compression_operator(self.biased, n_dimensions), step_formula, nb_epoch,
+                                    fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
         return parameters
 
 class BiasedQsgdEF(BiQSGD):
@@ -265,12 +275,16 @@ class BiasedQsgdEF(BiQSGD):
     def name(self) -> str:
         return "BiasedQsgdEF"
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.biased = True
+
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
-               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
-               stochastic, streaming, batch_size)
+        parameters = super().define(cost_models, n_dimensions, nb_devices,
+                                    build_compression_operator(self.biased, n_dimensions), step_formula, nb_epoch,
+                                    fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
         parameters.error_feedback = True
         return parameters
 
@@ -279,13 +293,16 @@ class UnbiasedQsgd(BiQSGD):
     def name(self) -> str:
         return "UnbiasedQsgd"
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.biased = False
+
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         parameters = super().define(cost_models, n_dimensions, nb_devices,
-                                    RandomSparsification(10, n_dimensions, biased=False),
-                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
-                                    stochastic, streaming, batch_size)
+                                    build_compression_operator(self.biased, n_dimensions), step_formula, nb_epoch,
+                                    fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
         return parameters
 
 class UnbiasedQsgdEF(BiQSGD):
@@ -293,13 +310,17 @@ class UnbiasedQsgdEF(BiQSGD):
     def name(self) -> str:
         return "UnbiasedQsgdEF"
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.biased = False
+
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
+        RandomSparsification(10, n_dimensions, biased=False)
         parameters = super().define(cost_models, n_dimensions, nb_devices,
-                                    RandomSparsification(10, n_dimensions, biased=False),
-                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
-                                    stochastic, streaming, batch_size)
+                                    build_compression_operator(self.biased, n_dimensions), step_formula, nb_epoch,
+                                    fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
         parameters.error_feedback = True
         return parameters
 
@@ -317,12 +338,16 @@ class BiasedArtemis(Artemis):
     def name(self) -> str:
         return "BiasedArtemis"
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.biased = True
+
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
-               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
-               stochastic, streaming, batch_size)
+        parameters = super().define(cost_models, n_dimensions, nb_devices,
+                                    build_compression_operator(self.biased, n_dimensions), step_formula, nb_epoch,
+                                    fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
         return parameters
 
 class BiasedArtemisEF(Artemis):
@@ -333,24 +358,31 @@ class BiasedArtemisEF(Artemis):
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
-               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
-               stochastic, streaming, batch_size)
+        parameters = super().define(cost_models, n_dimensions, nb_devices,
+                                    build_compression_operator(self.biased, n_dimensions), step_formula, nb_epoch,
+                                    fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
         parameters.error_feedback = True
         return parameters
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.biased = True
 
 class UnbiasedArtemis(Artemis):
 
     def name(self) -> str:
         return "UnbiasedArtemis"
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.biased = False
+
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         parameters = super().define(cost_models, n_dimensions, nb_devices,
-                                    RandomSparsification(10, n_dimensions, biased=False),
-                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
-                                    stochastic, streaming, batch_size)
+                                    build_compression_operator(self.biased, n_dimensions), step_formula, nb_epoch,
+                                    fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
         return parameters
 
 class UnbiasedArtemisEF(Artemis):
@@ -358,13 +390,16 @@ class UnbiasedArtemisEF(Artemis):
     def name(self) -> str:
         return "UnbiasedArtemisEF"
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.biased = False
+
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
         parameters = super().define(cost_models, n_dimensions, nb_devices,
-                                    RandomSparsification(10, n_dimensions, biased=False),
-                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
-                                    stochastic, streaming, batch_size)
+                                    build_compression_operator(self.biased, n_dimensions), step_formula, nb_epoch,
+                                    fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
         parameters.error_feedback = True
         return parameters
 

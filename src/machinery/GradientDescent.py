@@ -63,10 +63,7 @@ class AGradientDescent(ABC):
         self.memory_info = None
 
         if self.parameters.use_memory:
-            if self.parameters.compression_model.level != 0:
-                self.parameters.learning_rate = 1 / (2 * (self.parameters.compression_model.omega_c + 1))
-            else:
-                self.parameters.learning_rate = 0.1
+            self.parameters.learning_rate = 1 / (2 * (self.parameters.compression_model.omega_c + 1))
         else:
             self.parameters.learning_rate = 0
 
