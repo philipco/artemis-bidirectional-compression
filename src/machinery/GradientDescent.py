@@ -57,6 +57,8 @@ class AGradientDescent(ABC):
         self.parameters = parameters
         self.losses = []
         self.norm_error_feedback = []
+        self.dist_to_model = [torch.tensor(0.)]
+        self.var_models = [torch.tensor(0.)]
         self.model_params = []
         self.averaged_model_params = []
         self.averaged_losses = []
@@ -153,10 +155,17 @@ class AGradientDescent(ABC):
             self.losses.append(self.update.compute_cost(self.model_params[-1], cost_models))
             if self.parameters.randomized:
                 self.norm_error_feedback.append(torch.norm(torch.mean(torch.stack(self.update.all_error_i[-1]), dim=0), p=2))
+                self.dist_to_model.append(np.mean(
+                    [torch.norm(self.model_params[-1] - w.local_update.model_param)**2 for w in self.workers]
+                ))
+                self.var_models.append(torch.mean(
+                    torch.var(torch.stack([w.local_update.model_param for w in self.workers]))
+                ))
+
             else:
                 self.norm_error_feedback.append(torch.norm(self.update.all_error_i[-1], p=2))
 
-            # The norm of error feedback has not been initialized. We Initilize it now witht the first value.
+            # The norm of error feedback has not been initialized. We initialize it now with the first value.
             if len(self.norm_error_feedback) == 1:
                 self.norm_error_feedback.append(self.norm_error_feedback[0])
 
@@ -182,6 +191,8 @@ class AGradientDescent(ABC):
         end_time = time.time()
         elapsed_time = end_time - start_time
 
+        # print(self.distance_to_model)
+
         self.memory_info = psutil.Process(os.getpid()).memory_info().rss / 1e6
 
         if self.parameters.time_debug:
@@ -204,6 +215,12 @@ class AGradientDescent(ABC):
             self.norm_error_feedback = self.norm_error_feedback + [self.norm_error_feedback[-1] for i in range(self.parameters.nb_epoch - len(self.norm_error_feedback))]
         if len(self.averaged_losses) != self.parameters.nb_epoch and self.parameters.use_averaging == True:
             self.averaged_losses = self.averaged_losses + [self.averaged_losses[-1] for i in range(self.parameters.nb_epoch - len(self.averaged_losses))]
+        if len(self.dist_to_model) != self.parameters.nb_epoch:
+            self.dist_to_model = self.dist_to_model + [self.dist_to_model[-1] for i in range(
+                self.parameters.nb_epoch - len(self.dist_to_model))]
+        if len(self.var_models) != self.parameters.nb_epoch:
+            self.var_models = self.var_models + [self.var_models[-1] for i in range(
+                self.parameters.nb_epoch - len(self.var_models))]
 
         self.losses = np.array(self.losses)
         if self.parameters.verbose:

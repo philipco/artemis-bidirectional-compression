@@ -90,7 +90,7 @@ def prepare_superconduct(nb_devices: int, iid: bool = True, double_check: bool =
         X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
     else:
         X, Y = prepare_noniid_dataset(data, "critical_temp", "superconduct", nb_devices, double_check)
-    return X, Y, dim
+    return X, Y, dim + 1 # Because we added one column for the bias
 
 def prepare_quantum(nb_devices: int, iid: bool = True, double_check: bool =False):
     data = pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_project_root()), sep="\t", header=None)
@@ -118,7 +118,7 @@ def prepare_quantum(nb_devices: int, iid: bool = True, double_check: bool =False
 
     # Removing columns with null std
     data = data.loc[:, (data.std() > 1e-6)]
-    dim = len(data.columns) - 1
+    dim = len(data.columns) - 1 # The dataset still contains the label
     print("Now, there is " + str(dim) + " dimensions.")
 
     data = data.replace({'state': {0: -1}})
@@ -144,4 +144,4 @@ def prepare_quantum(nb_devices: int, iid: bool = True, double_check: bool =False
     else:
         X, Y = prepare_noniid_dataset(data, "state", "quantum", nb_devices, double_check)
 
-    return X, Y, dim
+    return X, Y, dim + 1 # Because we added one column for the bias

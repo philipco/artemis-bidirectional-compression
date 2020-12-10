@@ -7,21 +7,34 @@ This python file provide facilities to plot the results of a (multiple) gradient
 import matplotlib.pyplot as plt
 
 markers = ["o", "v", "s", "p", "X", "d", "P", "*"]
-markersize = 2
+markersize = 15
 curve_size=4
 fontsize=30
-fontsize_legend=21
-figsize=(8,7)
+fontsize_legend=14
+figsize=(15,7)
 fourfigsize=(13, 8)
 sixfigsize=(13, 11)
+
+Y_LEGENDS = {"loss": r"$\log_{10}(F(w^k) - F(w^*))$",
+             "ef": r"$\log_{10}(\| \| EF_k \| \|)$",
+             "rand_dist": r"$\log_{10}(\mathbb{E} \| \| w_k - w_k^i \| \|^2)$",
+             "rand_var": r"$\log_{10}( \| \| \mathbb{V}~[w_k^i] \| \| )$"}
 
 nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 
 def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all_error=None,
                     x_points=None, x_legend=None, one_on_two_points=True, xlabels=None,
-                    ylegends=r"$\log_{10}(F(w^k) - F(w^*))$", ylim=False, omega_c = None):
+                    ylegends="loss", ylim=False, omega_c = None):
+
+    assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
+
     N_it = len(all_losses[0])
+
+    # If there is less than 50 points, we plot each point !
+    if N_it < 50:
+        one_on_two_points = False
+
     plt.figure(figsize=figsize)
     it = 0
 
@@ -76,7 +89,7 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
     for i in range(len(all_losses)):
         objectives = all_losses[i]
         objectives_dist = [objectives.get_loss(obj_min[objective_keys[i]])[j][-1] for j in range(len(objectives.names))]
-        objectives_error = [objectives.get_std(obj_min[objective_keys[i]])[j][-1] for j in range(len(objectives.names))]
+        objectives_error = [objectives.getter_std(obj_min[objective_keys[i]])[j][-1] for j in range(len(objectives.names))]
         lw = curve_size-1 if len(objectives_dist) > 40 else curve_size
         ms = markersize-1 if len(objectives_dist) > 40 else markersize
         plt.errorbar(x_points, objectives_dist, yerr=objectives_error, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
@@ -89,7 +102,7 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
     setup_plot(x_legend + title_precision, xticks_fontsize=15, xlog=False)
 
 
-def setup_plot(xlegends, ylegends=r"$\log_{10}(F(w^k) - F(w^*))$", fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False,
+def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False,
                xlabels=None, ylim=False):
     if ylog:
         plt.yscale("log")
@@ -105,7 +118,7 @@ def setup_plot(xlegends, ylegends=r"$\log_{10}(F(w^k) - F(w^*))$", fontsize=font
         plt.xticks(fontsize=xticks_fontsize)
         # plt.xticks(np.arange(0, 401, step=100), fontsize=xticks_fontsize)
     plt.xlabel(xlegends, fontsize=fontsize)
-    plt.ylabel(ylegends, fontsize=fontsize)
+    plt.ylabel(Y_LEGENDS[ylegends], fontsize=fontsize)
     plt.legend(loc='best', fontsize=fontsize_legend)
     plt.tight_layout()
     plt.show()

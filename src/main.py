@@ -58,9 +58,9 @@ if __name__ == '__main__':
 
     # 5) Plotting results.
     plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
-                    all_error=res.get_std(obj_min))
+                    all_error=res.getter_std(obj_min))
     plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
-                    x_points=res.X_number_of_bits, x_legend="Communicated bits", all_error=res.get_std(obj_min))
+                    x_points=res.X_number_of_bits, x_legend="Communicated bits", all_error=res.getter_std(obj_min))
     plot_error_dist(res.get_error_feedback(), res.names, res.nb_devices_for_the_run, dim_notebook,
                     ylegends=r"$\log_{10}(||EF_k||^2$)")
 

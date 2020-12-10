@@ -48,6 +48,15 @@ def find_cluster(embedded_data, nb_cluster: int = 10):
 
 
 def clustering_data(data, predicted_cluster, column_name: str, nb_cluster: int = 10):
+    """
+    Split a dataset in clusters (and add a column for bias in each cluster of data).
+
+    :param data:
+    :param predicted_cluster:
+    :param column_name:
+    :param nb_cluster:
+    :return:
+    """
 
     # Separing features and labels
     Y_data = data.loc[:, data.columns == column_name].values

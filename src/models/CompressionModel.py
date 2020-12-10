@@ -28,6 +28,10 @@ class CompressionModel(ABC):
     def __compute_omega_c__(self, dim: int):
         pass
 
+    @abstractmethod
+    def get_name(self) -> str:
+        pass
+
 
 class TopKSparsification(CompressionModel):
 
@@ -50,6 +54,9 @@ class TopKSparsification(CompressionModel):
             return 0
         proba = self.level / self.dim
         return proba
+
+    def get_name(self) -> str:
+        return "Topk"
 
 
 class RandomSparsification(CompressionModel):
@@ -83,6 +90,11 @@ class RandomSparsification(CompressionModel):
         if self.biased:
             return 1 - proba
         return (1-proba)/proba
+
+    def get_name(self) -> str:
+        if self.biased:
+            return "RdkBsd"
+        return "Rdk"
 
 
 class SQuantization(CompressionModel):
@@ -120,3 +132,6 @@ class SQuantization(CompressionModel):
         if self.level == 0:
             return 0# TODO This has been changed ! Which impact ? Should be none ... sqrt(dim)
         return min(dim / self.level*self.level, sqrt(dim) / self.level)
+
+    def get_name(self) -> str:
+        return "Qtzd"

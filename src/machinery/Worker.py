@@ -16,7 +16,6 @@ class Worker:
         super().__init__()
         self.local_update = localUpdate(parameters)
         self.idx_last_update = 0
-        self.model_param = None
         self.ID = ID
 
     def set_idx_last_update(self, j: int):
