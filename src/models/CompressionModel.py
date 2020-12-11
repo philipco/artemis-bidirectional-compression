@@ -53,7 +53,7 @@ class TopKSparsification(CompressionModel):
         if self.level == 0:
             return 0
         proba = self.level / self.dim
-        return proba
+        return 1 - proba
 
     def get_name(self) -> str:
         return "Topk"

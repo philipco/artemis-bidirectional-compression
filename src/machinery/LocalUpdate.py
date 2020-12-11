@@ -138,7 +138,10 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.delta_i = self.g_i - self.h_i
+        self.delta_i = (self.g_i - self.h_i) + self.error_i
         quantized_delta_i = self.parameters.compression_model.compress(self.delta_i)
+        # if self.parameters.error_feedback:
+        #     # print(self.error_i)
+        #     self.error_i = self.delta_i - quantized_delta_i
         self.h_i += self.parameters.learning_rate * quantized_delta_i
         return quantized_delta_i
