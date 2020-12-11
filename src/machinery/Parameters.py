@@ -48,7 +48,7 @@ class Parameters:
                  verbose: bool = False,
                  stochastic: bool = True,
                  streaming: bool = False,
-                 compress_gradients: bool = True,
+                 down_compress_model: bool = False,
                  use_memory: bool = False,
                  use_double_memory: bool = False,
                  use_averaging: bool = False,
@@ -66,10 +66,7 @@ class Parameters:
         self.regularization_rate = regularization_rate  # coefficient of regularization
         self.force_learning_rate = force_learning_rate
         self.momentum = momentum  # momentum coefficient
-        if compression_model == None:
-            self.compression_model = RandomSparsification(10, n_dimensions)
-        else:
-            self.compression_model = compression_model  # quantization parameter
+        self.compression_model = compression_model  # quantization parameter
         if step_formula is None:
             self.step_formula = default_step_formula(stochastic)
         else:
@@ -78,7 +75,7 @@ class Parameters:
         self.bidirectional = bidirectional
         self.stochastic = stochastic  # true if running a stochastic gradient descent
         self.streaming = streaming  # True if each sample should be used only once !
-        self.compress_gradients = compress_gradients
+        self.down_compress_model = down_compress_model
         self.use_memory = use_memory  # use memory when sending to global server
         self.double_use_memory = use_double_memory  # a memory at back communication
         self.verbose = verbose

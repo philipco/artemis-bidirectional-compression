@@ -45,7 +45,7 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(params.bidirectional, False)
         self.assertEqual(params.verbose, False)
         self.assertEqual(params.stochastic, True)
-        self.assertEqual(params.compress_gradients, True)
+        self.assertEqual(params.down_compress_model, True)
         self.assertEqual(params.double_use_memory, False)
         self.assertEqual(params.use_averaging, False)
 
@@ -101,7 +101,7 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(params.use_averaging, False)
         self.assertEqual(params.bidirectional, True)
         self.assertEqual(params.double_use_memory, False)
-        self.assertEqual(params.compress_gradients, True)
+        self.assertEqual(params.down_compress_model, True)
 
     def test_StochasticDoubleGradientsCompressionWithoutMemory_iscorrect(self):
         n_dimensions, nb_devices, quantization_param = 10, 10, 1
@@ -120,7 +120,7 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(params.use_averaging, False)
         self.assertEqual(params.bidirectional, True)
         self.assertEqual(params.double_use_memory, False)
-        self.assertEqual(params.compress_gradients, True)
+        self.assertEqual(params.down_compress_model, True)
 
 
 if __name__ == '__main__':

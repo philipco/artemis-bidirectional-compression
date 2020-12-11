@@ -92,8 +92,8 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         self.workers = workers
         self.workers_sub_set = None
 
-        # all_error_i is a list of accumulated error. In the case of randomization, their is one accumulated
-        # error by remote node.
+        # all_error_i is a list of accumulated error. In the case of randomization, there is one accumulated
+        # error by remote nodes.
         if self.parameters.randomized:
             self.all_error_i = [[torch.zeros(parameters.n_dimensions, dtype=np.float)
                                 for i in range(self.parameters.nb_devices)]]
@@ -181,13 +181,13 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         cpt = 0
         for worker, _ in self.get_set_of_workers(cost_models):
             if self.parameters.randomized:
-                model_to_send = []
+                models_to_send = []
                 for k in range(worker.idx_last_update, len(self.omega_k)):
-                    model_to_send.append(self.omega_k[k][cpt])
+                    models_to_send.append(self.omega_k[k][cpt])
                     cpt += 1
             else:
-                model_to_send = self.omega_k[worker.idx_last_update:]
-            worker.local_update.send_global_informations_and_update_local_param(model_to_send, self.step)
+                models_to_send = self.omega_k[worker.idx_last_update:]
+            worker.local_update.send_global_informations_and_update_local_param(models_to_send, self.step)
             if self.parameters.fraction_sampled_workers == 1.:
                 assert len(self.omega_k[worker.idx_last_update:]) == 1
             worker.idx_last_update = len(self.omega_k)
@@ -199,13 +199,41 @@ class ArtemisUpdate(AbstractFLUpdate):
     It hold two potential memories (one for each way), and can either compress gradients, either models."""
 
     def update_model(self):
-        self.v = self.parameters.momentum * self.v + (self.omega + self.l)
+        if self.parameters.down_compress_model:
+            self.v = self.parameters.momentum * self.v + (self.g + self.l)
+        else:
+            if self.parameters.randomized:
+                self.v = self.parameters.momentum * self.v + (torch.mean(torch.stack(self.omega), dim=0) + self.l)
+            else:
+                self.v = self.parameters.momentum * self.v + (self.omega + self.l)
 
-    def update_randomized_model(self):
-        # Implementing version 2
-        self.v = self.parameters.momentum * self.v + (torch.mean(torch.stack(self.omega), dim=0) + self.l)
-        # Take max of each coordinate:
-        considered_g = torch.stack([max(torch.stack(self.omega)[:, i]) for i in range(len(self.omega[0]))])
+    def perform_down_compression(self, model_param, cost_models):
+
+        # We select the value that must be compressed
+        if self.parameters.down_compress_model:
+            value_to_consider = model_param
+        else:
+            value_to_consider = self.g
+
+        # We combine with EF and memory to obtain the proper value that will be compressed
+        if self.parameters.randomized:
+            self.value_to_compress = [(value_to_consider - self.l) + self.all_error_i[-1][i]
+                                      for i in range(self.parameters.nb_devices)]
+        else:
+            self.value_to_compress = (value_to_consider - self.l) + self.all_error_i[-1]
+
+        # We build omega i.e, what will be sent to remote devices
+        if self.parameters.randomized:
+            self.build_randomized_omega(cost_models)
+        else:
+            self.build_omega()
+
+        # We update EF
+        if self.parameters.randomized and self.parameters.error_feedback:
+            self.all_error_i.append([self.value_to_compress[i] - self.omega[i]
+                                     for i in range(self.parameters.nb_devices)])
+        elif self.parameters.error_feedback:
+            self.all_error_i.append(self.value_to_compress - self.omega)
 
 
     def __init__(self, parameters: Parameters, workers) -> None:
@@ -237,28 +265,11 @@ class ArtemisUpdate(AbstractFLUpdate):
         # Aggregating all delta
         self.g = self.compute_aggregation(self.all_delta_i)
 
-        # We update omega (compression of the sum of compressed gradients).
-        if self.parameters.randomized:
-            self.value_to_compress = [(self.g - self.l) + self.all_error_i[-1][i]
-                                      for i in range(self.parameters.nb_devices)]
+        if self.parameters.down_compress_model:
+            self.update_model()
+            self.perform_down_compression(model_param, cost_models)
         else:
-            self.value_to_compress = (self.g - self.l) + self.all_error_i[-1]
-
-        if self.parameters.randomized:
-            self.build_randomized_omega(cost_models)
-        else:
-            self.build_omega()
-
-        if self.parameters.randomized and self.parameters.error_feedback:
-            self.all_error_i.append([self.value_to_compress[i] - self.omega[i]
-                                for i in range(self.parameters.nb_devices)])
-        elif self.parameters.error_feedback:
-            self.all_error_i.append(self.value_to_compress - self.omega)
-
-        # Updating the model with the new gradients.
-        if self.parameters.randomized:
-            self.update_randomized_model()
-        else:
+            self.perform_down_compression(model_param, cost_models)
             self.update_model()
         model_param = model_param - self.step * self.v
 

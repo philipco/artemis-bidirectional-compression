@@ -125,13 +125,17 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
                 decompressed_value, self.l_i = tensor + self.l_i, self.l_i + learning_rate_down * tensor
             else:
                 decompressed_value = tensor
-            if not self.parameters.double_use_memory:
-                assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
-                    "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
-            # Updating the model with the new gradients.
-            self.v = self.parameters.momentum * self.v + decompressed_value
-            self.model_param = self.model_param - step * self.v
+            if self.parameters.down_compress_model:
+                self.model_param = decompressed_value
+            else:
+                # Updating the model with the new gradients.
+                self.v = self.parameters.momentum * self.v + decompressed_value
+                self.model_param = self.model_param - step * self.v
+
+        if not self.parameters.double_use_memory:
+            assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
+                "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
     def compute_locally(self, cost_model: ACostModel, j: int):
         self.compute_local_gradient(cost_model, j)
