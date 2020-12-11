@@ -7,15 +7,19 @@ import gc
 import time
 from pathlib import Path
 
+from tqdm import tqdm
+
 from src.machinery.Parameters import Parameters
 from src.machinery.GradientDescent import AGradientDescent
 from src.machinery.PredefinedParameters import PredefinedParameters
 from src.models.CompressionModel import CompressionModel
 
 from src.utils.Constants import NB_EPOCH
-from src.utils.runner.MultipleDescentRun import MultipleDescentRun
+from src.utils.Utilities import pickle_saver
+from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
+from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-nb_run = 5  # Number of gradient descent before averaging.
+nb_run = 2  # Number of gradient descent before averaging.
 
 
 def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_models, compression_model: CompressionModel,
@@ -26,7 +30,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                          streaming: bool = False,
                          batch_size: int = 1,
                          fraction_sampled_workers: float = 1.,
-                         logs_file: str = None) -> MultipleDescentRun:
+                         logs_file: str = None) -> AverageOfSeveralIdenticalRun:
     """
     Run several time the same algorithm in the same conditions and gather all result in the MultipleDescentRun class.
 
@@ -42,7 +46,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
 
     Returns:
     """
-    multiple_descent = MultipleDescentRun()
+    multiple_descent = AverageOfSeveralIdenticalRun()
     for i in range(nb_run):
         start_time = time.time()
         params = predefined_parameters.define(n_dimensions=cost_models[0].X.shape[1],
@@ -76,3 +80,86 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
     model_descent = model(parameters)
     model_descent.run(cost_models)
     return model_descent
+
+def run_for_different_scenarios(cost_models, list_algos, values, labels, filename: str, batch_size: int = 1,
+                                stochastic: bool = True, nb_epoch: int = 250, step_formula = None,
+                                compression: CompressionModel = None, scenario: str = "step") -> None:
+
+    assert scenario in ["step", "compression"], "There is two possible scenarios : to analyze by step size, or by compression operators."
+
+    nb_devices_for_the_run = len(cost_models)
+
+    all_kind_of_compression_res = []
+    all_descent_various_gamma = {}
+    descent_by_algo_and_step_size = {}
+
+    # Corresponds to descent with optimal gamma for each algorithm
+    optimal_descents = {}
+
+    for param_algo in tqdm(list_algos):
+        losses_by_algo, losses_avg_by_algo, norm_ef_by_algo, dist_model_by_algo = [], [], [], []
+        var_models_by_algo = []
+        descent_by_step_size = {}
+        for (value, label) in zip(values, labels):
+
+            if scenario == "step":
+                multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
+                                                           use_averaging=True, stochastic=stochastic, batch_size=batch_size,
+                                                           step_formula=value, nb_epoch=nb_epoch, compression_model=compression,
+                                                           logs_file="{0}.txt".format(filename))
+            if scenario == "compression":
+                multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
+                                                           use_averaging=True, stochastic=stochastic, batch_size=batch_size,
+                                                           step_formula=step_formula,
+                                                           compression_model=value, nb_epoch=nb_epoch,
+                                                           logs_file="{0}.txt".format(filename))
+
+            descent_by_step_size[label] = multiple_sg_descent
+            losses_by_label, losses_avg_by_label, norm_ef_by_label, dist_model_by_label = [], [], [], []
+            var_models_by_label = []
+
+            # Picking the minimum values for each of the run.
+            for seq_losses, seq_losses_avg, seq_norm_ef, seq_dist_model, seq_var_models in \
+                    zip(multiple_sg_descent.losses, multiple_sg_descent.averaged_losses,
+                        multiple_sg_descent.norm_error_feedback, multiple_sg_descent.dist_to_model,
+                        multiple_sg_descent.var_models):
+
+                losses_by_label.append(min(seq_losses))
+                losses_avg_by_label.append(min(seq_losses_avg))
+                norm_ef_by_label.append(seq_norm_ef[-1])
+                dist_model_by_label.append(seq_dist_model[-1])
+                var_models_by_label.append(seq_var_models[-1])
+
+            losses_by_algo.append(losses_by_label)
+            losses_avg_by_algo.append(losses_avg_by_label)
+            norm_ef_by_algo.append(norm_ef_by_label)
+            dist_model_by_algo.append(dist_model_by_label)
+            var_models_by_algo.append(var_models_by_label)
+
+        descent_by_algo_and_step_size[param_algo.name()] = ResultsOfSeveralDescents(descent_by_step_size,
+                                                                                          nb_devices_for_the_run)
+
+        # Find optimal descent for the algo:
+        min_loss_desc = 10e12
+        opt_desc = None
+        for desc in descent_by_step_size.values():
+            if min_loss_desc > min([desc.losses[j][-1] for j in range(len(desc.losses))]):
+                min_loss_desc = min([desc.losses[j][-1] for j in range(len(desc.losses))])
+                opt_desc = desc
+        # Adding the optimal descent to the dict of optimal descent
+        optimal_descents[param_algo.name()] = opt_desc
+
+
+        artificial_multiple_descent = AverageOfSeveralIdenticalRun()
+        artificial_multiple_descent.append_list(losses_by_algo, losses_avg_by_algo, norm_ef_by_algo, dist_model_by_algo,
+                                                var_models_by_algo)
+        all_descent_various_gamma[param_algo.name()] = artificial_multiple_descent
+        all_kind_of_compression_res.append(all_descent_various_gamma)
+
+    res_various_gamma = ResultsOfSeveralDescents(all_descent_various_gamma, nb_devices_for_the_run)
+    pickle_saver(res_various_gamma, "{0}-{1}".format(filename, scenario))
+
+    res_opt_gamma = ResultsOfSeveralDescents(optimal_descents, nb_devices_for_the_run)
+    pickle_saver(res_opt_gamma, "{0}-optimal_{1}".format(filename, scenario))
+
+    pickle_saver(descent_by_algo_and_step_size, "{0}-descent_by_algo_and_{1}".format(filename, scenario))

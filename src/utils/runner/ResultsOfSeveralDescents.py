@@ -20,9 +20,12 @@ class ResultsOfSeveralDescents:
         if not all_descent[next(iter(all_descent))].artificial:
             self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in all_descent.values()]
             self.X_number_of_bits = [desc.theoretical_nb_bits for desc in all_descent.values()]
+            self.omega_c = [desc.omega_c for desc in all_descent.values()]
         self.all_losses = [desc.losses for desc in all_descent.values()]
         self.all_losses_averaged = [desc.averaged_losses for desc in all_descent.values()]
         self.norm_error_feedback = [desc.norm_error_feedback for desc in all_descent.values()]
+        self.distance_to_model = [desc.dist_to_model for desc in all_descent.values()]
+        self.var_models = [desc.var_models for desc in all_descent.values()]
         self.nb_devices_for_the_run = nb_devices_for_the_run
         self.names = [names for names in all_descent]
 
@@ -73,34 +76,48 @@ class ResultsOfSeveralDescents:
                 std_losses.append(np.std(losses - obj, axis=0))
         return std_losses
 
-    def get_error_feedback(self, in_log=True):
-        """Return the sequence of error feedback for each of the algorithm.
-
-                Args:
-                    in_log: return the result using log scale.
-                """
-        mean_error_feedback = []
-        for errors in self.norm_error_feedback:
+    def getter(self, seq_values, in_log=True):
+        res = []
+        for values in seq_values:
             if in_log:
-                log_e = [np.log10(e) for e in errors]
-                mean_error_feedback.append(np.mean(log_e, axis=0))
+                log_e = [np.log10(e) for e in values]
+                res.append(np.mean(log_e, axis=0))
             else:
-                mean_error_feedback.append(np.mean(errors, axis=0))
-        return mean_error_feedback
+                res.append(np.mean(values, axis=0))
+        return res
+
+    def getter_std(self, seq_values, in_log=True):
+        res_std = []
+        for values in seq_values:
+            if in_log:
+                log_e = [np.log10(e) for e in values]
+                res_std.append(np.std(log_e, axis=0))
+            else:
+                res_std.append(np.std(values, axis=0))
+        return res_std
+
+    def get_error_feedback(self, in_log=True):
+        """Return the sequence of error feedback for each of the algorithm."""
+        return self.getter(self.norm_error_feedback)
 
     def get_error_feedback_std(self, in_log=True):
-        """Return the sequence of error feedback for each of the algorithm.
+        """Return the sequence of error feedback for each of the algorithm. """
+        return self.getter_std(self.norm_error_feedback)
 
-                Args:
-                    in_log: return the result using log scale.
-                """
-        std_error_feedback = []
-        for errors in self.norm_error_feedback:
-            if in_log:
-                log_e = [np.log10(e) for e in errors]
-                std_error_feedback.append(np.std(log_e, axis=0))
-            else:
-                std_error_feedback.append(np.std(errors, axis=0))
-        return std_error_feedback
+    def get_distance_to_model(self, in_log=True):
+        """Return the sequence of average distance between the central model and the remotes one for each of the
+        algorithm. """
+        return self.getter(self.distance_to_model)
+
+    def get_distance_to_model_std(self, in_log=True):
+        return self.getter_std(self.norm_error_feedback)
+
+    def get_var_models(self, in_log=True):
+        """Return the sequence of average distance between the central model and the remotes one for each of the
+        algorithm. """
+        return self.getter(self.var_models)
+
+    def get_var_models_std(self, in_log=True):
+        return self.getter_std(self.var_models)
 
 

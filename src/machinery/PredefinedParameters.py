@@ -8,6 +8,15 @@ from src.models.CompressionModel import *
 from src.utils.Constants import NB_EPOCH
 
 
+def build_compression_operator(biased, n_dimensions):
+    if biased:
+        return RandomSparsification(11, n_dimensions, biased=biased)
+    else:
+        return RandomSparsification(11, n_dimensions, biased=biased)
+
+level = 10
+level_quantiz=4
+
 class PredefinedParameters:
     """Abstract class to predefine (no customizable) parameters required by a given type of algorithms (e.g Artemis, QSGD ...)
 
@@ -245,133 +254,130 @@ KIND_COMPRESSION_RAND = [VanillaSGD(),
                          RArtemisEF(),
                          ]
 
-##################################### - Error Feedback and biased operators - #####################################
+ARTEMIS_LIKE_ALGO = [VanillaSGD(),
+                     BiQSGD(),
+                     BiQSGD_EF(),
+                     Artemis(),
+                     ArtemisEF(),
+                     RArtemis(),
+                     RArtemisEF()]
 
-class BiasedQsgd(BiQSGD):
+################################### - Operators - ###################################
+
+
+class Topk(PredefinedParameters):
 
     def name(self) -> str:
-        return "BiasedQsgd"
+        return "Topk{0}".format(self.super_class.name())
+
+    def __init__(self, super_class: PredefinedParameters) -> None:
+        super().__init__()
+        self.super_class = super_class
+        self.biased = True
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
-               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
-               stochastic, streaming, batch_size)
+        parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
+                                    compression_model, step_formula, nb_epoch,
+                                    fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
+        parameters.compression_model = TopKSparsification(level, n_dimensions)
         return parameters
 
-class BiasedQsgdEF(BiQSGD):
+
+class RandkBiased(PredefinedParameters):
 
     def name(self) -> str:
-        return "BiasedQsgdEF"
+        return "RandkBsd{0}".format(self.super_class.name())
+
+    def __init__(self, super_class: PredefinedParameters) -> None:
+        super().__init__()
+        self.super_class = super_class
+        self.biased = True
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
-               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
-               stochastic, streaming, batch_size)
-        parameters.error_feedback = True
+        parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
+                                    compression_model, step_formula, nb_epoch,
+                                    fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
+        parameters.compression_model = RandomSparsification(level, n_dimensions, biased=False)
         return parameters
 
-class UnbiasedQsgd(BiQSGD):
+
+class Randk(PredefinedParameters):
 
     def name(self) -> str:
-        return "UnbiasedQsgd"
+        return "Randk{0}".format(self.super_class.name())
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices,
-                                    RandomSparsification(10, n_dimensions, biased=False),
-                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
-                                    stochastic, streaming, batch_size)
-        return parameters
-
-class UnbiasedQsgdEF(BiQSGD):
-
-    def name(self) -> str:
-        return "UnbiasedQsgdEF"
-
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices,
-                                    RandomSparsification(10, n_dimensions, biased=False),
-                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
-                                    stochastic, streaming, batch_size)
-        parameters.error_feedback = True
-        return parameters
-
-KIND_COMPRESSION_BIASED = [VanillaSGD(),
-                       BiasedQsgd(),
-                       BiasedQsgdEF(),
-                       UnbiasedQsgd(),
-                       UnbiasedQsgdEF()
-                    ]
-
-################################### - Error Feedback, Memory and biased operators - ###################################
-
-class BiasedArtemis(Artemis):
-
-    def name(self) -> str:
-        return "BiasedArtemis"
+    def __init__(self, super_class: PredefinedParameters) -> None:
+        super().__init__()
+        self.super_class = super_class
+        self.biased = False
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
-               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
-               stochastic, streaming, batch_size)
+        parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
+                                    compression_model, step_formula, nb_epoch,
+                                    fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
+        parameters.compression_model = RandomSparsification(level, n_dimensions, biased=False)
         return parameters
 
-class BiasedArtemisEF(Artemis):
+
+class Quantiz(PredefinedParameters):
 
     def name(self) -> str:
-        return "BiasedArtemisEF"
+        return "Qtzd{0}".format(self.super_class.name())
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH,  fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices, RandomSparsification(10, n_dimensions, biased=True),
-               step_formula, nb_epoch,  fraction_sampled_workers, use_averaging,
-               stochastic, streaming, batch_size)
-        parameters.error_feedback = True
-        return parameters
-
-class UnbiasedArtemis(Artemis):
-
-    def name(self) -> str:
-        return "UnbiasedArtemis"
+    def __init__(self, super_class: PredefinedParameters) -> None:
+        super().__init__()
+        self.super_class = super_class
+        self.biased = False
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices,
-                                    RandomSparsification(10, n_dimensions, biased=False),
-                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
-                                    stochastic, streaming, batch_size)
+        parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
+                                             compression_model, step_formula, nb_epoch,
+                                             fraction_sampled_workers, use_averaging, stochastic, streaming, batch_size)
+        parameters.compression_model = SQuantization(level_quantiz, n_dimensions)
         return parameters
 
-class UnbiasedArtemisEF(Artemis):
 
-    def name(self) -> str:
-        return "UnbiasedArtemisEF"
+RAND_K = [VanillaSGD(),
+          Randk(BiQSGD()),
+          Randk(BiQSGD_EF()),
+          Randk(Artemis()),
+          Randk(ArtemisEF()),
+          Randk(RArtemis()),
+          Randk(RArtemisEF())
+          ]
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1):
-        parameters = super().define(cost_models, n_dimensions, nb_devices,
-                                    RandomSparsification(10, n_dimensions, biased=False),
-                                    step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
-                                    stochastic, streaming, batch_size)
-        parameters.error_feedback = True
-        return parameters
+RAND_K_BIASED = [VanillaSGD(),
+          RandkBiased(BiQSGD()),
+          RandkBiased(BiQSGD_EF()),
+          RandkBiased(Artemis()),
+          RandkBiased(ArtemisEF()),
+          RandkBiased(RArtemis()),
+          RandkBiased(RArtemisEF())
+          ]
 
-KIND_COMPRESSION_BIASED_MEM = [VanillaSGD(),
-                       BiasedArtemis(),
-                       BiasedArtemisEF(),
-                       UnbiasedArtemis(),
-                       UnbiasedArtemisEF()
-                               ]
+TOP_K = [VanillaSGD(),
+          Topk(BiQSGD()),
+          Topk(BiQSGD_EF()),
+          Topk(Artemis()),
+          Topk(ArtemisEF()),
+          Topk(RArtemis()),
+          Topk(RArtemisEF())
+          ]
+
+QUANTIZATION = [VanillaSGD(),
+          Quantiz(BiQSGD()),
+          Quantiz(BiQSGD_EF()),
+          Quantiz(Artemis()),
+          Quantiz(ArtemisEF()),
+          Quantiz(RArtemis()),
+          Quantiz(RArtemisEF())
+          ]
 

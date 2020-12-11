@@ -28,48 +28,73 @@ class CompressionModel(ABC):
     def __compute_omega_c__(self, dim: int):
         pass
 
+    @abstractmethod
+    def get_name(self) -> str:
+        pass
+
 
 class TopKSparsification(CompressionModel):
 
     def __init__(self, level: int, dim: int):
         super().__init__(level, dim)
+        assert 0 <= level < dim, "k must be inferior to the number of dimension and superior to zero."
         self.biased = True
 
     def compress(self, vector: torch.FloatTensor):
-        assert 0 <= self.level < 100, "k must be expressend in percent."
         if self.level == 0:
             return vector
-        nb_of_component_to_select = int(len(vector) * self.level / 100)
-        values, indices = torch.topk(abs(vector), 3)
+        values, indices = torch.topk(abs(vector), self.level)
         compression = torch.zeros_like(vector)
         for i in indices:
             compression[i.item()] = vector[i.item()]
         return compression
 
     def __compute_omega_c__(self, dim: int):
-        return self.level/dim
+        if self.level == 0:
+            return 0
+        proba = self.level / self.dim
+        return 1 - proba
+
+    def get_name(self) -> str:
+        return "Topk"
 
 
 class RandomSparsification(CompressionModel):
 
     def __init__(self, level: int, dim: int, biased = True):
-        super().__init__(level, dim)
+        """
+
+        :param level: number of dimension to select at compression step
+        :param dim: number of dimension in the dataset
+        :param biased: set to True to used to biased version of this operators
+        """
         self.biased = biased
+        super().__init__(level, dim)
+        assert 0 <= level < dim, "k must be expressed in percent."
 
     def compress(self, vector: torch.FloatTensor):
-        assert 0 <= self.level < 100, "k must be expressed in percent."
         if self.level == 0:
             return vector
-        proba = self.level/100
+        proba = self.level/self.dim
         indices = bernoulli.rvs(proba, size=len(vector))
         compression = torch.zeros_like(vector)
         for i in range(len(vector)):
             if indices[i]:
-                compression[i] = vector[i] * [1/proba, 1][self.biased]
+                compression[i] = vector[i] * [self.dim/self.level, 1][self.biased]
         return compression
 
     def __compute_omega_c__(self, dim: int):
-        return self.level/dim
+        proba = self.level / self.dim
+        if self.level == 0:
+            return 0
+        if self.biased:
+            return 1 - proba
+        return (1-proba)/proba
+
+    def get_name(self) -> str:
+        if self.biased:
+            return "RdkBsd"
+        return "Rdk"
 
 
 class SQuantization(CompressionModel):
@@ -104,25 +129,9 @@ class SQuantization(CompressionModel):
         """Return the value of omega_c (involved in variance) of the s-quantization."""
         # If s==0, it means that there is no compression.
         # But for the need of experiments, we may need to compute the quantization constant associated with s=1.
-        if self.level==0:
-            return sqrt(dim)
+        if self.level == 0:
+            return 0# TODO This has been changed ! Which impact ? Should be none ... sqrt(dim)
         return min(dim / self.level*self.level, sqrt(dim) / self.level)
 
-
-def one_bit_quantization(x, _):
-    """Implement the one bit quantization. Not tested, no guarantee to be correct."""
-    quantized = torch.zeros_like(x)
-    norm_x = torch.norm(x, p=2)
-    for j in range(len(x)):
-        quantized[j] = norm_x * torch.sign(x)[j]
-    return quantized
-
-
-def bernouilli_quantization(x):
-    """Implement the bernouilli quantization. Not tested, no guarantee to be correct."""
-    quantized = torch.zeros_like(x)
-    norm_x = torch.norm(x, p=2)
-    for j in range(len(x)):
-        b = bernoulli.rvs(abs(x[j])/norm_x, size=1)[0]
-        quantized[j] = norm_x * torch.sign(x)[j] * b
-    return quantized
+    def get_name(self) -> str:
+        return "Qtzd"
