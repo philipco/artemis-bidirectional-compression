@@ -28,8 +28,10 @@ import math
 import os
 import psutil
 
-from src.machinery.GradientUpdateMethod import ArtemisUpdate, AbstractGradientUpdate, GradientVanillaUpdate, DianaUpdate
-from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate
+from src.machinery.GradientUpdateMethod import ArtemisUpdate, AbstractGradientUpdate, GradientVanillaUpdate, \
+    DianaUpdate, SympaUpdate, DownCompressModelUpdate
+from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate, \
+    LocalSympaUpdate, LocalDownCompressModelUpdate
 from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
 from src.models.CompressionModel import SQuantization
@@ -283,3 +285,26 @@ class DianaDescent(AGradientDescent):
 
     def get_name(self) -> str:
         return "Diana"
+
+class DownCompressModelDescent(AGradientDescent):
+
+    def __local_update__(self):
+        return LocalDownCompressModelUpdate
+
+    def __update_method__(self) -> AbstractGradientUpdate:
+        return DownCompressModelUpdate(self.parameters, self.workers)
+
+    def get_name(self) -> str:
+        return "DwnComprModel"
+
+
+class SympaDescent(AGradientDescent):
+
+    def __local_update__(self):
+        return LocalSympaUpdate
+
+    def __update_method__(self) -> AbstractGradientUpdate:
+        return SympaUpdate(self.parameters, self.workers)
+
+    def get_name(self) -> str:
+        return "Sympa"

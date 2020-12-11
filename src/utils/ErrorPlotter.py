@@ -7,11 +7,11 @@ This python file provide facilities to plot the results of a (multiple) gradient
 import matplotlib.pyplot as plt
 
 markers = ["o", "v", "s", "p", "X", "d", "P", "*"]
-markersize = 15
-curve_size=4
+markersize = 2
+curve_size=3
 fontsize=30
 fontsize_legend=14
-figsize=(15,7)
+figsize=(8,7)
 fourfigsize=(13, 8)
 sixfigsize=(13, 11)
 
@@ -28,6 +28,8 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
                     ylegends="loss", ylim=False, omega_c = None):
 
     assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
+
+    legend = [l if l != "ArtemisEF" else "Dore" for l in legend]
 
     N_it = len(all_losses[0])
 

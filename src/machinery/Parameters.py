@@ -48,7 +48,6 @@ class Parameters:
                  verbose: bool = False,
                  stochastic: bool = True,
                  streaming: bool = False,
-                 down_compress_model: bool = False,
                  use_memory: bool = False,
                  use_double_memory: bool = False,
                  use_averaging: bool = False,
@@ -75,7 +74,6 @@ class Parameters:
         self.bidirectional = bidirectional
         self.stochastic = stochastic  # true if running a stochastic gradient descent
         self.streaming = streaming  # True if each sample should be used only once !
-        self.down_compress_model = down_compress_model
         self.use_memory = use_memory  # use memory when sending to global server
         self.double_use_memory = use_double_memory  # a memory at back communication
         self.verbose = verbose

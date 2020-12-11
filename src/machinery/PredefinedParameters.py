@@ -2,7 +2,8 @@
 Created by Philippenko, 7th July 2020.
 """
 
-from src.machinery.GradientDescent import ArtemisDescent, SGD_Descent, DianaDescent, AGradientDescent
+from src.machinery.GradientDescent import ArtemisDescent, SGD_Descent, DianaDescent, AGradientDescent, SympaDescent, \
+    DownCompressModelDescent
 from src.machinery.Parameters import Parameters
 from src.models.CompressionModel import *
 from src.utils.Constants import NB_EPOCH
@@ -157,6 +158,25 @@ class Artemis(Diana):
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.bidirectional = True
+        return params
+
+class Sympa(Artemis):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "Sympa"
+
+    def type_FL(self):
+        return SympaDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.randomized = True
         return params
 
 class RArtemis(Artemis):
@@ -392,7 +412,7 @@ class ModelCompr(Artemis):
         return "ModelCompr"
 
     def type_FL(self):
-        return ArtemisDescent
+        return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
@@ -400,7 +420,6 @@ class ModelCompr(Artemis):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.down_compress_model = True
         return params
 
 class ModelComprMem(ModelCompr):
@@ -411,7 +430,7 @@ class ModelComprMem(ModelCompr):
         return "ModelComprMem"
 
     def type_FL(self):
-        return ArtemisDescent
+        return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
@@ -430,7 +449,7 @@ class ModelComprEF(ModelCompr):
         return "ModelComprEF"
 
     def type_FL(self):
-        return ArtemisDescent
+        return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
@@ -449,7 +468,7 @@ class RModelComprEF(ModelComprEF):
         return "RModelComprEF"
 
     def type_FL(self):
-        return ArtemisDescent
+        return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
@@ -460,4 +479,5 @@ class RModelComprEF(ModelComprEF):
         params.randomized = True
         return params
 
-MODEL_COMPRESSION = [VanillaSGD(), Artemis(), ArtemisEF(), ModelCompr(), ModelComprMem(), ModelComprEF(), RModelComprEF()]
+MODEL_COMPRESSION = [VanillaSGD(), Artemis(), ArtemisEF(), ModelCompr(), ModelComprMem(), ModelComprEF(),
+                     RModelComprEF(), Sympa()]
