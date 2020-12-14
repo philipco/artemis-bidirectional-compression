@@ -176,7 +176,6 @@ class Sympa(Artemis):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.randomized = True
         return params
 
 class RArtemis(Artemis):
@@ -208,7 +207,7 @@ class RArtemisEF(RArtemis):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                stochastic, streaming, batch_size)
-        params.error_feedback = True
+        params.down_error_feedback = True
         return params
 
 KIND_COMPRESSION = [VanillaSGD(),
@@ -237,7 +236,27 @@ class BiQSGD_EF(BiQSGD):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.error_feedback = True
+        params.down_error_feedback = True
+        return params
+
+class DoubleSqueeze(BiQSGD):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "DblSqz"
+
+    def type_FL(self):
+        return ArtemisDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.down_error_feedback = True
+        params.up_error_feedback = True
         return params
 
 class ArtemisEF(Artemis):
@@ -256,7 +275,7 @@ class ArtemisEF(Artemis):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.error_feedback = True
+        params.down_error_feedback = True
         return params
 
 KIND_COMPRESSION_EF = [VanillaSGD(),
@@ -265,6 +284,8 @@ KIND_COMPRESSION_EF = [VanillaSGD(),
                        Artemis(),
                        ArtemisEF()
                     ]
+
+FL_ALGOS = [VanillaSGD(), Diana(), DoubleSquezze(), ArtemisEF(), Artemis()]
 
 KIND_COMPRESSION_RAND = [VanillaSGD(),
                          BiQSGD(),
@@ -457,7 +478,7 @@ class ModelComprEF(ModelCompr):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.error_feedback = True
+        params.down_error_feedback = True
         return params
 
 class RModelComprEF(ModelComprEF):
@@ -466,6 +487,26 @@ class RModelComprEF(ModelComprEF):
 
     def name(self) -> str:
         return "RModelComprEF"
+
+    def type_FL(self):
+        return DownCompressModelDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.randomized = True
+        return params
+
+
+class RModelComprMem(ModelComprMem):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "RModelComprMem"
 
     def type_FL(self):
         return DownCompressModelDescent

@@ -188,10 +188,10 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             self.build_omega()
 
         # We update EF
-        if self.parameters.randomized and self.parameters.error_feedback:
+        if self.parameters.randomized and self.parameters.down_error_feedback:
             self.all_error_i.append([self.value_to_compress[i] - self.omega[i]
                                      for i in range(self.parameters.nb_devices)])
-        elif self.parameters.error_feedback:
+        elif self.parameters.down_error_feedback:
             self.all_error_i.append(self.value_to_compress - self.omega)
 
     def send_back_global_informations_and_update(self, cost_models):

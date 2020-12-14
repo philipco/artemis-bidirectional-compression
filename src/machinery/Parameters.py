@@ -53,7 +53,9 @@ class Parameters:
                  use_averaging: bool = False,
                  time_debug: bool = False,
                  randomized: bool = False,
-                 error_feedback: bool = False) -> None:
+                 down_error_feedback: bool = False,
+                 up_error_feedback: bool = False,
+                 nb_local_update: int = 1) -> None:
         super().__init__()
         self.cost_models = cost_models  # Cost model to use for gradient descent.
         self.federated = federated  # Boolean to say if we do federated learning or not.
@@ -80,7 +82,10 @@ class Parameters:
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
         self.time_debug = time_debug  # True is one want to debug the time spent in each procedure.
         self.randomized = randomized
-        self.error_feedback = error_feedback
+        self.down_error_feedback = down_error_feedback
+        self.up_error_feedback = up_error_feedback
+        self.nb_local_update = nb_local_update
+
 
     def print(self):
         print("federated", self.federated)
