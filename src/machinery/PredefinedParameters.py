@@ -3,7 +3,7 @@ Created by Philippenko, 7th July 2020.
 """
 
 from src.machinery.GradientDescent import ArtemisDescent, SGD_Descent, DianaDescent, AGradientDescent, SympaDescent, \
-    DownCompressModelDescent
+    DownCompressModelDescent, FedAvgDescent
 from src.machinery.Parameters import Parameters
 from src.models.CompressionModel import *
 from src.utils.Constants import NB_EPOCH
@@ -285,8 +285,6 @@ KIND_COMPRESSION_EF = [VanillaSGD(),
                        ArtemisEF()
                     ]
 
-FL_ALGOS = [VanillaSGD(), Diana(), DoubleSquezze(), ArtemisEF(), Artemis()]
-
 KIND_COMPRESSION_RAND = [VanillaSGD(),
                          BiQSGD(),
                          Artemis(),
@@ -522,3 +520,28 @@ class RModelComprMem(ModelComprMem):
 
 MODEL_COMPRESSION = [VanillaSGD(), Artemis(), ArtemisEF(), ModelCompr(), ModelComprMem(), ModelComprEF(),
                      RModelComprEF(), Sympa()]
+
+
+################################################## Federated Learning ##################################################
+
+class FedAvg(VanillaSGD):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "FedAvg"
+
+    def type_FL(self):
+        return FedAvgDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.stochastic = True
+        params.nb_local_update = 5
+        return params
+
+FL_ALGOS = [VanillaSGD(), FedAvg(), DoubleSqueeze(), ArtemisEF(), Artemis()]

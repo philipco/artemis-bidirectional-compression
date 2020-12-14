@@ -29,9 +29,9 @@ import os
 import psutil
 
 from src.machinery.GradientUpdateMethod import ArtemisUpdate, AbstractGradientUpdate, GradientVanillaUpdate, \
-    DianaUpdate, SympaUpdate, DownCompressModelUpdate
+    DianaUpdate, SympaUpdate, DownCompressModelUpdate, FedAvgUpdate
 from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate, \
-    LocalSympaUpdate, LocalDownCompressModelUpdate
+    LocalSympaUpdate, LocalDownCompressModelUpdate, LocalFedAvgUpdate
 from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
 from src.models.CompressionModel import SQuantization
@@ -285,6 +285,24 @@ class DianaDescent(AGradientDescent):
 
     def get_name(self) -> str:
         return "Diana"
+
+class FedAvgDescent(AGradientDescent):
+
+    def __local_update__(self):
+        return LocalFedAvgUpdate
+
+    def __update_method__(self) -> AbstractGradientUpdate:
+        return FedAvgUpdate(self.parameters, self.workers)
+
+    def __number_iterations__(self, cost_models) -> int:
+        return self.parameters.nb_epoch
+
+    def __number_iterations__(self, cost_models) -> int:
+        """Return the number of iterations needed to perform one epoch."""
+        return self.parameters.nb_epoch
+
+    def get_name(self) -> str:
+        return "FedAvg"
 
 class DownCompressModelDescent(AGradientDescent):
 

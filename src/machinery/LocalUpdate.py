@@ -5,7 +5,7 @@ In this python file is provided tools to implement any local update scheme. This
 devices in federated learning.
 """
 import random
-from copy import deepcopy
+from copy import deepcopy, copy
 
 import scipy.sparse as sp
 import torch
@@ -67,13 +67,13 @@ class AbstractLocalUpdate(ABC):
             self.g_i = cost_model.grad(self.model_param)
 
     @abstractmethod
-    def compute_locally(self, cost_model: ACostModel, j: int):
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float):
         pass
 
 
 class LocalGradientVanillaUpdate(AbstractLocalUpdate):
 
-    def compute_locally(self, cost_model: ACostModel, j: int):
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
         self.compute_local_gradient(cost_model, j)
 
         self.delta_i = deepcopy(self.g_i - self.h_i)
@@ -93,7 +93,7 @@ class LocalDianaUpdate(AbstractLocalUpdate):
             self.v = deepcopy(self.parameters.momentum * self.v + tensor)
             self.model_param = deepcopy(self.model_param - step * self.v)
 
-    def compute_locally(self, cost_model: ACostModel, j: int):
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
         self.compute_local_gradient(cost_model, j)
         if self.g_i is None:
             return None
@@ -133,7 +133,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
-    def compute_locally(self, cost_model: ACostModel, j: int):
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
         self.compute_local_gradient(cost_model, j)
         if self.g_i is None:
             return None
@@ -144,6 +144,18 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             self.error_i = self.delta_i - quantized_delta_i
         self.h_i += self.parameters.learning_rate * quantized_delta_i
         return quantized_delta_i
+
+class LocalFedAvgUpdate(AbstractLocalUpdate):
+
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+        self.model_param = copy(tensor_sent)
+
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float):
+        for local_iteration in range (self.parameters.nb_local_update):
+             for i in range(cost_model.X.shape[0] // (self.parameters.batch_size * self.parameters.nb_local_update)):
+                self.compute_local_gradient(cost_model, j)
+                self.model_param = copy(self.model_param - step_size * self.g_i)
+        return self.model_param
 
 
 class LocalDownCompressModelUpdate(AbstractLocalUpdate):
@@ -168,7 +180,7 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
             assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
-    def compute_locally(self, cost_model: ACostModel, j: int):
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
         self.compute_local_gradient(cost_model, j)
         if self.g_i is None:
             return None

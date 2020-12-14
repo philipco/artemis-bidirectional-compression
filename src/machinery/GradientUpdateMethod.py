@@ -367,6 +367,41 @@ class DownCompressModelUpdate(AbstractFLUpdate):
         return model_param
 
 
+class FedAvgUpdate(AbstractFLUpdate):
+    """This class implement the proper update of the Artemis schema.
+
+    It hold two potentiel memories (one for each way), and can either compress gradients, either models."""
+
+    def __init__(self, parameters: Parameters, workers) -> None:
+        super().__init__(parameters, workers)
+
+    def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, j: int) \
+            -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+
+        self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
+
+        local_models = []
+
+        total_nb_of_points = sum([cost_model.X.shape[0] for cost_model in cost_models])
+
+        for worker, cost_model in self.get_set_of_workers(cost_models):
+            local_nb_points = cost_model.X.shape[0]
+            local_model = worker.local_update.compute_locally(cost_model, j, self.step)
+            local_models.append(local_model * local_nb_points / total_nb_of_points)
+
+        model_param = torch.sum(torch.stack(local_models, dim=0), dim=0)
+
+        self.omega = model_param
+
+        return model_param
+
+    def send_back_global_informations_and_update(self, cost_models):
+        """Send to remote servers the global information and update their models."""
+        models_to_send = self.omega
+        for worker, _ in self.get_set_of_workers(cost_models):
+            worker.local_update.send_global_informations_and_update_local_param(models_to_send, self.step)
+
+
 class DianaUpdate(AbstractFLUpdate):
     """This class implement the proper update of the Artemis schema.
 
