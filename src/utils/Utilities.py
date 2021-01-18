@@ -91,7 +91,6 @@ def create_folder_if_not_existing(folder):
 
 
 def file_exist(filename: str, path: str = "."):
-    print("{0}/{1}".format(path, filename))
     return os.path.isfile("{0}/{1}".format(path, filename))
 
 

@@ -100,7 +100,8 @@ def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1
 
 def run_for_different_scenarios(cost_models, list_algos, values, labels, filename: str, batch_size: int = 1,
                                 stochastic: bool = True, nb_epoch: int = 250, step_formula = None,
-                                compression: CompressionModel = None, scenario: str = "step") -> None:
+                                compression: CompressionModel = None, scenario: str = "step",
+                                use_averaging: bool = False) -> None:
 
     assert scenario in ["step", "compression"], "There is two possible scenarios : to analyze by step size, or by compression operators."
 
@@ -121,12 +122,12 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
 
             if scenario == "step":
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
-                                                           use_averaging=True, stochastic=stochastic, batch_size=batch_size,
+                                                           use_averaging=use_averaging, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=value, nb_epoch=nb_epoch, compression_model=compression,
                                                            logs_file=filename)
             if scenario == "compression":
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
-                                                           use_averaging=True, stochastic=stochastic, batch_size=batch_size,
+                                                           use_averaging=use_averaging, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=step_formula,
                                                            compression_model=value, nb_epoch=nb_epoch,
                                                            logs_file=filename)
@@ -174,9 +175,12 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
         all_kind_of_compression_res.append(all_descent_various_gamma)
 
     res_various_gamma = ResultsOfSeveralDescents(all_descent_various_gamma, nb_devices_for_the_run)
-    pickle_saver(res_various_gamma, "{0}-{1}".format(filename, scenario))
+
+    stochasticity = ['sto'] if stochastic else "full"
+    pickle_saver(res_various_gamma, "{0}/{1}-{2}-b{3}".format(filename, scenario, stochasticity, batch_size))
 
     res_opt_gamma = ResultsOfSeveralDescents(optimal_descents, nb_devices_for_the_run)
-    pickle_saver(res_opt_gamma, "{0}-optimal_{1}".format(filename, scenario))
+    pickle_saver(res_opt_gamma, "{0}/{1}-optimal-{2}-b{3}".format(filename, scenario, stochasticity, batch_size))
 
-    pickle_saver(descent_by_algo_and_step_size, "{0}-descent_by_algo_and_{1}".format(filename, scenario))
+    pickle_saver(descent_by_algo_and_step_size, "{0}/{1}-descent_by_algo-{2}-b{3}"
+                 .format(filename, scenario, stochasticity, batch_size))
