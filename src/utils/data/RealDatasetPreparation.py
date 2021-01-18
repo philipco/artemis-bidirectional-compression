@@ -4,23 +4,13 @@ Created by Philippenko, 10 January 2020.
 This class prepare the real dataset for usage.
 """
 import pandas as pd
-import os
 
 import torch
 from sklearn.preprocessing import scale
 
-from src.utils.Utilities import pickle_loader, pickle_saver, file_exist
+from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, get_project_root
 from src.utils.data.DataClustering import find_cluster, clustering_data, tsne, check_data_clusterisation
 from src.utils.data.DataPreparation import add_bias_term
-
-
-def get_project_root() -> str:
-    import pathlib
-    path = str(pathlib.Path().absolute())
-    if not path.find("artemis"):
-        raise ValueError("Current directory looks to be higher than root of the project: {}".format(path))
-    split = path.split("artemis")
-    return split[0] + "artemis"
 
 def prepare_dataset_by_device(X_merged, Y_merged, nb_devices: int):
 
@@ -43,20 +33,25 @@ def prepare_dataset_by_device(X_merged, Y_merged, nb_devices: int):
 
 def prepare_noniid_dataset(data, pivot_label: str, filename: str, nb_cluster: int, double_check: bool =False):
 
-    path = "{0}/notebook".format(get_project_root())
+    pickle_path = "{0}/notebook/pickle".format(get_project_root())
     tsne_file = "{0}-tsne".format(filename)
-    if not file_exist("{0}.pkl".format(tsne_file), "{0}/pickle".format(path)):
+    if not file_exist("{0}.pkl".format(tsne_file), pickle_path):
         # Running TNSE to obtain a 2D representation of data
         print("The TSNE ({0}) representation doesn't exist at this location : {1}"
-              .format(tsne_file, "{0}/pickle".format(path)))
+              .format(tsne_file, pickle_path))
         embedded_data = tsne(data)
-        pickle_saver(embedded_data, "{0}-tsne".format(filename), path)
+        pickle_saver(embedded_data, tsne_file, pickle_path)
 
+    tsne_cluster_file = "{0}-tsne-cluster".format(filename)
+    if not file_exist("{0}.pkl".format(tsne_cluster_file), pickle_path):
+        # Finding clusters in the TNSE
+        print("Finding non-iid clusters in the TNSE represesentation: {0}.pkl".format(tsne_file))
+        embedded_data = pickle_loader("{0}/{1}".format(pickle_path, tsne_file))
+        predicted_cluster = find_cluster(embedded_data, nb_cluster)
+        pickle_saver(predicted_cluster, "{0}/{1}".format(pickle_path, tsne_cluster_file))
 
-    embedded_data = pickle_loader("{0}-tsne".format(filename), path)
-    # Finding clusters in the TNSE
-    print("Finding non-iid clusters in the TNSE represesentation: {0}.pkl".format(tsne_file))
-    predicted_cluster = find_cluster(embedded_data, nb_cluster)
+    predicted_cluster = pickle_loader("{0}/{1}".format(pickle_path, tsne_cluster_file))
+
     # With the found clusters, splitting data.
     X, Y = clustering_data(data, predicted_cluster, pivot_label, nb_cluster)
 

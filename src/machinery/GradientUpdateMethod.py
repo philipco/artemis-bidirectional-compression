@@ -13,7 +13,6 @@ To add a new update scheme, just extend the abstract class AbstractGradientUpdat
 from __future__ import annotations
 
 from abc import ABC, abstractmethod, ABCMeta
-import random
 
 import torch
 from typing import Tuple
@@ -100,6 +99,12 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         else:
             self.all_error_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
 
+        # Memory for bidirectional compression:
+        if self.parameters.randomized:
+            self.l = [torch.zeros(parameters.n_dimensions, dtype=np.float) for _ in range(self.parameters.nb_devices)]
+        else:
+            self.l = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
     def compute_aggregation(self, local_information_to_aggregate):
         # In Artemis there is no weight associated with the aggregation, all nodes must have the same weight equal
         # to 1 / len(workers), this is why, an average is enough.
@@ -176,7 +181,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         # We combine with EF and memory to obtain the proper value that will be compressed
         if self.parameters.randomized:
-            self.value_to_compress = [(value_to_consider - self.l) + self.all_error_i[-1][i]
+            self.value_to_compress = [(value_to_consider - self.l[i]) + self.all_error_i[-1][i]
                                       for i in range(self.parameters.nb_devices)]
         else:
             self.value_to_compress = (value_to_consider - self.l) + self.all_error_i[-1]
@@ -222,12 +227,9 @@ class ArtemisUpdate(AbstractFLUpdate):
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
-        # Memory for bidirectional compression:
-        self.l = torch.zeros(parameters.n_dimensions, dtype=np.float)
-
     def update_model(self, model_param):
         if self.parameters.randomized:
-            self.v = self.parameters.momentum * self.v + (torch.mean(torch.stack(self.omega), dim=0) + self.l)
+            self.v = self.parameters.momentum * self.v + (torch.mean(torch.stack(self.omega + self.l), dim=0))
         else:
             self.v = self.parameters.momentum * self.v + (self.omega + self.l)
         return model_param - self.step * self.v
@@ -323,9 +325,6 @@ class DownCompressModelUpdate(AbstractFLUpdate):
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
-        # Memory for bidirectional compression:
-        self.l = torch.zeros(parameters.n_dimensions, dtype=np.float)
-
     def send_back_global_informations_and_update(self, cost_models):
         cpt = 0
         for worker, _ in self.get_set_of_workers(cost_models):
@@ -362,7 +361,10 @@ class DownCompressModelUpdate(AbstractFLUpdate):
 
         # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
         if self.parameters.double_use_memory:
-            self.l += self.parameters.learning_rate * self.omega
+            if self.parameters.randomized:
+                self.l = [self.l[i] + self.parameters.learning_rate * self.omega[i] for i in range(self.parameters.nb_devices)]
+            else:
+                self.l = self.l + self.parameters.learning_rate * self.omega
 
         return model_param
 

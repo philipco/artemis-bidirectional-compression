@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import time
+from copy import copy
+
 import numpy as np
 import torch
 import math
@@ -149,23 +151,28 @@ class AGradientDescent(ABC):
             for j in range(0, math.floor(number_of_inside_it)):
                 in_loop = time.time()
                 full_nb_iterations += 1
+                past_model = copy(current_model_param)
                 # If in streaming mode, we send the epoch numerous, else the numerous of the inside iteration.
                 current_model_param = self.update.compute(current_model_param, cost_models, full_nb_iterations, (j, i)[self.parameters.streaming])
                 inside_loop_time += (time.time() - in_loop)
 
-            self.model_params.append(current_model_param)
+            # We add the past update because at this time, local update has not been yet updated.
+            self.model_params.append(past_model)
             self.losses.append(self.update.compute_cost(self.model_params[-1], cost_models))
             if self.parameters.randomized:
                 self.norm_error_feedback.append(torch.norm(torch.mean(torch.stack(self.update.all_error_i[-1]), dim=0), p=2))
-                self.dist_to_model.append(np.mean(
-                    [torch.norm(self.model_params[-1] - w.local_update.model_param)**2 for w in self.workers]
-                ))
-                self.var_models.append(torch.mean(
-                    torch.var(torch.stack([w.local_update.model_param for w in self.workers]))
-                ))
-
             else:
                 self.norm_error_feedback.append(torch.norm(self.update.all_error_i[-1], p=2))
+
+            self.dist_to_model.append(np.mean(
+                [torch.norm(self.model_params[-1] - w.local_update.model_param) ** 2 for w in self.workers]
+            ))
+            # if (not self.parameters.randomized):
+            #     assert torch.all(torch.norm(self.model_params[-1] - self.workers[0].local_update.model_param) ** 2 == torch.tensor(0.0)), \
+            #         "The distance from central server and remote nodes is not null."
+            self.var_models.append(torch.mean(
+                torch.var(torch.stack([w.local_update.model_param for w in self.workers]))
+            ))
 
             # The norm of error feedback has not been initialized. We initialize it now with the first value.
             if len(self.norm_error_feedback) == 1:

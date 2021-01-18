@@ -460,6 +460,25 @@ class ModelComprMem(ModelCompr):
         params.double_use_memory = True
         return params
 
+class RandMCM(ModelComprMem):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "RandMCM"
+
+    def type_FL(self):
+        return DownCompressModelDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.randomized = True
+        return params
+
 class ModelComprEF(ModelCompr):
     """Predefine parameters to run Artemis algorithm.
     """
@@ -545,3 +564,10 @@ class FedAvg(VanillaSGD):
         return params
 
 FL_ALGOS = [VanillaSGD(), FedAvg(), DoubleSqueeze(), ArtemisEF(), Artemis()]
+
+ALGO_EF = [Qsgd(), Diana(), Artemis(), ArtemisEF(), DoubleSqueeze()]
+
+STUDIED_ALGO = [VanillaSGD(), FedAvg(), ArtemisEF(), DoubleSqueeze(), Artemis(),
+                RArtemis(), RArtemisEF(), Sympa(), ModelComprMem()]
+
+GAME_OF_THRONES = [VanillaSGD(), Artemis(), RArtemis(), ModelCompr(), ModelComprMem(), RandMCM()]

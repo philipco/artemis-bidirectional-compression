@@ -19,7 +19,7 @@ from src.utils.Utilities import pickle_saver
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-nb_run = 2  # Number of gradient descent before averaging.
+nb_run = 5  # Number of gradient descent before averaging.
 
 
 def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_models, compression_model: CompressionModel,
@@ -66,8 +66,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
         elapsed_time = time.time() - start_time
 
         if logs_file:
-            Path("logs/").mkdir(parents=True, exist_ok=True)
-            logs = open("logs/" + logs_file, "a+")
+            logs = open("{0}/logs.txt".format(logs_file), "a+")
             logs.write("{0} - run {1}, final loss : {2}, memory : {3} Mbytes\n"
                        .format(predefined_parameters.name(), i, model_descent.losses[-1], model_descent.memory_info))
             logs.close()
@@ -80,6 +79,24 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
     model_descent = model(parameters)
     model_descent.run(cost_models)
     return model_descent
+
+def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1,
+                                stochastic: bool = True, nb_epoch: int = 250, step_size = None,
+                                compression: CompressionModel = None, use_averaging: bool = False) -> None:
+    all_descent = {}
+    for type_params in tqdm(list_algos):
+        multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models,
+                                                   compression_model=compression,
+                                                   use_averaging=use_averaging,
+                                                   stochastic=stochastic,
+                                                   nb_epoch=nb_epoch,
+                                                   step_formula=step_size,
+                                                   batch_size=batch_size,
+                                                   logs_file=filename)
+        all_descent[type_params.name()] = multiple_sg_descent
+    res = ResultsOfSeveralDescents(all_descent, len(cost_models))
+    stochasticity = ['sto'] if stochastic else "full"
+    pickle_saver(res, "{0}/descent-{1}-b{2}".format(filename, stochasticity, batch_size))
 
 def run_for_different_scenarios(cost_models, list_algos, values, labels, filename: str, batch_size: int = 1,
                                 stochastic: bool = True, nb_epoch: int = 250, step_formula = None,
@@ -106,13 +123,13 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
                                                            use_averaging=True, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=value, nb_epoch=nb_epoch, compression_model=compression,
-                                                           logs_file="{0}.txt".format(filename))
+                                                           logs_file=filename)
             if scenario == "compression":
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
                                                            use_averaging=True, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=step_formula,
                                                            compression_model=value, nb_epoch=nb_epoch,
-                                                           logs_file="{0}.txt".format(filename))
+                                                           logs_file=filename)
 
             descent_by_step_size[label] = multiple_sg_descent
             losses_by_label, losses_avg_by_label, norm_ef_by_label, dist_model_by_label = [], [], [], []

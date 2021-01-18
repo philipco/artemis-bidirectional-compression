@@ -6,11 +6,12 @@ This python file provide facilities to plot the results of a (multiple) gradient
 
 import matplotlib.pyplot as plt
 
-markers = ["o", "v", "s", "p", "X", "d", "P", "*"]
-markersize = 2
+markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
+markersize = 1
 curve_size=3
 fontsize=30
 fontsize_legend=14
+# figsize=(15,7)
 figsize=(8,7)
 fourfigsize=(13, 8)
 sixfigsize=(13, 11)
@@ -25,7 +26,7 @@ nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all_error=None,
                     x_points=None, x_legend=None, one_on_two_points=True, xlabels=None,
-                    ylegends="loss", ylim=False, omega_c = None):
+                    ylegends="loss", ylim=False, omega_c = None, picture_name=None):
 
     assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
 
@@ -40,7 +41,9 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
     plt.figure(figsize=figsize)
     it = 0
 
-    for i in range(min(len(all_losses), len(markers))):
+    nb_curves = min(len(all_losses), len(markers))
+
+    for i in range(nb_curves):
         abscisse = [i for i in range(N_it)]
         error_distance = all_losses[i]
         lw = curve_size-1 if len(error_distance) > 40 else curve_size
@@ -63,7 +66,8 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
             legend_i = legend[i]
             if omega_c:
                 legend_i = legend_i + " {0}".format(str(omega_c[i]))[:4]
-            plt.errorbar(abscisse, objectives_dist, yerr=error_to_plot, label=legend_i, lw=lw, marker=markers[it], markersize=ms)
+            plt.errorbar(abscisse, objectives_dist, yerr=error_to_plot, label=legend_i, lw=lw, marker=markers[it],
+                         markersize=ms)
 
         else:
             objectives_dist = error_distance
@@ -77,7 +81,8 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
 
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
     setup_plot(x_legend + title_precision, ylegends=ylegends, xlog=(x_points is not None), xlabels=xlabels,
-               ylim=ylim)
+               ylim=ylim, picture_name=picture_name)
+
 
 
 def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_dim, legend, obj_min, objective_keys,
@@ -105,7 +110,7 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
 
 
 def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False,
-               xlabels=None, ylim=False):
+               xlabels=None, ylim=False, picture_name=None):
     if ylog:
         plt.yscale("log")
     if ylim:
@@ -123,6 +128,8 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
     plt.ylabel(Y_LEGENDS[ylegends], fontsize=fontsize)
     plt.legend(loc='best', fontsize=fontsize_legend)
     plt.tight_layout()
+    if picture_name:
+        plt.savefig('{0}.eps'.format(picture_name), format='eps')
     plt.show()
 
 
