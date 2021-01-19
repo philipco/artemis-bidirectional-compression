@@ -103,9 +103,6 @@ def rebalancing_clusters(X_origin, Y_origin):
             # Keeping in the largest cluster the second half of its data.
             X[max_lenght[1]] = X[max_lenght[1]][int(max_lenght[0] / 2):]
             Y[max_lenght[1]] = Y[max_lenght[1]][int(max_lenght[0] / 2):]
-    nb_devices = len(X)
-    for i in range(nb_devices):
-        print("Number of points on device {0} : {1}".format(i, len(X[i])))
     return X, Y
 
 

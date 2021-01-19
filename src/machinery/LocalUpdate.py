@@ -5,7 +5,7 @@ In this python file is provided tools to implement any local update scheme. This
 devices in federated learning.
 """
 import random
-from copy import deepcopy
+from copy import deepcopy, copy
 
 import scipy.sparse as sp
 import torch
@@ -67,13 +67,13 @@ class AbstractLocalUpdate(ABC):
             self.g_i = cost_model.grad(self.model_param)
 
     @abstractmethod
-    def compute_locally(self, cost_model: ACostModel, j: int):
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float):
         pass
 
 
 class LocalGradientVanillaUpdate(AbstractLocalUpdate):
 
-    def compute_locally(self, cost_model: ACostModel, j: int):
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
         self.compute_local_gradient(cost_model, j)
 
         self.delta_i = deepcopy(self.g_i - self.h_i)
@@ -93,7 +93,7 @@ class LocalDianaUpdate(AbstractLocalUpdate):
             self.v = deepcopy(self.parameters.momentum * self.v + tensor)
             self.model_param = deepcopy(self.model_param - step * self.v)
 
-    def compute_locally(self, cost_model: ACostModel, j: int):
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
         self.compute_local_gradient(cost_model, j)
         if self.g_i is None:
             return None
@@ -125,23 +125,93 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
                 decompressed_value, self.l_i = tensor + self.l_i, self.l_i + learning_rate_down * tensor
             else:
                 decompressed_value = tensor
-            if not self.parameters.double_use_memory:
-                assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
-                    "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
-            # Updating the model with the new gradients.
             self.v = self.parameters.momentum * self.v + decompressed_value
             self.model_param = self.model_param - step * self.v
 
-    def compute_locally(self, cost_model: ACostModel, j: int):
+        if not self.parameters.double_use_memory:
+            assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
+                "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
+
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
         self.compute_local_gradient(cost_model, j)
         if self.g_i is None:
             return None
 
         self.delta_i = (self.g_i - self.h_i) + self.error_i
         quantized_delta_i = self.parameters.compression_model.compress(self.delta_i)
-        # if self.parameters.error_feedback:
-        #     # print(self.error_i)
-        #     self.error_i = self.delta_i - quantized_delta_i
+        if self.parameters.up_error_feedback:
+            self.error_i = self.delta_i - quantized_delta_i
         self.h_i += self.parameters.learning_rate * quantized_delta_i
         return quantized_delta_i
+
+class LocalFedAvgUpdate(AbstractLocalUpdate):
+
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+        self.model_param = copy(tensor_sent)
+
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float):
+        for local_iteration in range (self.parameters.nb_local_update):
+             for i in range(cost_model.X.shape[0] // (self.parameters.batch_size * self.parameters.nb_local_update)):
+                self.compute_local_gradient(cost_model, j)
+                self.model_param = copy(self.model_param - step_size * self.g_i)
+        return self.model_param
+
+
+class LocalDownCompressModelUpdate(AbstractLocalUpdate):
+
+    def __init__(self, parameters: Parameters) -> None:
+        super().__init__(parameters)
+
+        # For bidirectional compression :
+        self.l_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+        learning_rate_down = self.parameters.learning_rate
+
+        if self.parameters.double_use_memory:
+            decompressed_value, self.l_i = tensor_sent + self.l_i, self.l_i + learning_rate_down * tensor_sent
+        else:
+            decompressed_value = tensor_sent
+
+        self.model_param = decompressed_value
+
+        if not self.parameters.double_use_memory:
+            assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
+                "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
+
+    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
+        self.compute_local_gradient(cost_model, j)
+        if self.g_i is None:
+            return None
+
+        self.delta_i = (self.g_i - self.h_i) + self.error_i
+        quantized_delta_i = self.parameters.compression_model.compress(self.delta_i)
+        self.h_i += self.parameters.learning_rate * quantized_delta_i
+        return quantized_delta_i
+
+
+class LocalSympaUpdate(LocalArtemisUpdate):
+    """This class carry out the local update of the Artemis algorithm."""
+
+    def send_global_informations_and_update_local_param(self, tuple_sent: torch.FloatTensor, step: float):
+        learning_rate_down = self.parameters.learning_rate
+
+        g, model_param = tuple_sent
+
+        # l_i must be update with true omega, not with it "unzip" version which corresponds to compress model param.
+        # As we override model_param, we need to update l_i in the same operation,
+        # to benefit from the true model_param.
+        if self.parameters.double_use_memory:
+            decompressed_value, self.l_i = g + self.l_i, self.l_i + learning_rate_down * g
+        else:
+            decompressed_value = g
+
+        # Updating the model with the new gradients.
+        self.model_param = model_param - step * decompressed_value
+
+        if not self.parameters.double_use_memory:
+            assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
+                "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
+
+        return self.model_param

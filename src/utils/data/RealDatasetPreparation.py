@@ -4,23 +4,13 @@ Created by Philippenko, 10 January 2020.
 This class prepare the real dataset for usage.
 """
 import pandas as pd
-import os
 
 import torch
 from sklearn.preprocessing import scale
 
-from src.utils.Utilities import pickle_loader, pickle_saver, file_exist
+from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, get_project_root
 from src.utils.data.DataClustering import find_cluster, clustering_data, tsne, check_data_clusterisation
 from src.utils.data.DataPreparation import add_bias_term
-
-
-def get_project_root() -> str:
-    import pathlib
-    path = str(pathlib.Path().absolute())
-    if not path.find("artemis"):
-        raise ValueError("Current directory looks to be higher than root of the project: {}".format(path))
-    split = path.split("artemis")
-    return split[0] + "artemis"
 
 def prepare_dataset_by_device(X_merged, Y_merged, nb_devices: int):
 
@@ -41,22 +31,28 @@ def prepare_dataset_by_device(X_merged, Y_merged, nb_devices: int):
     X = add_bias_term(X)
     return X, Y
 
-def prepare_noniid_dataset(data, pivot_label: str, filename: str, nb_cluster: int, double_check: bool =False):
+def prepare_noniid_dataset(data, pivot_label: str, data_path: str, pickle_path: str, nb_cluster: int, double_check: bool =False):
 
-    path = "{0}/notebook".format(get_project_root())
-    tsne_file = "{0}-tsne".format(filename)
-    if not file_exist("{0}.pkl".format(tsne_file), "{0}/pickle".format(path)):
+    # The TSNE representation is independent of the number of devices.
+    tsne_file = "{0}-tsne".format(data_path)
+    if not file_exist("{0}.pkl".format(tsne_file)):
         # Running TNSE to obtain a 2D representation of data
-        print("The TSNE ({0}) representation doesn't exist at this location : {1}"
-              .format(tsne_file, "{0}/pickle".format(path)))
+        print("The TSNE representation ({0}) doesn't exist."
+              .format(tsne_file))
         embedded_data = tsne(data)
-        pickle_saver(embedded_data, "{0}-tsne".format(filename), path)
+        pickle_saver(embedded_data, tsne_file)
 
+    tsne_cluster_file = "{0}/tsne-cluster".format(pickle_path)
+    if not file_exist("{0}.pkl".format(tsne_cluster_file)):
+        # Finding clusters in the TNSE.
+        print("Finding non-iid clusters in the TNSE represesentation: {0}.pkl".format(tsne_file))
+        embedded_data = pickle_loader("{0}".format(tsne_file))
+        print("Saving found clusters : {0}.pkl".format(tsne_cluster_file))
+        predicted_cluster = find_cluster(embedded_data, nb_cluster)
+        pickle_saver(predicted_cluster, "{0}".format(tsne_cluster_file))
 
-    embedded_data = pickle_loader("{0}-tsne".format(filename), path)
-    # Finding clusters in the TNSE
-    print("Finding non-iid clusters in the TNSE represesentation: {0}.pkl".format(tsne_file))
-    predicted_cluster = find_cluster(embedded_data, nb_cluster)
+    predicted_cluster = pickle_loader("{0}".format(tsne_cluster_file))
+
     # With the found clusters, splitting data.
     X, Y = clustering_data(data, predicted_cluster, pivot_label, nb_cluster)
 
@@ -67,7 +63,7 @@ def prepare_noniid_dataset(data, pivot_label: str, filename: str, nb_cluster: in
 
     return X, Y
 
-def prepare_superconduct(nb_devices: int, iid: bool = True, double_check: bool =False):
+def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool = False):
     data = pd.read_csv('{0}/dataset/superconduct/train.csv'.format(get_project_root()), sep=",")
     if data.isnull().values.any():
         print("There is missing value.")
@@ -89,10 +85,10 @@ def prepare_superconduct(nb_devices: int, iid: bool = True, double_check: bool =
         Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(data, "critical_temp", "superconduct", nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(data, "critical_temp", data_path + "/superconduct", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
-def prepare_quantum(nb_devices: int, iid: bool = True, double_check: bool =False):
+def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
     data = pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_project_root()), sep="\t", header=None)
 
     # Looking for missing values.
@@ -142,6 +138,6 @@ def prepare_quantum(nb_devices: int, iid: bool = True, double_check: bool =False
         Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(data, "state", "quantum", nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(data, "state", data_path + "/quantum", pickle_path, nb_devices, double_check)
 
     return X, Y, dim + 1 # Because we added one column for the bias

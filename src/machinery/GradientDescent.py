@@ -22,14 +22,18 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import time
+from copy import copy
+
 import numpy as np
 import torch
 import math
 import os
 import psutil
 
-from src.machinery.GradientUpdateMethod import ArtemisUpdate, AbstractGradientUpdate, GradientVanillaUpdate, DianaUpdate
-from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate
+from src.machinery.GradientUpdateMethod import ArtemisUpdate, AbstractGradientUpdate, GradientVanillaUpdate, \
+    DianaUpdate, SympaUpdate, DownCompressModelUpdate, FedAvgUpdate
+from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate, \
+    LocalSympaUpdate, LocalDownCompressModelUpdate, LocalFedAvgUpdate
 from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
 from src.models.CompressionModel import SQuantization
@@ -147,11 +151,13 @@ class AGradientDescent(ABC):
             for j in range(0, math.floor(number_of_inside_it)):
                 in_loop = time.time()
                 full_nb_iterations += 1
+                past_model = copy(current_model_param)
                 # If in streaming mode, we send the epoch numerous, else the numerous of the inside iteration.
                 current_model_param = self.update.compute(current_model_param, cost_models, full_nb_iterations, (j, i)[self.parameters.streaming])
                 inside_loop_time += (time.time() - in_loop)
 
-            self.model_params.append(current_model_param)
+            # We add the past update because at this time, local update has not been yet updated.
+            self.model_params.append(past_model)
             self.losses.append(self.update.compute_cost(self.model_params[-1], cost_models))
             if self.parameters.randomized:
                 self.norm_error_feedback.append(torch.norm(torch.mean(torch.stack(self.update.all_error_i[-1]), dim=0), p=2))
@@ -165,6 +171,15 @@ class AGradientDescent(ABC):
             else:
                 self.norm_error_feedback.append(torch.norm(self.update.all_error_i[-1], p=2))
 
+            self.dist_to_model.append(np.mean(
+                [torch.norm(self.model_params[-1] - w.local_update.model_param) ** 2 for w in self.workers]
+            ))
+            # if (not self.parameters.randomized):
+            #     assert torch.all(torch.norm(self.model_params[-1] - self.workers[0].local_update.model_param) ** 2 == torch.tensor(0.0)), \
+            #         "The distance from central server and remote nodes is not null."
+            self.var_models.append(torch.mean(
+                torch.var(torch.stack([w.local_update.model_param for w in self.workers]))
+            ))
             # The norm of error feedback has not been initialized. We initialize it now with the first value.
             if len(self.norm_error_feedback) == 1:
                 self.norm_error_feedback.append(self.norm_error_feedback[0])
@@ -283,3 +298,44 @@ class DianaDescent(AGradientDescent):
 
     def get_name(self) -> str:
         return "Diana"
+
+class FedAvgDescent(AGradientDescent):
+
+    def __local_update__(self):
+        return LocalFedAvgUpdate
+
+    def __update_method__(self) -> AbstractGradientUpdate:
+        return FedAvgUpdate(self.parameters, self.workers)
+
+    def __number_iterations__(self, cost_models) -> int:
+        return self.parameters.nb_epoch
+
+    def __number_iterations__(self, cost_models) -> int:
+        """Return the number of iterations needed to perform one epoch."""
+        return self.parameters.nb_epoch
+
+    def get_name(self) -> str:
+        return "FedAvg"
+
+class DownCompressModelDescent(AGradientDescent):
+
+    def __local_update__(self):
+        return LocalDownCompressModelUpdate
+
+    def __update_method__(self) -> AbstractGradientUpdate:
+        return DownCompressModelUpdate(self.parameters, self.workers)
+
+    def get_name(self) -> str:
+        return "DwnComprModel"
+
+
+class SympaDescent(AGradientDescent):
+
+    def __local_update__(self):
+        return LocalSympaUpdate
+
+    def __update_method__(self) -> AbstractGradientUpdate:
+        return SympaUpdate(self.parameters, self.workers)
+
+    def get_name(self) -> str:
+        return "Sympa"

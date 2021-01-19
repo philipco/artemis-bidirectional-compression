@@ -48,13 +48,14 @@ class Parameters:
                  verbose: bool = False,
                  stochastic: bool = True,
                  streaming: bool = False,
-                 compress_gradients: bool = True,
                  use_memory: bool = False,
                  use_double_memory: bool = False,
                  use_averaging: bool = False,
                  time_debug: bool = False,
                  randomized: bool = False,
-                 error_feedback: bool = False) -> None:
+                 down_error_feedback: bool = False,
+                 up_error_feedback: bool = False,
+                 nb_local_update: int = 1) -> None:
         super().__init__()
         self.cost_models = cost_models  # Cost model to use for gradient descent.
         self.federated = federated  # Boolean to say if we do federated learning or not.
@@ -66,10 +67,7 @@ class Parameters:
         self.regularization_rate = regularization_rate  # coefficient of regularization
         self.force_learning_rate = force_learning_rate
         self.momentum = momentum  # momentum coefficient
-        if compression_model == None:
-            self.compression_model = RandomSparsification(10, n_dimensions)
-        else:
-            self.compression_model = compression_model  # quantization parameter
+        self.compression_model = compression_model  # quantization parameter
         if step_formula is None:
             self.step_formula = default_step_formula(stochastic)
         else:
@@ -78,14 +76,16 @@ class Parameters:
         self.bidirectional = bidirectional
         self.stochastic = stochastic  # true if running a stochastic gradient descent
         self.streaming = streaming  # True if each sample should be used only once !
-        self.compress_gradients = compress_gradients
         self.use_memory = use_memory  # use memory when sending to global server
         self.double_use_memory = use_double_memory  # a memory at back communication
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
         self.time_debug = time_debug  # True is one want to debug the time spent in each procedure.
         self.randomized = randomized
-        self.error_feedback = error_feedback
+        self.down_error_feedback = down_error_feedback
+        self.up_error_feedback = up_error_feedback
+        self.nb_local_update = nb_local_update
+
 
     def print(self):
         print("federated", self.federated)

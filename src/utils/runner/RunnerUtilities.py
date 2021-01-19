@@ -66,8 +66,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
         elapsed_time = time.time() - start_time
 
         if logs_file:
-            Path("logs/").mkdir(parents=True, exist_ok=True)
-            logs = open("logs/" + logs_file, "a+")
+            logs = open("{0}/logs.txt".format(logs_file), "a+")
             logs.write("{0} - run {1}, final loss : {2}, memory : {3} Mbytes\n"
                        .format(predefined_parameters.name(), i, model_descent.losses[-1], model_descent.memory_info))
             logs.close()
@@ -80,6 +79,28 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
     model_descent = model(parameters)
     model_descent.run(cost_models)
     return model_descent
+
+def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1,
+                                stochastic: bool = True, nb_epoch: int = 250, step_size = None,
+                                compression: CompressionModel = None, use_averaging: bool = False) -> None:
+    all_descent = {}
+    for type_params in tqdm(list_algos):
+        multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models,
+                                                   compression_model=compression,
+                                                   use_averaging=use_averaging,
+                                                   stochastic=stochastic,
+                                                   nb_epoch=nb_epoch,
+                                                   step_formula=step_size,
+                                                   batch_size=batch_size,
+                                                   logs_file=filename)
+        all_descent[type_params.name()] = multiple_sg_descent
+    res = ResultsOfSeveralDescents(all_descent, len(cost_models))
+    stochasticity = 'sto' if stochastic else "full"
+    if stochastic:
+        experiments_settings = "{1}-b{2}".format(stochasticity, batch_size)
+    else:
+        experiments_settings = stochasticity
+    pickle_saver(res, "{0}/descent-{1}".format(filename, experiments_settings))
 
 def run_for_different_scenarios(cost_models, list_algos, values, labels, filename: str, batch_size: int = 1,
                                 stochastic: bool = True, nb_epoch: int = 250, step_formula = None,
@@ -106,13 +127,14 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
                                                            use_averaging=True, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=value, nb_epoch=nb_epoch, compression_model=compression,
-                                                           logs_file="{0}.txt".format(filename))
+                                                           logs_file=filename)
+
             if scenario == "compression":
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
                                                            use_averaging=True, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=step_formula,
                                                            compression_model=value, nb_epoch=nb_epoch,
-                                                           logs_file="{0}.txt".format(filename))
+                                                           logs_file=filename)
 
             descent_by_step_size[label] = multiple_sg_descent
             losses_by_label, losses_avg_by_label, norm_ef_by_label, dist_model_by_label = [], [], [], []
@@ -157,9 +179,17 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
         all_kind_of_compression_res.append(all_descent_various_gamma)
 
     res_various_gamma = ResultsOfSeveralDescents(all_descent_various_gamma, nb_devices_for_the_run)
-    pickle_saver(res_various_gamma, "{0}-{1}".format(filename, scenario))
+
+    stochasticity = 'sto' if stochastic else "full"
+    if stochastic:
+        experiments_settings = "{1}-b{2}".format(stochasticity, batch_size)
+    else:
+        experiments_settings = stochasticity
+
+    pickle_saver(res_various_gamma, "{0}/{1}-{2}".format(filename, scenario, experiments_settings))
 
     res_opt_gamma = ResultsOfSeveralDescents(optimal_descents, nb_devices_for_the_run)
-    pickle_saver(res_opt_gamma, "{0}-optimal_{1}".format(filename, scenario))
+    pickle_saver(res_opt_gamma, "{0}/{1}-optimal-{2}".format(filename, scenario, experiments_settings))
 
-    pickle_saver(descent_by_algo_and_step_size, "{0}-descent_by_algo_and_{1}".format(filename, scenario))
+    pickle_saver(descent_by_algo_and_step_size, "{0}/{1}-descent_by_algo-{2}"
+                 .format(filename, scenario, experiments_settings))

@@ -46,7 +46,7 @@ def compute_number_of_bits(type_params: Parameters, nb_epoch: int):
     return number_of_bits[1:]
 
 
-def pickle_saver(data, filename: str, path: str = ".") -> None:
+def pickle_saver(data, filename: str) -> None:
     """Save a python object into a pickle file.
 
     If a file with the same name already exists, remove it.
@@ -56,7 +56,7 @@ def pickle_saver(data, filename: str, path: str = ".") -> None:
         data: the python object to save.
         filename: the filename where the object is saved.
     """
-    file_to_save = "{0}/pickle/{1}.pkl".format(path, filename)
+    file_to_save = "{0}.pkl".format(filename)
     if os.path.exists(file_to_save):
         os.remove(file_to_save)
     pickle_out = open(file_to_save, "wb")
@@ -64,7 +64,7 @@ def pickle_saver(data, filename: str, path: str = ".") -> None:
     pickle_out.close()
 
 
-def pickle_loader(filename: str, path: str = "."):
+def pickle_loader(filename: str):
     """Load a python object saved with pickle.
 
     Args:
@@ -73,11 +73,25 @@ def pickle_loader(filename: str, path: str = "."):
     Returns:
         The python object to load.
     """
-    pickle_in = open("{0}/pickle/{1}.pkl".format(path, filename), "rb")
+    pickle_in = open("{0}.pkl".format(filename), "rb")
     return pickle.load(pickle_in)
 
-def file_exist(filename: str, path: str = "."):
-    return os.path.isfile("{0}/{1}".format(path, filename))
+def get_project_root() -> str:
+    import pathlib
+    path = str(pathlib.Path().absolute())
+    if not path.find("artemis"):
+        raise ValueError("Current directory looks to be higher than root of the project: {}".format(path))
+    split = path.split("artemis")
+    return split[0] + "artemis"
+
+
+def create_folder_if_not_existing(folder):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+
+
+def file_exist(filename: str):
+    return os.path.isfile(filename)
 
 
 def check_memory_usage():

@@ -4,13 +4,28 @@ Artemis: fast convergence guarantees for bidirectional compression in Federated 
 This code has been written by Constantin Philippenko, and is a jointly work with Aymeric Dieuleveut 
 at Ecole Polytechnique.
 
-**To the attention of AISTAT reviewers.**
-To keep anonymity during the review process, we used a repository anonymizer. 
-Unfortunately, its interface doesn't allow to open notebooks in the browser. 
-Thus, for notebook visualization, we refer to the zip file provided in the supplementary material. 
 ## Experimentation
 
-We provide all the notebooks used to generated figures in our article in the folder `notebook/`. 
+All the illustrations have been generated using the script `experiments_runner.py`. 
+There is 8 parameters:
+
+1. `nb_devices: int`.
+2. `stochastic: bool`.
+3. `dataset: str`. Possible values are : ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']. 
+   The first two dataset are real, the three last are synthetics : two using the RMSE model, and one the logistic model. 
+4. `iid: str`. Possible values are ['iid', 'non-iid']. For synthetic dataset this option has no impact as linear models are 
+   using iid data, and logistic models are using non-iid data.
+5. `algos: str`. Possible values are ["uni-vs-bi", "with-without-ef", "compress-model"]. This corresponds to the different 
+   kind of algorithms we want to run. The first option analyzes the impact of bidirectionnel compression and of memory. 
+   The second option compares the impact of the error-feedback process. The last one compares algorithms compressing 
+   (or not) the model for the way back.
+6. `use_averaging: bool`. Set to true if you want to also have result for the Polyak-Ruppert averaging.
+7. `scenario: str`. Possible values are [None, "compression", "step"]. The first option will run with the default step 
+   size and the default compression. The second option will run experiments for various level of compression.
+   Last one will run experiments for different step size.
+8. `plot_only: bool`. Set to true if you do not want to re-run experiments and only re-generate figures.
+
+We provide all the notebooks used to investigate datasets in the folder `notebook/`. 
 To regenerate all the figures, just restart the notebook.  
 However we warn that they need to run for about 2hours to 12hours. 
 Yet, it is possible (using pickle) to load already generated data and to explore them. To do it: 
