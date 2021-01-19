@@ -20,22 +20,30 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str,
-                     use_averaging: bool = False, scenario: str = None):
+                     use_averaging: bool = False, scenario: str = None, plot_only: bool = False):
+
+    print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
+                                                           in zip(locals().keys(), locals().values())]))
 
     foldername = "{0}-{1}-N{2}".format(dataset, iid, nb_devices)
-    picture_path = "{0}/pictures/{1}".format(get_project_root(), foldername)
-    pickle_path = "{0}/notebook/pickle/{1}".format(get_project_root(), foldername)
+    picture_path = "{0}/pictures/{1}/{2}".format(get_project_root(), foldername, algos)
+    # Contains the pickle of the dataset
+    data_path = "{0}/pickle".format(get_project_root(), foldername)
+    # Contains the pickle of the minimum objective.
+    pickle_path = "{0}/{1}".format(data_path, foldername)
+    # Contains the pickle of the gradient descent for each kind of algorithms.
+    algos_pickle_path = "{0}/{1}".format(pickle_path, algos)
 
     # Create folders for pictures and pickle files
-    create_folder_if_not_existing(pickle_path)
+    create_folder_if_not_existing(algos_pickle_path)
     create_folder_if_not_existing(picture_path)
 
     assert algos in ["uni-vs-bi", "with-without-ef", "compress-model"], "The possible choice of algorithms are : " \
         "uni-vs-bi (to compare uni-compression with bi-compression), "\
         "with-without-ef (to compare algorithms using or not error-feedback), " \
         "compress-model (algorithms compressing the model)."
-    assert dataset in ["quantum", "superconduct", "synth_logistic", "synth_linear", "synth_linear_nonoised"], \
-        "The available dataset are ['quantum', 'superconduct', 'synth_linear', 'synth_linear_nonoised']."
+    assert dataset in ["quantum", "superconduct", "synth_logistic", "synth_linear_noised", "synth_linear_nonoised"], \
+        "The available dataset are ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']."
     assert iid in ["iid", "non-iid"], "The iid option are ['iid', 'non-iid']."
     assert scenario in [None, "compression", "step"], "The possible scenario are [None, 'compression', 'step']."
 
@@ -43,38 +51,26 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
 
     # Select the correct dataset
     if dataset == "quantum":
-        X, Y, dim_notebook = prepare_quantum(nb_devices, iid=False)
+        X, Y, dim_notebook = prepare_quantum(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=False)
         batch_size = 400
         model = LogisticModel
     elif dataset == "superconduct":
-        X, Y, dim_notebook = prepare_superconduct(nb_devices, iid=False)
+        X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path= data_path, pickle_path=pickle_path, iid=False)
         batch_size = 50
         model = RMSEModel
     elif dataset == "synth_logistic":
         dim_notebook = 2
         batch_size = 1
         model = LogisticModel
-        if not file_exist("data.pkl", pickle_path):
+        if not file_exist("{0}/data.pkl".format(pickle_path)):
             w = torch.FloatTensor([10, 10]).to(dtype=torch.float64)
             X, Y = build_data_logistic(w, n_dimensions=2, n_devices=nb_devices, with_seed=False)
             pickle_saver((X, Y), pickle_path + "/data")
         else:
             X, Y = pickle_loader(pickle_path + "/data")
-    elif dataset == "synth_linear":
+    elif dataset == "synth_linear_noised":
         dim_notebook = 20
-        if not file_exist("data.pkl", pickle_path):
-            w_true = generate_param(dim_notebook-1)
-            X, Y = build_data_linear(w_true, n_dimensions=dim_notebook- 1,
-                                     n_devices=nb_devices, with_seed=False, without_noise=True)
-            X = add_bias_term(X)
-            pickle_saver((X, Y), pickle_path + "/data")
-        else:
-            X, Y = pickle_loader(pickle_path + "/data")
-        model = RMSEModel
-        batch_size = 1
-    elif dataset == "synth_linear_nonoised":
-        dim_notebook = 20
-        if not file_exist("data.pkl", pickle_path):
+        if not file_exist("{0}/data.pkl".format(pickle_path)):
             w_true = generate_param(dim_notebook-1)
             X, Y = build_data_linear(w_true, n_dimensions=dim_notebook-1,
                                      n_devices=nb_devices, with_seed=False, without_noise=False)
@@ -84,8 +80,20 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
             X, Y = pickle_loader(pickle_path + "/data")
         model = RMSEModel
         batch_size = 1
+    elif dataset == "synth_linear_nonoised":
+        dim_notebook = 20
+        if not file_exist("{0}/data.pkl".format(pickle_path)):
+            w_true = generate_param(dim_notebook-1)
+            X, Y = build_data_linear(w_true, n_dimensions=dim_notebook-1,
+                                     n_devices=nb_devices, with_seed=False, without_noise=True)
+            X = add_bias_term(X)
+            pickle_saver((X, Y), pickle_path + "/data")
+        else:
+            X, Y = pickle_loader(pickle_path + "/data")
+        model = RMSEModel
+        batch_size = 1
 
-    nb_epoch = 20 if stochastic else 200
+    nb_epoch = 100 if stochastic else 400
 
     # Select the list of algorithms:
     if algos == "uni-vs-bi":
@@ -114,7 +122,7 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
     # Creating cost models which will be used to computed cost/loss, gradients, L ...
     cost_models = build_several_cost_model(model, X_r, Y_r, nb_devices)
 
-    if not file_exist("obj_min.pkl", pickle_path):
+    if not file_exist("{0}/obj_min.pkl".format(pickle_path)):
         obj_min_by_N_descent = SGD_Descent(Parameters(n_dimensions=dim_notebook,
                                                   nb_devices=nb_devices,
                                                   nb_epoch=10000,
@@ -138,93 +146,105 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
 
     stochasticity = 'sto' if stochastic else "full"
 
-    if scenario == "compression":
-        run_for_different_scenarios(cost_models, list_algos, values_compression, label_compression,
-                                    filename=pickle_path,
-                                    batch_size=batch_size, stochastic=stochastic, step_formula=step_size,
-                                    scenario=scenario)
-    elif scenario == "step":
-        run_for_different_scenarios(cost_models, list_algos, step_formula, label_step_formula,
-                                    filename=pickle_path,
-                                    batch_size=batch_size, stochastic=stochastic, scenario=scenario,
-                                    compression=compression_by_default)
-    else:
-        print(step_size)
-        print(stochastic)
-        run_one_scenario(cost_models=cost_models, list_algos=list_algos,
-                         filename=pickle_path, batch_size=batch_size,
-                         stochastic=stochastic, nb_epoch=nb_epoch, step_size=step_size,
-                         use_averaging=use_averaging,
-                         compression=compression_by_default)
+    if not plot_only:
+
+        if scenario == "compression":
+            run_for_different_scenarios(cost_models, list_algos, values_compression, label_compression,
+                                        filename=algos_pickle_path,
+                                        batch_size=batch_size, stochastic=stochastic, step_formula=step_size,
+                                        scenario=scenario)
+        elif scenario == "step":
+            run_for_different_scenarios(cost_models, list_algos, step_formula, label_step_formula,
+                                        filename=algos_pickle_path,
+                                        batch_size=batch_size, stochastic=stochastic, scenario=scenario,
+                                        compression=compression_by_default)
+        else:
+            run_one_scenario(cost_models=cost_models, list_algos=list_algos,
+                             filename=algos_pickle_path, batch_size=batch_size,
+                             stochastic=stochastic, nb_epoch=nb_epoch, step_size=step_size,
+                             use_averaging=use_averaging,
+                             compression=compression_by_default)
 
     obj_min = pickle_loader("{0}/obj_min".format(pickle_path))
 
+    if stochastic:
+        experiments_settings = "{1}-b{2}".format(stochasticity, batch_size)
+    else:
+        experiments_settings = stochasticity
+
     if scenario is None:
-        res = pickle_loader("{0}/descent-{1}-b{2}".format(pickle_path, stochasticity, batch_size))
+        res = pickle_loader("{0}/descent-{1}".format(algos_pickle_path, experiments_settings))
 
         # Plotting without averaging
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
                         all_error=res.get_std(obj_min), x_legend="Number of passes on data\n({0})".format(iid),
-                        picture_name="{0}/it-noavg-{1}-b{2}".format(picture_path, stochasticity, batch_size))
+                        picture_name="{0}/it-noavg-{1}".format(picture_path, experiments_settings))
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
                         x_points=res.X_number_of_bits, x_legend="Communicated bits ({0})".format(iid),
-                        all_error=res.get_std(obj_min), picture_name="{0}/bits-noavg-{1}-b{2}"
-                        .format(picture_path, stochasticity, batch_size))
+                        all_error=res.get_std(obj_min), picture_name="{0}/bits-noavg-{1}"
+                        .format(picture_path, experiments_settings))
 
         # Plotting with averaging
         if use_averaging:
             plot_error_dist(res.get_loss(obj_min, averaged=True), res.names, res.nb_devices_for_the_run,
                             dim_notebook, all_error=res.get_std(obj_min, averaged=True),
                             x_legend="Number of passes on data\n(Avg, {0})".format(iid),
-                            picture_name="{0}/it-avg-{1}-b{2}"
-                            .format(picture_path, stochasticity, batch_size))
+                            picture_name="{0}/it-avg-{1}"
+                            .format(picture_path, experiments_settings))
             plot_error_dist(res.get_loss(obj_min, averaged=True), res.names, res.nb_devices_for_the_run, dim_notebook,
                             x_points=res.X_number_of_bits, all_error=res.get_std(obj_min, averaged=True),
                             x_legend="Communicated bits (Avg, {0})".format(iid),
-                            picture_name="{0}/bits-avg-{1}-b{2}"
-                            .format(picture_path, stochasticity, batch_size))
+                            picture_name="{0}/bits-avg-{1}"
+                            .format(picture_path, experiments_settings))
 
     if scenario == "step":
-        res = pickle_loader("{0}/{1}-{2}-b{3}".format(pickle_path, scenario, stochasticity, batch_size))
+        res = pickle_loader("{0}/{1}-{2}".format(algos_pickle_path, scenario, experiments_settings))
 
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
                         batch_size=batch_size,
                         all_error=res.get_std(obj_min),
                         x_legend="Step size ({0}, {1})".format(iid, str(compression_by_default.omega_c)[:4]),
                         one_on_two_points=False, xlabels=label_step_formula,
-                        picture_name="{0}/{1}-{2}-b{3}".format(picture_path, scenario, stochasticity, batch_size))
+                        picture_name="{0}/{1}-{2}".format(picture_path, scenario, experiments_settings))
 
-        res = pickle_loader("{0}/{1}-optimal-{2}-b{3}".format(pickle_path, scenario, stochasticity, batch_size))
+        res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
 
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
                         all_error=res.get_std(obj_min), batch_size=batch_size,
                         x_legend="(non-iid)", ylim=True,
-                        picture_name="{0}/{1}-optimal-it-{2}-b{3}".format(picture_path, scenario, stochasticity, batch_size))
+                        picture_name="{0}/{1}-optimal-it-{2}".format(picture_path, scenario, experiments_settings))
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
                         x_points=res.X_number_of_bits, batch_size=batch_size,
                         x_legend="Communicated bits\n(non-iid)", all_error=res.get_std(obj_min), ylim=True,
-                        picture_name="{0}/{1}-optimal-bits-{2}-b{3}".format(picture_path, scenario, stochasticity, batch_size))
+                        picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
 
     if scenario == "compression":
-        res = pickle_loader("{0}/{1}-{2}-b{3}".format(pickle_path, scenario, stochasticity, batch_size))
+        res = pickle_loader("{0}/{1}-{2}".format(algos_pickle_path, scenario, experiments_settings))
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook, batch_size=batch_size,
                         all_error=res.get_std(obj_min), x_legend="$\omega_c$ ({0})".format(iid),
                         one_on_two_points=False, xlabels=label_compression,
-                        picture_name="{0}/{1}-{2}-b{3}".format(picture_path, scenario, stochasticity, batch_size))
+                        picture_name="{0}/{1}-{2}".format(picture_path, scenario, experiments_settings))
 
-        res = pickle_loader("{0}/{1}-optimal-{2}-b{3}".format(pickle_path, scenario, stochasticity, batch_size))
+        res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
 
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
                         all_error=res.get_std(obj_min), batch_size=batch_size,
                         x_legend="(non-iid)", ylim=True,
-                        picture_name="{0}/{1}-optimal-it-{2}-b{3}".format(picture_path, scenario, stochasticity, batch_size))
+                        picture_name="{0}/{1}-optimal-it-{2}".format(picture_path, scenario, experiments_settings))
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
                         x_points=res.X_number_of_bits, batch_size=batch_size,
                         x_legend="Communicated bits\n(non-iid)", all_error=res.get_std(obj_min), ylim=True,
-                        picture_name="{0}/{1}-optimal-bits-{2}-b{3}".format(picture_path, scenario, stochasticity, batch_size))
+                        picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
 
 
 if __name__ == '__main__':
+    run_real_dataset(nb_devices=20, stochastic=False, dataset="synth_logistic", iid="non-iid", algos="uni-vs-bi",
+                     use_averaging=True)
+    run_real_dataset(nb_devices=20, stochastic=False, dataset="synth_linear_noised", iid="non-iid", algos="uni-vs-bi",
+                     use_averaging=True)
+    run_real_dataset(nb_devices=20, stochastic=False, dataset="synth_linear_nonoised", iid="non-iid", algos="uni-vs-bi",
+                     use_averaging=True)
+
     run_real_dataset(nb_devices=20, stochastic=False, dataset="quantum", iid="non-iid", algos="uni-vs-bi",
                      use_averaging=True, scenario="step")
     run_real_dataset(nb_devices=20, stochastic=False, dataset="superconduct", iid="non-iid", algos="uni-vs-bi",
@@ -236,4 +256,17 @@ if __name__ == '__main__':
     run_real_dataset(nb_devices=20, stochastic=False, dataset="quantum", iid="non-iid", algos="uni-vs-bi",
                      use_averaging=True)
     run_real_dataset(nb_devices=20, stochastic=False, dataset="superconduct", iid="non-iid", algos="uni-vs-bi",
+                     use_averaging=True)
+
+    run_real_dataset(nb_devices=20, stochastic=False, dataset="quantum", iid="non-iid", algos="compress-model",
+                     use_averaging=True, scenario="step")
+    run_real_dataset(nb_devices=20, stochastic=False, dataset="superconduct", iid="non-iid", algos="compress-model",
+                     use_averaging=True, scenario="step")
+    run_real_dataset(nb_devices=20, stochastic=False, dataset="quantum", iid="non-iid", algos="compress-model",
+                     use_averaging=True, scenario="compression")
+    run_real_dataset(nb_devices=20, stochastic=False, dataset="superconduct", iid="non-iid", algos="compress-model",
+                     use_averaging=True, scenario="compression")
+    run_real_dataset(nb_devices=20, stochastic=False, dataset="quantum", iid="non-iid", algos="compress-model",
+                     use_averaging=True)
+    run_real_dataset(nb_devices=20, stochastic=False, dataset="superconduct", iid="non-iid", algos="compress-model",
                      use_averaging=True)

@@ -3,7 +3,7 @@ Created by Philippenko, 6th March 2020.
 
 This python file provide facilities to plot the results of a (multiple) gradient descent run.
 """
-
+import matplotlib
 import matplotlib.pyplot as plt
 
 markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
@@ -110,7 +110,7 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
 
 
 def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False,
-               xlabels=None, ylim=False, picture_name=None):
+               xlabels=None, ylim=False, picture_name=None, ax = None):
     if ylog:
         plt.yscale("log")
     if ylim:
@@ -122,15 +122,18 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
     if xlabels:
         plt.xticks([i for i in range(0, len(xlabels))], xlabels, rotation=40, fontsize=xticks_fontsize-3)
     else:
+        # To limit the number of ticks on xaxis.
+        if not xlog:
+            plt.gca().xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(5))
         plt.xticks(fontsize=xticks_fontsize)
-        # plt.xticks(np.arange(0, 401, step=100), fontsize=xticks_fontsize)
     plt.xlabel(xlegends, fontsize=fontsize)
     plt.ylabel(Y_LEGENDS[ylegends], fontsize=fontsize)
     plt.legend(loc='best', fontsize=fontsize_legend)
     plt.tight_layout()
     if picture_name:
         plt.savefig('{0}.eps'.format(picture_name), format='eps')
-    plt.show()
+    else:
+        plt.show()
 
 
 def logistic_plot(X, Y):

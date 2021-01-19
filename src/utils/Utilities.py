@@ -90,8 +90,8 @@ def create_folder_if_not_existing(folder):
         os.makedirs(folder)
 
 
-def file_exist(filename: str, path: str = "."):
-    return os.path.isfile("{0}/{1}".format(path, filename))
+def file_exist(filename: str):
+    return os.path.isfile(filename)
 
 
 def check_memory_usage():
