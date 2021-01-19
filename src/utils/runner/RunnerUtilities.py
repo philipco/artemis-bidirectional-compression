@@ -19,7 +19,7 @@ from src.utils.Utilities import pickle_saver
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-nb_run = 5  # Number of gradient descent before averaging.
+nb_run = 2  # Number of gradient descent before averaging.
 
 
 def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_models, compression_model: CompressionModel,
@@ -128,6 +128,7 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
                                                            use_averaging=True, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=value, nb_epoch=nb_epoch, compression_model=compression,
                                                            logs_file=filename)
+
             if scenario == "compression":
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
                                                            use_averaging=True, stochastic=stochastic, batch_size=batch_size,

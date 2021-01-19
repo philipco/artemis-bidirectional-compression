@@ -161,6 +161,13 @@ class AGradientDescent(ABC):
             self.losses.append(self.update.compute_cost(self.model_params[-1], cost_models))
             if self.parameters.randomized:
                 self.norm_error_feedback.append(torch.norm(torch.mean(torch.stack(self.update.all_error_i[-1]), dim=0), p=2))
+                self.dist_to_model.append(np.mean(
+                    [torch.norm(self.model_params[-1] - w.local_update.model_param)**2 for w in self.workers]
+                ))
+                self.var_models.append(torch.mean(
+                    torch.var(torch.stack([w.local_update.model_param for w in self.workers]))
+                ))
+
             else:
                 self.norm_error_feedback.append(torch.norm(self.update.all_error_i[-1], p=2))
 
@@ -173,7 +180,6 @@ class AGradientDescent(ABC):
             self.var_models.append(torch.mean(
                 torch.var(torch.stack([w.local_update.model_param for w in self.workers]))
             ))
-
             # The norm of error feedback has not been initialized. We initialize it now with the first value.
             if len(self.norm_error_feedback) == 1:
                 self.norm_error_feedback.append(self.norm_error_feedback[0])

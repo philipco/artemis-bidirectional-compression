@@ -111,6 +111,7 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
 
 def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False,
                xlabels=None, ylim=False, picture_name=None, ax = None):
+  
     if ylog:
         plt.yscale("log")
     if ylim:
