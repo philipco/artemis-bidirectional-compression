@@ -4,14 +4,14 @@ numpy==1.16.4
 scipy
 tensorflow<2.0
 Pillow
+psutil
 matplotlib
 jupyter
 pandas>0.25
 scikit-learn
-python3-tk # doesn't work with conda - sudo apt-get install python3-tk
-torch
-syft
+pytorch
 torchvision
 seaborn
 tqdm
 joblib
+pympler

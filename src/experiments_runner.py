@@ -1,6 +1,7 @@
 """
 Created by Philippenko, 15 January 2021
 """
+import sys
 
 from src.models.CostModel import LogisticModel, RMSEModel, build_several_cost_model
 from src.machinery.PredefinedParameters import *
@@ -19,11 +20,20 @@ def deacreasing_step_size(it, L, omega, N): return 1 / (L * sqrt(it))
 def batch_step_size(it, L, omega, N): return 1 / L
 
 
-def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str,
-                     use_averaging: bool = False, scenario: str = None, plot_only: bool = False):
+def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str,
+                    use_averaging: bool = False, scenario: str = None, plot_only: bool = False):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
+
+    assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "compress-vs-existing"], "The possible choice of algorithms are : " \
+                                                                        "uni-vs-bi (to compare uni-compression with bi-compression), " \
+                                                                        "with-without-ef (to compare algorithms using or not error-feedback), " \
+                                                                        "compress-model (algorithms compressing the model)."
+    assert dataset in ["quantum", "superconduct", 'synth_logistic', 'synth_linear_noised', 'synth_linear_nonoised'], \
+        "The available dataset are ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']."
+    assert iid in ['iid', 'non-iid'], "The iid option are ['iid', 'non-iid']."
+    assert scenario in [None, "compression", "step"], "The possible scenario are [None, 'compression', 'step']."
 
     foldername = "{0}-{1}-N{2}".format(dataset, iid, nb_devices)
     picture_path = "{0}/pictures/{1}/{2}".format(get_project_root(), foldername, algos)
@@ -38,15 +48,6 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
     create_folder_if_not_existing(algos_pickle_path)
     create_folder_if_not_existing(picture_path)
 
-    assert algos in ["uni-vs-bi", "with-without-ef", "compress-model"], "The possible choice of algorithms are : " \
-        "uni-vs-bi (to compare uni-compression with bi-compression), "\
-        "with-without-ef (to compare algorithms using or not error-feedback), " \
-        "compress-model (algorithms compressing the model)."
-    assert dataset in ["quantum", "superconduct", "synth_logistic", "synth_linear_noised", "synth_linear_nonoised"], \
-        "The available dataset are ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']."
-    assert iid in ["iid", "non-iid"], "The iid option are ['iid', 'non-iid']."
-    assert scenario in [None, "compression", "step"], "The possible scenario are [None, 'compression', 'step']."
-
     nb_devices = nb_devices
 
     # Select the correct dataset
@@ -58,7 +59,7 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
         X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path= data_path, pickle_path=pickle_path, iid=False)
         batch_size = 50
         model = RMSEModel
-    elif dataset == "synth_logistic":
+    elif dataset == 'synth_logistic':
         dim_notebook = 2
         batch_size = 1
         model = LogisticModel
@@ -68,7 +69,7 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
             pickle_saver((X, Y), pickle_path + "/data")
         else:
             X, Y = pickle_loader(pickle_path + "/data")
-    elif dataset == "synth_linear_noised":
+    elif dataset == 'synth_linear_noised':
         dim_notebook = 20
         if not file_exist("{0}/data.pkl".format(pickle_path)):
             w_true = generate_param(dim_notebook-1)
@@ -80,7 +81,7 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
             X, Y = pickle_loader(pickle_path + "/data")
         model = RMSEModel
         batch_size = 1
-    elif dataset == "synth_linear_nonoised":
+    elif dataset == 'synth_linear_nonoised':
         dim_notebook = 20
         if not file_exist("{0}/data.pkl".format(pickle_path)):
             w_true = generate_param(dim_notebook-1)
@@ -96,12 +97,14 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
     nb_epoch = 100 if stochastic else 400
 
     # Select the list of algorithms:
-    if algos == "uni-vs-bi":
+    if algos == 'uni-vs-bi':
         list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
     elif algos == "with-without-ef":
         list_algos = [Qsgd(), Diana(), Artemis(), ArtemisEF(), DoubleSqueeze()]
     elif algos == "compress-model":
         list_algos = [VanillaSGD(), Artemis(), RArtemis(), ModelCompr(), ModelComprMem(), RModelComprMem()]
+    elif algos == "compress-vs-classics":
+        list_algos = [VanillaSGD(), Artemis(), ArtemisEF(), DoubleSqueeze(), ModelComprMem()]
 
     compression_by_default = SQuantization(1, dim_notebook)
 
@@ -141,7 +144,7 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
         step_size = iid_step_size
     else:
         step_size = batch_step_size
-    if "synth" in dataset and stochastic:
+    if 'synth' in dataset and stochastic:
         step_size = deacreasing_step_size
 
     stochasticity = 'sto' if stochastic else "full"
@@ -149,7 +152,7 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
     if not plot_only:
 
         if scenario == "compression":
-            run_for_different_scenarios(cost_models, list_algos, values_compression, label_compression,
+            run_for_different_scenarios(cost_models, list_algos[1:], values_compression, label_compression,
                                         filename=algos_pickle_path,
                                         batch_size=batch_size, stochastic=stochastic, step_formula=step_size,
                                         scenario=scenario)
@@ -168,7 +171,7 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
     obj_min = pickle_loader("{0}/obj_min".format(pickle_path))
 
     if stochastic:
-        experiments_settings = "{1}-b{2}".format(stochasticity, batch_size)
+        experiments_settings = "{0}-b{1}".format(stochasticity, batch_size)
     else:
         experiments_settings = stochasticity
 
@@ -238,35 +241,26 @@ def run_real_dataset(nb_devices: int, stochastic: bool, dataset: str, iid: str, 
 
 
 if __name__ == '__main__':
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="synth_logistic", iid="non-iid", algos="uni-vs-bi",
-                     use_averaging=True)
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="synth_linear_noised", iid="non-iid", algos="uni-vs-bi",
-                     use_averaging=True)
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="synth_linear_nonoised", iid="non-iid", algos="uni-vs-bi",
-                     use_averaging=True)
 
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="quantum", iid="non-iid", algos="uni-vs-bi",
-                     use_averaging=True, scenario="step")
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="superconduct", iid="non-iid", algos="uni-vs-bi",
-                     use_averaging=True, scenario="step")
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="quantum", iid="non-iid", algos="uni-vs-bi",
-                     use_averaging=True, scenario="compression")
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="superconduct", iid="non-iid", algos="uni-vs-bi",
-                     use_averaging=True, scenario="compression")
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="quantum", iid="non-iid", algos="uni-vs-bi",
-                     use_averaging=True)
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="superconduct", iid="non-iid", algos="uni-vs-bi",
-                     use_averaging=True)
+    if sys.argv[1] == "synth":
+        run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[2],
+                        use_averaging=True)
+        run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[2],
+                        use_averaging=True)
+        run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[2],
+                        use_averaging=True)
+        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[2],
+                        use_averaging=True)
+        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid', algos=sys.argv[2],
+                        use_averaging=True)
 
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="quantum", iid="non-iid", algos="compress-model",
-                     use_averaging=True, scenario="step")
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="superconduct", iid="non-iid", algos="compress-model",
-                     use_averaging=True, scenario="step")
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="quantum", iid="non-iid", algos="compress-model",
-                     use_averaging=True, scenario="compression")
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="superconduct", iid="non-iid", algos="compress-model",
-                     use_averaging=True, scenario="compression")
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="quantum", iid="non-iid", algos="compress-model",
-                     use_averaging=True)
-    run_real_dataset(nb_devices=20, stochastic=False, dataset="superconduct", iid="non-iid", algos="compress-model",
-                     use_averaging=True)
+    elif sys.argv[1] == "real":
+        for sto in [False, True]:
+            for dataset in ["quantum", "superconduct"]:
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
+                                use_averaging=True, scenario="step")
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
+                                use_averaging=True, scenario="compression")
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
+                                use_averaging=True)
+
