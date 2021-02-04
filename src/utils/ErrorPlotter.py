@@ -3,12 +3,18 @@ Created by Philippenko, 6th March 2020.
 
 This python file provide facilities to plot the results of a (multiple) gradient descent run.
 """
+import math
+
 import matplotlib
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
+from numpy import quantile
+
+from src.utils.Utilities import drop_nan_values, keep_until_found_nan
 
 markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
 markersize = 1
-curve_size=3
+curve_size=4
 fontsize=30
 fontsize_legend=14
 # figsize=(15,7)
@@ -37,8 +43,13 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
     # If there is less than 50 points, we plot each point !
     if N_it < 50:
         one_on_two_points = False
+    xlog = (x_points is not None)
 
-    plt.figure(figsize=figsize)
+    fig, ax = plt.subplots(figsize=figsize)
+    # if xlog:
+    #     axins = zoomed_inset_axes(ax, zoom=3, loc=3)
+    # else:
+    #     axins = zoomed_inset_axes(ax, zoom=2, loc=3)
     it = 0
 
     nb_curves = min(len(all_losses), len(markers))
@@ -66,12 +77,14 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
             legend_i = legend[i]
             if omega_c:
                 legend_i = legend_i + " {0}".format(str(omega_c[i]))[:4]
-            plt.errorbar(abscisse, objectives_dist, yerr=error_to_plot, label=legend_i, lw=lw, marker=markers[it],
+            ax.errorbar(abscisse, objectives_dist, yerr=error_to_plot, label=legend_i, lw=lw, marker=markers[it],
                          markersize=ms)
+            # setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw)
 
         else:
             objectives_dist = error_distance
-            plt.plot(abscisse, objectives_dist, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
+            ax.plot(abscisse, objectives_dist, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
+            # setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw)
         it += 1
 
     if batch_size is None:
@@ -80,10 +93,38 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
         title_precision = "\n(N=" + str(nb_devices) + ", d=" + str(nb_dim) + ", b=" + str(batch_size) + ")"
 
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
-    setup_plot(x_legend + title_precision, ylegends=ylegends, xlog=(x_points is not None), xlabels=xlabels,
-               ylim=ylim, picture_name=picture_name)
+    setup_plot(x_legend + title_precision, ylegends=ylegends, xlog=xlog, xlabels=xlabels,
+               ylim=ylim, picture_name=picture_name, ax=ax, fig=fig)
 
 
+def setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw):
+
+    axins.plot(abscisse, objectives_dist, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
+
+    # print(len(abscisse))
+    objectives_dist = drop_nan_values(objectives_dist)
+    # print(len(abscisse))
+    abscisse = abscisse[:len(objectives_dist)]
+
+    max_x = abscisse[-1]
+
+    if xlog:
+        min_y = quantile(drop_nan_values(objectives_dist), 0.65)
+        min_x = quantile(abscisse, 0.55)
+        max_y = -15 if objectives_dist[-1] in [math.inf, -math.inf, math.nan] else objectives_dist [-1]- 0.03
+    else:
+        min_y = quantile(drop_nan_values(objectives_dist), 0.4)
+        min_x = quantile(abscisse, 0.75)
+        max_y = -15 if drop_nan_values(objectives_dist)[-1] in [math.inf, -math.inf, math.nan] else drop_nan_values(objectives_dist)[-1] - 0.1
+    axins.set_xlim(4*1e5, 9*1e5)  # Limit the region for zoom
+    axins.set_ylim(-9.5, -7)
+    plt.xticks(visible=False)  # Not present ticks
+    plt.yticks(visible=False)
+    #
+    ## draw a bbox of the region of the inset axes in the parent axes and
+    ## connecting lines between the bbox and the inset axes area
+    mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.4")
+    plt.draw()
 
 def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_dim, legend, obj_min, objective_keys,
                                                       xlabels, x_legend, subplot=None):
@@ -110,16 +151,16 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
 
 
 def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False,
-               xlabels=None, ylim=False, picture_name=None, ax = None):
+               xlabels=None, ylim=False, picture_name=None, ax = None, fig=None):
   
     if ylog:
-        plt.yscale("log")
+        ax.yscale("log")
     if ylim:
-        plt.ylim(top=1)
+        ax.set_lim(top=0.5)
     if xlog:
-        plt.xscale("log")
-    plt.yticks(fontsize=fontsize)
-    plt.grid()
+        ax.set_xscale("log")
+    ax.tick_params(axis='both', labelsize=fontsize)
+    ax.grid()
     if xlabels:
         plt.xticks([i for i in range(0, len(xlabels))], xlabels, rotation=40, fontsize=xticks_fontsize-3)
     else:
@@ -127,11 +168,11 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
         if not xlog:
             plt.gca().xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(5))
         plt.xticks(fontsize=xticks_fontsize)
-    plt.xlabel(xlegends, fontsize=fontsize)
-    plt.ylabel(Y_LEGENDS[ylegends], fontsize=fontsize)
-    plt.legend(loc='best', fontsize=fontsize_legend)
-    plt.tight_layout()
-    if picture_name:
+    ax.set_xlabel(xlegends, fontsize=fontsize)
+    ax.set_ylabel(Y_LEGENDS[ylegends], fontsize=fontsize)
+    ax.legend(loc='upper right', fontsize=fontsize_legend)
+    fig.tight_layout()
+    if True:
         plt.savefig('{0}.eps'.format(picture_name), format='eps')
     else:
         plt.show()

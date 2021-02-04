@@ -52,7 +52,7 @@ class TestRandomizedAlgo(unittest.TestCase):
                                    nb_epoch=1,
                                    cost_models=cls.cost_models,
                                    step_formula=constant_step_size)
-        cls.params.learning_rate = 1
+        cls.params.up_learning_rate = 1
         cls.workers = [Worker(i, cls.params, LocalArtemisUpdate) for i in range(number_of_device)]
 
 
@@ -82,7 +82,7 @@ class TestRandomizedAlgo(unittest.TestCase):
     def test_update_randomized_model(self):
         artemis_update = ArtemisUpdate(self.params, self.workers)
         artemis_update.workers_sub_set = [(self.workers[i], self.cost_models[i]) for i in range(self.params.nb_devices)]
-        artemis_update.l = torch.FloatTensor([-1 for i in range(10)])
+        artemis_update.H = torch.FloatTensor([-1 for i in range(10)])
         artemis_update.omega = [torch.FloatTensor([i for i in range(0, 100, 10)]),
                                    torch.FloatTensor([i for i in range(0,20, 2)])]
         # Without momentum, should have no impact.

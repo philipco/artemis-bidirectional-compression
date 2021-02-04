@@ -32,15 +32,17 @@ def compute_number_of_bits(type_params: Parameters, nb_epoch: int):
     nb_devices = type_params.nb_devices
     d = type_params.n_dimensions
     for i in range(nb_epoch):
-        if type_params.bidirectional and type_params.compression_model.level != 0:
-            s = type_params.compression_model.level
-            nb_bits = 2 * number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
-        elif type_params.compression_model.level != 0:
-            s = type_params.compression_model.level
-            nb_bits = number_of_bits_needed_to_communicates_no_compressed(nb_devices, d) \
-                   + number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
+        nb_bits = 0
+        if type_params.up_compression_model.omega_c != 0:
+            s = type_params.up_compression_model.level
+            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
         else:
-            nb_bits = 2 * number_of_bits_needed_to_communicates_no_compressed(nb_devices, d)
+            nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d)
+        if type_params.down_compression_model.omega_c != 0:
+            s = type_params.down_compression_model.level
+            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
+        else:
+            nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d)
 
         number_of_bits.append(nb_bits + number_of_bits[-1])
     return number_of_bits[1:]
@@ -102,3 +104,17 @@ def check_memory_usage():
     print(memory.sort_values('memory', ascending=False).head(10))
     print("============================================================")
     print(memory.sort_values('mem_per_object', ascending=False).head(10))
+
+
+def drop_nan_values(values):
+    return [x for x in values if str(x) != 'nan']
+
+
+def keep_until_found_nan(values):
+    result = []
+    k = 0
+    while str(values[k]) != 'nan' and k < len(values) - 1:
+        print(values[k])
+        result.append(values[k])
+        k+=1
+    return result

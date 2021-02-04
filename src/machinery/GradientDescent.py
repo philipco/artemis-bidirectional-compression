@@ -68,10 +68,15 @@ class AGradientDescent(ABC):
         self.averaged_losses = []
         self.memory_info = None
 
-        if self.parameters.use_memory:
-            self.parameters.learning_rate = 1 / (2 * (self.parameters.compression_model.omega_c + 1))
+        # print(self.parameters.use_memory)
+        if self.parameters.use_memory and self.parameters.up_compression_model.omega_c != 0:
+            self.parameters.up_learning_rate = 1 / (2 * (self.parameters.up_compression_model.omega_c + 1))
         else:
-            self.parameters.learning_rate = 0
+            self.parameters.up_learning_rate = 0
+        if self.parameters.use_memory and self.parameters.down_compression_model.omega_c != 0:
+            self.parameters.down_learning_rate = 1 / (2 * (self.parameters.down_compression_model.omega_c + 1))
+        else:
+            self.parameters.down_learning_rate = 0
 
         # Creating each worker of the network.
         self.workers = [Worker(i, parameters, self.__local_update__()) for i in range(self.parameters.nb_devices)]
@@ -142,8 +147,7 @@ class AGradientDescent(ABC):
                 number_of_inside_it = 1
             else:
                 number_of_inside_it = self.__number_iterations__(cost_models) / self.parameters.nb_epoch
-
-            # This loops corresponds to the number of loop before considering that an epoch is completed.
+            # This loops corresponds to the number of loop before considering that one epoch is completed.
             # It is the communication between the central server and all remote devices.
             # This is not the loop carried out on local remote devices.
             # Hence, there is a communication between all devices during this loop.
@@ -276,7 +280,8 @@ class SGD_Descent(AGradientDescent):
     def __init__(self, parameters: Parameters) -> None:
         super().__init__(parameters)
         # Vanilla SGD doesn't carry out any compression.
-        self.parameters.compression_model = SQuantization(0, self.parameters.n_dimensions)
+        self.parameters.up_compression_model = SQuantization(0, self.parameters.n_dimensions)
+        self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
 
     def __local_update__(self):
         return LocalGradientVanillaUpdate
@@ -289,6 +294,11 @@ class SGD_Descent(AGradientDescent):
 
 
 class DianaDescent(AGradientDescent):
+
+    def __init__(self, parameters: Parameters) -> None:
+        super().__init__(parameters)
+        # Diana doesn't carry out a down compression.
+        self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
 
     def __local_update__(self):
         return LocalDianaUpdate
@@ -308,6 +318,13 @@ class FedAvgDescent(AGradientDescent):
         return FedAvgUpdate(self.parameters, self.workers)
 
     def __number_iterations__(self, cost_models) -> int:
+        if self.parameters.stochastic:
+            # Devices may have different number of points. Thus to reach an equal weight of participation,
+            # we choose that an epoch is constituted of N rounds of communication with the central server,
+            # where N is the minimum size of the dataset hold by the different devices.
+            n_samples = min([cost_models[i].X.shape[0] for i in range(len(cost_models))])
+            return n_samples * self.parameters.nb_epoch / (min(n_samples, self.parameters.batch_size) * self.parameters.nb_local_update)
+
         return self.parameters.nb_epoch
 
     def __number_iterations__(self, cost_models) -> int:
