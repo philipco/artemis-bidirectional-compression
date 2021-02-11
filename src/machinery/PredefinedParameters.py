@@ -118,7 +118,7 @@ class Diana(VanillaSGD):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.use_memory = True
+        params.use_up_memory = True
         return params
 
 
@@ -139,7 +139,7 @@ class DianaOneWay(VanillaSGD):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.use_memory = True
+        params.use_up_memory = True
         params.up_compression_model = SQuantization(0, n_dimensions)
         params.down_compression_model = SQuantization(0, n_dimensions)
         return params
@@ -182,6 +182,26 @@ class Artemis(Diana):
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.bidirectional = True
+        return params
+
+class ArtemisND(Diana):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "Artemis-ND"
+
+    def type_FL(self):
+        return ArtemisDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.bidirectional = True
+        params.non_degraded = True
         return params
 
 
@@ -530,7 +550,56 @@ class MCM(ModelCompr):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.double_use_memory = True
+        params.use_down_memory = True
+        if fraction_sampled_workers != 1:
+            print("Use randomized version of MCM due to partial participation.")
+            params.randomized = True
+        return params
+
+
+class MCM0(ModelCompr):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return r'MCM - $\alpha = 0$'
+
+    def type_FL(self):
+        return DownCompressModelDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.use_down_memory = True
+        params.down_learning_rate = 0
+        if fraction_sampled_workers != 1:
+            params.randomized = True
+        return params
+
+
+class MCM1(ModelCompr):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return r'MCM - $\alpha = 1$'
+
+    def type_FL(self):
+        return DownCompressModelDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.use_down_memory = True
+        params.down_learning_rate = 1
+        if fraction_sampled_workers != 1:
+            params.randomized = True
         return params
 
 

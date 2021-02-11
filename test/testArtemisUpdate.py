@@ -133,7 +133,7 @@ class TestArtemisUpdate(unittest.TestCase):
         self.assertTrue(torch.equal(update.value_to_compress, update.g - artificial_l))
 
     def test_doubleMODELcompression_without_memory(self):
-        params = SGDDoubleModelCompressionWithoutMem().define(n_dimensions=DIM, nb_devices=1,
+        params = ModelCompr().define(n_dimensions=DIM, nb_devices=1,
                                                                             quantization_param=10)
         params.up_learning_rate = 0.5
         workers = [Worker(0, params)]
@@ -151,7 +151,7 @@ class TestArtemisUpdate(unittest.TestCase):
         self.assertTrue(torch.equal(update.value_to_compress, new_w))
 
     def test_doubleMODELcompression_WITH_memory(self):
-        params = SGDDoubleModelCompressionWithMem().define(n_dimensions=DIM, nb_devices=1,
+        params = MCM().define(n_dimensions=DIM, nb_devices=1,
                                                                          quantization_param=10)
         params.up_learning_rate = 0.5
         workers = [Worker(0, params)]

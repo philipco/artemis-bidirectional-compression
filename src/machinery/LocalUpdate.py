@@ -35,7 +35,7 @@ class AbstractLocalUpdate(ABC):
 
         # Initialization of model's parameter.
         self.model_param = torch.FloatTensor(
-            [(-1 ** i) / (2 * self.parameters.n_dimensions) for i in range(self.parameters.n_dimensions)]) \
+            [0 for i in range(self.parameters.n_dimensions)]) \
             .to(dtype=torch.float64)
 
         self.error_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -117,18 +117,17 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
 
         for tensor in tensor_sent:
 
-            # l_i must be update with true omega, not with it "unzip" version which corresponds to compress model param.
-            # As we override model_param, we need to update l_i in the same operation,
-            # to benefit from the true model_param.
-            if self.parameters.double_use_memory:
-                decompressed_value, self.H_i = tensor + self.H_i, self.H_i + self.parameters.down_learning_rate * tensor
+            # H_i must be update with true omega, not with it "unzip" version which corresponds to compress model param.
+            if self.parameters.use_down_memory:
+                decompressed_value = tensor + self.H_i
+                self.H_i = self.H_i + self.parameters.down_learning_rate * tensor
             else:
                 decompressed_value = tensor
 
             self.v = self.parameters.momentum * self.v + decompressed_value
             self.model_param = self.model_param - step * self.v
 
-        if not self.parameters.double_use_memory:
+        if not self.parameters.use_down_memory:
             assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
@@ -167,14 +166,14 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
 
-        if self.parameters.double_use_memory:
-            decompressed_value, self.H_i = tensor_sent + self.H_i, self.H_i + self.parameters.down_learning_rate * tensor_sent
+        if self.parameters.use_down_memory:
+            decompressed_value = tensor_sent + self.H_i
+            self.H_i = deepcopy(self.H_i + self.parameters.down_learning_rate * tensor_sent)
         else:
             decompressed_value = tensor_sent
-
         self.model_param = decompressed_value
 
-        if not self.parameters.double_use_memory:
+        if not self.parameters.use_down_memory:
             assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
@@ -183,9 +182,9 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.delta_i = (self.g_i - self.h_i) + self.error_i
+        self.delta_i = deepcopy((self.g_i - self.h_i) + self.error_i)
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
-        self.h_i += self.parameters.up_learning_rate * quantized_delta_i
+        self.h_i = deepcopy(self.h_i + self.parameters.up_learning_rate * quantized_delta_i)
         return quantized_delta_i
 
 
@@ -196,18 +195,18 @@ class LocalSympaUpdate(LocalArtemisUpdate):
 
         g, model_param = tuple_sent
 
-        # l_i must be update with true omega, not with it "unzip" version which corresponds to compress model param.
-        # As we override model_param, we need to update l_i in the same operation,
+        # H_i must be update with true omega, not with it "unzip" version which corresponds to compress model param.
+        # As we override model_param, we need to update H_i in the same operation,
         # to benefit from the true model_param.
-        if self.parameters.double_use_memory:
-            decompressed_value, self.l_i = g + self.l_i, self.l_i + self.parameters.down_learning_rate * g
+        if self.parameters.use_down_memory:
+            decompressed_value, self.H_i = g + self.H_i, self.H_i + self.parameters.down_learning_rate * g
         else:
             decompressed_value = g
 
         # Updating the model with the new gradients.
         self.model_param = model_param - step * decompressed_value
 
-        if not self.parameters.double_use_memory:
+        if not self.parameters.use_down_memory:
             assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 

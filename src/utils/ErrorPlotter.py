@@ -47,9 +47,9 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
 
     fig, ax = plt.subplots(figsize=figsize)
     # if xlog:
-    #     axins = zoomed_inset_axes(ax, zoom=3, loc=3)
+    #     axins = zoomed_inset_axes(ax, zoom=2.5, loc=3)
     # else:
-    #     axins = zoomed_inset_axes(ax, zoom=2, loc=3)
+    #     axins = zoomed_inset_axes(ax, zoom=3, loc=2)
     it = 0
 
     nb_curves = min(len(all_losses), len(markers))
@@ -97,35 +97,6 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
                ylim=ylim, picture_name=picture_name, ax=ax, fig=fig)
 
 
-def setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw):
-
-    axins.plot(abscisse, objectives_dist, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
-
-    # print(len(abscisse))
-    objectives_dist = drop_nan_values(objectives_dist)
-    # print(len(abscisse))
-    abscisse = abscisse[:len(objectives_dist)]
-
-    max_x = abscisse[-1]
-
-    if xlog:
-        min_y = quantile(drop_nan_values(objectives_dist), 0.65)
-        min_x = quantile(abscisse, 0.55)
-        max_y = -15 if objectives_dist[-1] in [math.inf, -math.inf, math.nan] else objectives_dist [-1]- 0.03
-    else:
-        min_y = quantile(drop_nan_values(objectives_dist), 0.4)
-        min_x = quantile(abscisse, 0.75)
-        max_y = -15 if drop_nan_values(objectives_dist)[-1] in [math.inf, -math.inf, math.nan] else drop_nan_values(objectives_dist)[-1] - 0.1
-    axins.set_xlim(4*1e5, 9*1e5)  # Limit the region for zoom
-    axins.set_ylim(-9.5, -7)
-    plt.xticks(visible=False)  # Not present ticks
-    plt.yticks(visible=False)
-    #
-    ## draw a bbox of the region of the inset axes in the parent axes and
-    ## connecting lines between the bbox and the inset axes area
-    mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.4")
-    plt.draw()
-
 def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_dim, legend, obj_min, objective_keys,
                                                       xlabels, x_legend, subplot=None):
     if subplot is None:
@@ -150,13 +121,33 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
     setup_plot(x_legend + title_precision, xticks_fontsize=15, xlog=False)
 
 
+
+def setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw):
+
+    axins.plot(abscisse, objectives_dist, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
+
+    objectives_dist = drop_nan_values(objectives_dist)
+    abscisse = abscisse[:len(objectives_dist)]
+
+    max_x = abscisse[-1]
+
+    axins.set_xlim(390, 500)  # Limit the region for zoom
+    axins.set_ylim(-1.63, -1.4)
+    plt.xticks(visible=False)  # Not present ticks
+    plt.yticks(visible=False)
+    ## draw a bbox of the region of the inset axes in the parent axes and
+    ## connecting lines between the bbox and the inset axes area
+    mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.4")
+    plt.draw()
+
+
 def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fontsize, ylog: bool = False, xlog: bool = False,
                xlabels=None, ylim=False, picture_name=None, ax = None, fig=None):
   
     if ylog:
         ax.yscale("log")
     if ylim:
-        ax.set_lim(top=0.5)
+        ax.set_ylim(top=2)
     if xlog:
         ax.set_xscale("log")
     ax.tick_params(axis='both', labelsize=fontsize)

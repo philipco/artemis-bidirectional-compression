@@ -25,22 +25,23 @@ def number_of_bits_needed_to_communicates_no_compressed(nb_devices:int, d: int) 
     return nb_devices * d * 32
 
 
-def compute_number_of_bits(type_params: Parameters, nb_epoch: int):
+def compute_number_of_bits(type_params: Parameters, nb_epoch: int, compress_model: bool):
     """Computing the theoretical number of bits used by an algorithm (with Elias encoding)."""
     # Initialization, the first element needs to be removed at the end.
     number_of_bits = [0]
     nb_devices = type_params.nb_devices
     d = type_params.n_dimensions
+    fraction = type_params.fraction_sampled_workers
     for i in range(nb_epoch):
         nb_bits = 0
         if type_params.up_compression_model.omega_c != 0:
             s = type_params.up_compression_model.level
-            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
+            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s, d) * fraction
         else:
-            nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d)
+            nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d) * fraction
         if type_params.down_compression_model.omega_c != 0:
             s = type_params.down_compression_model.level
-            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s, d)
+            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s, d) * [1, fraction][compress_model]
         else:
             nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d)
 

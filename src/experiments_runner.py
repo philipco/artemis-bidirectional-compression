@@ -17,7 +17,7 @@ from src.utils.runner.RunnerUtilities import *
 
 def iid_step_size(it, L, omega, N): return 1 / (8 * L)
 def deacreasing_step_size(it, L, omega, N): return 1 / (L * sqrt(it))
-def batch_step_size(it, L, omega, N): return 1 / (4*L)
+def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str,
@@ -26,7 +26,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
 
-    assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-one-way", "artemis-vs-existing"],\
+    assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-one-way", "mcm-other-options",
+                     "artemis-vs-existing"],\
         "The possible choice of algorithms are : " \
         "uni-vs-bi (to compare uni-compression with bi-compression), " \
         "with-without-ef (to compare algorithms using or not error-feedback), " \
@@ -64,7 +65,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path= data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50
         model = RMSEModel
-        nb_epoch = 250 if stochastic else 400
+        nb_epoch = 500 if stochastic else 400
     elif dataset == 'synth_logistic':
         dim_notebook = 2
         batch_size = 1
@@ -108,7 +109,9 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     elif algos == "compress-model":
         list_algos = [VanillaSGD(), Artemis(), RArtemis(), ModelCompr(), MCM(), RandMCM()]
     elif algos == "mcm-vs-existing":
-        list_algos = [MCM(), VanillaSGD(), Diana(), Artemis(), Dore()]
+        list_algos = [VanillaSGD(), Diana(), Artemis(), Dore(), MCM(), RandMCM()]
+    elif algos == "mcm-other-options":
+        list_algos = [ArtemisND(), MCM0(), MCM1(), MCM()]
     elif algos == "mcm-one-way":
         list_algos = [VanillaSGD(), DianaOneWay(), ArtemisOneWay(), DoreOneWay(), MCMOneWay(), RandMCMOneWay()]
     elif algos == "artemis-vs-existing":
@@ -139,7 +142,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     if not file_exist("{0}/obj_min.pkl".format(pickle_path)):
         obj_min_by_N_descent = SGD_Descent(Parameters(n_dimensions=dim_notebook,
                                                   nb_devices=nb_devices,
-                                                  nb_epoch=10000,
+                                                  nb_epoch=40000,
                                                   momentum=0.,
                                                   verbose=True,
                                                   cost_models=cost_models,

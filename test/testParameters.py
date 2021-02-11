@@ -46,7 +46,7 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(params.verbose, False)
         self.assertEqual(params.stochastic, True)
         self.assertEqual(params.down_compress_model, True)
-        self.assertEqual(params.double_use_memory, False)
+        self.assertEqual(params.use_down_memory, False)
         self.assertEqual(params.use_averaging, False)
 
     def test_StochasticSingleCompressionWithMemory_iscorrect(self):
@@ -100,7 +100,7 @@ class ParametersTest(unittest.TestCase):
         self.assertIs(type(params.cost_models), type(RMSEModel(X, Y_reg)))
         self.assertEqual(params.use_averaging, False)
         self.assertEqual(params.bidirectional, True)
-        self.assertEqual(params.double_use_memory, False)
+        self.assertEqual(params.use_down_memory, False)
         self.assertEqual(params.down_compress_model, True)
 
     def test_StochasticDoubleGradientsCompressionWithoutMemory_iscorrect(self):
@@ -119,7 +119,7 @@ class ParametersTest(unittest.TestCase):
         self.assertIs(type(params.cost_models), type(RMSEModel(X, Y_reg)))
         self.assertEqual(params.use_averaging, False)
         self.assertEqual(params.bidirectional, True)
-        self.assertEqual(params.double_use_memory, False)
+        self.assertEqual(params.use_down_memory, False)
         self.assertEqual(params.down_compress_model, True)
 
 

@@ -30,10 +30,8 @@ import math
 import os
 import psutil
 
-from src.machinery.GradientUpdateMethod import ArtemisUpdate, AbstractGradientUpdate, GradientVanillaUpdate, \
-    DianaUpdate, SympaUpdate, DownCompressModelUpdate, FedAvgUpdate
-from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate, \
-    LocalSympaUpdate, LocalDownCompressModelUpdate, LocalFedAvgUpdate
+from src.machinery.GradientUpdateMethod import *
+from src.machinery.LocalUpdate import *
 from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
 from src.models.CompressionModel import SQuantization
@@ -68,14 +66,13 @@ class AGradientDescent(ABC):
         self.averaged_losses = []
         self.memory_info = None
 
-        # print(self.parameters.use_memory)
-        if self.parameters.use_memory and self.parameters.up_compression_model.omega_c != 0:
+        if self.parameters.use_up_memory and self.parameters.up_compression_model.omega_c != 0 and self.parameters.up_learning_rate is None:
             self.parameters.up_learning_rate = 1 / (2 * (self.parameters.up_compression_model.omega_c + 1))
-        else:
+        elif not self.parameters.use_up_memory:
             self.parameters.up_learning_rate = 0
-        if self.parameters.use_memory and self.parameters.down_compression_model.omega_c != 0:
+        if self.parameters.use_down_memory and self.parameters.down_compression_model.omega_c != 0 and self.parameters.down_learning_rate is None:
             self.parameters.down_learning_rate = 1 / (2 * (self.parameters.down_compression_model.omega_c + 1))
-        else:
+        elif not self.parameters.use_down_memory:
             self.parameters.down_learning_rate = 0
 
         # Creating each worker of the network.
@@ -123,7 +120,7 @@ class AGradientDescent(ABC):
 
         # Initialization
         current_model_param = torch.FloatTensor(
-            [(-1 ** i) / (2 * self.parameters.n_dimensions) for i in range(self.parameters.n_dimensions)])\
+            [0 for i in range(self.parameters.n_dimensions)])\
             .to(dtype=torch.float64)
 
         self.model_params.append(current_model_param)
