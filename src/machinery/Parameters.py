@@ -41,12 +41,11 @@ class Parameters:
                  nb_epoch: int = NB_EPOCH,
                  regularization_rate: int = 0,
                  momentum: float = 0,
-                 compression_model: CompressionModel = None,
+                 up_compression_model: CompressionModel = None,
                  down_compression_model: CompressionModel = None,
                  up_learning_rate: int = None,
                  down_learning_rate: int = None,
                  force_learning_rate: bool = False,
-                 bidirectional: bool = False,
                  verbose: bool = False,
                  stochastic: bool = True,
                  streaming: bool = False,
@@ -70,15 +69,14 @@ class Parameters:
         self.regularization_rate = regularization_rate  # coefficient of regularization
         self.force_learning_rate = force_learning_rate
         self.momentum = momentum  # momentum coefficient
-        self.up_compression_model = compression_model  # quantization parameter
-        self.down_compression_model = compression_model
+        self.up_compression_model = up_compression_model
+        self.down_compression_model = down_compression_model
         if step_formula is None:
             self.step_formula = default_step_formula(stochastic)
         else:
             self.step_formula = step_formula
         self.up_learning_rate = up_learning_rate  # Learning rate used when up updating memory.
         self.down_learning_rate = down_learning_rate  # Learning rate used when down updating memory.
-        self.bidirectional = bidirectional
         self.stochastic = stochastic  # true if running a stochastic gradient descent
         self.streaming = streaming  # True if each sample should be used only once !
         self.use_up_memory = use_memory  # use memory when sending to global server

@@ -68,11 +68,11 @@ class AGradientDescent(ABC):
 
         if self.parameters.use_up_memory and self.parameters.up_compression_model.omega_c != 0 and self.parameters.up_learning_rate is None:
             self.parameters.up_learning_rate = 1 / (2 * (self.parameters.up_compression_model.omega_c + 1))
-        elif not self.parameters.use_up_memory:
+        elif not self.parameters.use_up_memory or self.parameters.up_compression_model.omega_c == 0:
             self.parameters.up_learning_rate = 0
         if self.parameters.use_down_memory and self.parameters.down_compression_model.omega_c != 0 and self.parameters.down_learning_rate is None:
             self.parameters.down_learning_rate = 1 / (2 * (self.parameters.down_compression_model.omega_c + 1))
-        elif not self.parameters.use_down_memory:
+        elif not self.parameters.use_down_memory or self.parameters.down_compression_model.omega_c == 0:
             self.parameters.down_learning_rate = 0
 
         # Creating each worker of the network.

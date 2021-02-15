@@ -4,7 +4,7 @@ Created by Philippenko, 2 January 2020
 from src.machinery.GradientDescent import SGD_Descent
 from src.models.CostModel import RMSEModel, build_several_cost_model
 from src.machinery.Parameters import Parameters
-from src.machinery.PredefinedParameters import Artemis, Diana
+from src.machinery.PredefinedParameters import Artemis, Diana, SQuantization, VanillaSGD
 
 from src.utils.data.DataPreparation import build_data_linear
 from src.utils.Constants import generate_param
@@ -19,7 +19,7 @@ from src.utils.runner.RunnerUtilities import multiple_run_descent
 # How to use Artemis implementation.
 
 dim_notebook = 20
-nb_devices = 2
+nb_devices = 20
 nb_devices_for_the_run = nb_devices
 
 if __name__ == '__main__':
@@ -51,18 +51,18 @@ if __name__ == '__main__':
     myX = X[:nb_devices_for_the_run]
     myY = Y[:nb_devices_for_the_run]
     X_number_of_bits = []
-    for type_params in tqdm([Diana(), Artemis()]):
-        multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models, nb_epoch=7)
+    for type_params in tqdm([Diana(), VanillaSGD()]):
+        multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models, nb_epoch=10, compression_model=SQuantization(1, dim_notebook))
         all_descent[type_params.name()] = multiple_sg_descent
     res = ResultsOfSeveralDescents(all_descent, nb_devices_for_the_run)
 
     # 5) Plotting results.
     plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
-                    all_error=res.getter_std(obj_min))
+                    all_error=res.get_std(obj_min))
     plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
-                    x_points=res.X_number_of_bits, x_legend="Communicated bits", all_error=res.getter_std(obj_min))
+                    x_points=res.X_number_of_bits, x_legend="Communicated bits", all_error=res.get_std(obj_min))
     plot_error_dist(res.get_error_feedback(), res.names, res.nb_devices_for_the_run, dim_notebook,
-                    ylegends=r"$\log_{10}(||EF_k||^2$)")
+                    ylegends="loss")
 
 
 
