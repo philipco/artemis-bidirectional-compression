@@ -5,7 +5,6 @@ Created by Philippenko, 24th July 2020.
 from copy import deepcopy
 
 import torch
-from sklearn.cluster import SpectralClustering
 from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 
@@ -74,8 +73,6 @@ def clustering_data(data, predicted_cluster, column_name: str, nb_cluster: int =
 
     nb_devices = len(X)
     print("There is {0} devices.".format(nb_devices))
-    for i in range(nb_devices):
-        print("Number of points on device {0} : {1}".format(i, len(X[i])))
 
     # Adding a columns of "1" to take into account a potential bias.
     X = add_bias_term(X)

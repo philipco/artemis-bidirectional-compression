@@ -19,7 +19,7 @@ from src.utils.Utilities import pickle_saver
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-nb_run = 2  # Number of gradient descent before averaging.
+nb_run = 5  # Number of gradient descent before averaging.
 
 
 def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_models, compression_model: CompressionModel,
@@ -92,12 +92,13 @@ def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1
                                                    nb_epoch=nb_epoch,
                                                    step_formula=step_size,
                                                    batch_size=batch_size,
-                                                   logs_file=filename)
+                                                   logs_file=filename,
+                                                   fraction_sampled_workers=1)
         all_descent[type_params.name()] = multiple_sg_descent
     res = ResultsOfSeveralDescents(all_descent, len(cost_models))
     stochasticity = 'sto' if stochastic else "full"
     if stochastic:
-        experiments_settings = "{1}-b{2}".format(stochasticity, batch_size)
+        experiments_settings = "{0}-b{1}".format(stochasticity, batch_size)
     else:
         experiments_settings = stochasticity
     pickle_saver(res, "{0}/descent-{1}".format(filename, experiments_settings))
@@ -182,7 +183,7 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
 
     stochasticity = 'sto' if stochastic else "full"
     if stochastic:
-        experiments_settings = "{1}-b{2}".format(stochasticity, batch_size)
+        experiments_settings = "{0}-b{1}".format(stochasticity, batch_size)
     else:
         experiments_settings = stochasticity
 

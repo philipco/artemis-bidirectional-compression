@@ -30,10 +30,8 @@ import math
 import os
 import psutil
 
-from src.machinery.GradientUpdateMethod import ArtemisUpdate, AbstractGradientUpdate, GradientVanillaUpdate, \
-    DianaUpdate, SympaUpdate, DownCompressModelUpdate, FedAvgUpdate
-from src.machinery.LocalUpdate import LocalGradientVanillaUpdate, LocalArtemisUpdate, LocalDianaUpdate, \
-    LocalSympaUpdate, LocalDownCompressModelUpdate, LocalFedAvgUpdate
+from src.machinery.GradientUpdateMethod import *
+from src.machinery.LocalUpdate import *
 from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
 from src.models.CompressionModel import SQuantization
@@ -68,10 +66,14 @@ class AGradientDescent(ABC):
         self.averaged_losses = []
         self.memory_info = None
 
-        if self.parameters.use_memory:
-            self.parameters.learning_rate = 1 / (2 * (self.parameters.compression_model.omega_c + 1))
-        else:
-            self.parameters.learning_rate = 0
+        if self.parameters.use_up_memory and self.parameters.up_compression_model.omega_c != 0 and self.parameters.up_learning_rate is None:
+            self.parameters.up_learning_rate = 1 / (2 * (self.parameters.up_compression_model.omega_c + 1))
+        elif not self.parameters.use_up_memory:
+            self.parameters.up_learning_rate = 0
+        if self.parameters.use_down_memory and self.parameters.down_compression_model.omega_c != 0 and self.parameters.down_learning_rate is None:
+            self.parameters.down_learning_rate = 1 / (2 * (self.parameters.down_compression_model.omega_c + 1))
+        elif not self.parameters.use_down_memory:
+            self.parameters.down_learning_rate = 0
 
         # Creating each worker of the network.
         self.workers = [Worker(i, parameters, self.__local_update__()) for i in range(self.parameters.nb_devices)]
@@ -118,7 +120,7 @@ class AGradientDescent(ABC):
 
         # Initialization
         current_model_param = torch.FloatTensor(
-            [(-1 ** i) / (2 * self.parameters.n_dimensions) for i in range(self.parameters.n_dimensions)])\
+            [0 for i in range(self.parameters.n_dimensions)])\
             .to(dtype=torch.float64)
 
         self.model_params.append(current_model_param)
@@ -142,8 +144,7 @@ class AGradientDescent(ABC):
                 number_of_inside_it = 1
             else:
                 number_of_inside_it = self.__number_iterations__(cost_models) / self.parameters.nb_epoch
-
-            # This loops corresponds to the number of loop before considering that an epoch is completed.
+            # This loops corresponds to the number of loop before considering that one epoch is completed.
             # It is the communication between the central server and all remote devices.
             # This is not the loop carried out on local remote devices.
             # Hence, there is a communication between all devices during this loop.
@@ -276,7 +277,8 @@ class SGD_Descent(AGradientDescent):
     def __init__(self, parameters: Parameters) -> None:
         super().__init__(parameters)
         # Vanilla SGD doesn't carry out any compression.
-        self.parameters.compression_model = SQuantization(0, self.parameters.n_dimensions)
+        self.parameters.up_compression_model = SQuantization(0, self.parameters.n_dimensions)
+        self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
 
     def __local_update__(self):
         return LocalGradientVanillaUpdate
@@ -289,6 +291,11 @@ class SGD_Descent(AGradientDescent):
 
 
 class DianaDescent(AGradientDescent):
+
+    def __init__(self, parameters: Parameters) -> None:
+        super().__init__(parameters)
+        # Diana doesn't carry out a down compression.
+        self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
 
     def __local_update__(self):
         return LocalDianaUpdate
@@ -308,6 +315,13 @@ class FedAvgDescent(AGradientDescent):
         return FedAvgUpdate(self.parameters, self.workers)
 
     def __number_iterations__(self, cost_models) -> int:
+        if self.parameters.stochastic:
+            # Devices may have different number of points. Thus to reach an equal weight of participation,
+            # we choose that an epoch is constituted of N rounds of communication with the central server,
+            # where N is the minimum size of the dataset hold by the different devices.
+            n_samples = min([cost_models[i].X.shape[0] for i in range(len(cost_models))])
+            return n_samples * self.parameters.nb_epoch / (min(n_samples, self.parameters.batch_size) * self.parameters.nb_local_update)
+
         return self.parameters.nb_epoch
 
     def __number_iterations__(self, cost_models) -> int:

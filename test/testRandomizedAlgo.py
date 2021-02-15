@@ -8,7 +8,7 @@ import unittest
 import torch
 import numpy as np
 
-from src.machinery.GradientUpdateMethod import ArtemisUpdate
+from src.machinery.GradientUpdateMethod import ArtemisUpdate, DownCompressModelUpdate
 from src.machinery.LocalUpdate import LocalArtemisUpdate
 from src.machinery.Parameters import *
 from src.machinery.PredefinedParameters import *
@@ -46,13 +46,14 @@ class TestRandomizedAlgo(unittest.TestCase):
         """
         super(TestRandomizedAlgo, cls).setUpClass()
         cls.cost_models = build_several_cost_model(RMSEModel, X, Y, number_of_device)
-        cls.params = RArtemis().define(n_dimensions=dim,
+        cls.params = RandMCM().define(n_dimensions=dim,
                                    nb_devices=number_of_device,
-                                   quantization_param=1,
+                                   compression_model=SQuantization(1,dim),
                                    nb_epoch=1,
                                    cost_models=cls.cost_models,
                                    step_formula=constant_step_size)
-        cls.params.learning_rate = 1
+        cls.params.down_learning_rate = 1 / cls.params.down_compression_model.omega_c
+        cls.params.up_learning_rate = 1
         cls.workers = [Worker(i, cls.params, LocalArtemisUpdate) for i in range(number_of_device)]
 
 
@@ -82,7 +83,7 @@ class TestRandomizedAlgo(unittest.TestCase):
     def test_update_randomized_model(self):
         artemis_update = ArtemisUpdate(self.params, self.workers)
         artemis_update.workers_sub_set = [(self.workers[i], self.cost_models[i]) for i in range(self.params.nb_devices)]
-        artemis_update.l = torch.FloatTensor([-1 for i in range(10)])
+        artemis_update.H = torch.FloatTensor([-1 for i in range(10)])
         artemis_update.omega = [torch.FloatTensor([i for i in range(0, 100, 10)]),
                                    torch.FloatTensor([i for i in range(0,20, 2)])]
         # Without momentum, should have no impact.
@@ -120,18 +121,18 @@ class TestRandomizedAlgo(unittest.TestCase):
 
     def test_mechanism_of_randomization(self):
 
-        artemis_update = ArtemisUpdate(self.params, self.workers)
+        rmcm_update = DownCompressModelUpdate(self.params, self.workers)
         # First iteration
-        global_model_param = artemis_update.compute(w, self.cost_models, 1, 1)
-        self.assertEqual(len(artemis_update.all_delta_i), number_of_device,
+        global_model_param = rmcm_update.compute(w, self.cost_models, 1, 1)
+        self.assertEqual(len(rmcm_update.all_delta_i), number_of_device,
                          "The number of received compressed gradients on the central server should be equal to two.")
-        self.assertEqual(len(artemis_update.omega), number_of_device,
+        self.assertEqual(len(rmcm_update.omega), number_of_device,
                          "The number of downlink compression kept on the central server should be equal to two. ")
         # To facilitate the assertion on randomization, we set new values of delta_i
-        artemis_update.all_delta_i = [torch.FloatTensor(10,0), torch.FloatTensor(0,1)]
-        self.assertTrue(torch.all(global_model_param.eq(w - artemis_update.step * torch.mean(torch.stack(artemis_update.omega), dim=0))),
+        rmcm_update.all_delta_i = [torch.FloatTensor(10,0), torch.FloatTensor(0,1)]
+        self.assertTrue(torch.all(global_model_param.eq(w - rmcm_update.step * rmcm_update.g)),
                          "The model param is not correct.")
-        self.assertIsNone(artemis_update.workers[0].model_param,
+        self.assertIsNone(rmcm_update.workers[0].local_update.model_param,
                          "The models on workers should not have been yet updated."
                          "They are updated at the begining of each iteration (but not at the first one, "
                          "as there is nothing to update")

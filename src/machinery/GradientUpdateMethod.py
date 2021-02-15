@@ -61,7 +61,7 @@ class AbstractGradientUpdate(ABC):
         """Compute the step size at iteration *it*."""
         if it == 0:
             return 0
-        step = self.parameters.step_formula(it, L, self.parameters.compression_model.omega_c,
+        step = self.parameters.step_formula(it, L, self.parameters.up_compression_model.omega_c,
                                             self.parameters.nb_devices)
         return step
 
@@ -101,15 +101,15 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         # Memory for bidirectional compression:
         if self.parameters.randomized:
-            self.l = [torch.zeros(parameters.n_dimensions, dtype=np.float) for _ in range(self.parameters.nb_devices)]
+            self.H = [torch.zeros(parameters.n_dimensions, dtype=np.float) for _ in range(self.parameters.nb_devices)]
         else:
-            self.l = torch.zeros(parameters.n_dimensions, dtype=np.float)
+            self.H = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def compute_aggregation(self, local_information_to_aggregate):
         # In Artemis there is no weight associated with the aggregation, all nodes must have the same weight equal
         # to 1 / len(workers), this is why, an average is enough.
         true_mean = torch.stack(local_information_to_aggregate).mean(0)
-        approximate_mean = torch.stack(local_information_to_aggregate).sum(0) / self.parameters.nb_devices
+        approximate_mean = torch.stack(local_information_to_aggregate).sum(0) / (self.parameters.fraction_sampled_workers * self.parameters.nb_devices)
         if self.parameters.fraction_sampled_workers == 1.:
             assert true_mean.equal(approximate_mean), "The true and approximate means are not equal !"
         return approximate_mean
@@ -163,28 +163,33 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
     def get_set_of_workers(self, cost_models, all=False):
         if all:
-            return list(zip(self.workers, cost_models))
-        return self.workers_sub_set
+            result = list(zip(self.workers, cost_models))
+        else:
+            result = self.workers_sub_set
+        if self.parameters.fraction_sampled_workers == 1:
+            assert len(result) == self.parameters.nb_devices
+        return result
 
     def build_randomized_omega(self, cost_models):
-        randomized_omega_k = []
+        randomized_omega_k = [torch.zeros(self.parameters.n_dimensions, dtype=np.float)
+                                for i in range(self.parameters.nb_devices)]
         for (worker, cost_model) in self.get_set_of_workers(cost_models):
-            randomized_omega_k.append(self.parameters.compression_model.compress(self.value_to_compress[worker.ID]))
+            randomized_omega_k[worker.ID] = self.parameters.down_compression_model.compress(self.value_to_compress[worker.ID])
         self.omega = randomized_omega_k
         self.omega_k.append(self.omega)
 
     def build_omega(self):
-        self.omega = self.parameters.compression_model.compress(self.value_to_compress)
+        self.omega = self.parameters.down_compression_model.compress(self.value_to_compress)
         self.omega_k.append(self.omega)
 
     def perform_down_compression(self, value_to_consider, cost_models):
 
         # We combine with EF and memory to obtain the proper value that will be compressed
         if self.parameters.randomized:
-            self.value_to_compress = [(value_to_consider - self.l[i]) + self.all_error_i[-1][i]
+            self.value_to_compress = [(value_to_consider - self.H[i]) + self.all_error_i[-1][i] * self.parameters.down_learning_rate
                                       for i in range(self.parameters.nb_devices)]
         else:
-            self.value_to_compress = (value_to_consider - self.l) + self.all_error_i[-1]
+            self.value_to_compress = (value_to_consider - self.H) + self.all_error_i[-1] * self.parameters.down_learning_rate
 
         # We build omega i.e, what will be sent to remote devices
         if self.parameters.randomized:
@@ -228,10 +233,12 @@ class ArtemisUpdate(AbstractFLUpdate):
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def update_model(self, model_param):
-        if self.parameters.randomized:
-            self.v = self.parameters.momentum * self.v + (torch.mean(torch.stack(self.omega + self.l), dim=0))
+        if self.parameters.non_degraded:
+            self.v = self.parameters.momentum * self.v + self.g
+        elif self.parameters.randomized:
+            self.v = self.parameters.momentum * self.v + (torch.mean(torch.stack(self.omega + self.H), dim=0))
         else:
-            self.v = self.parameters.momentum * self.v + (self.omega + self.l)
+            self.v = self.parameters.momentum * self.v + (self.omega + self.H)
         return model_param - self.step * self.v
 
 
@@ -251,7 +258,7 @@ class ArtemisUpdate(AbstractFLUpdate):
             # exactly once, and if there is different numbers of points on each device.
             if compressed_delta_i is not None:
                 self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
-                self.h[worker.ID] += self.parameters.learning_rate * compressed_delta_i
+                self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
 
         # Aggregating all delta
         self.g = self.compute_aggregation(self.all_delta_i)
@@ -260,8 +267,8 @@ class ArtemisUpdate(AbstractFLUpdate):
         model_param = self.update_model(model_param)
 
         # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
-        if self.parameters.double_use_memory:
-            self.l += self.parameters.learning_rate * self.omega
+        if self.parameters.use_down_memory:
+            self.H += self.parameters.down_learning_rate * self.omega
         return model_param
 
 class SympaUpdate(AbstractFLUpdate):
@@ -291,7 +298,7 @@ class SympaUpdate(AbstractFLUpdate):
 
         all_local_models = []
         for worker, _ in self.get_set_of_workers(cost_models, all=True):
-            tuple_to_send = (self.parameters.compression_model.compress(self.g), model_param)
+            tuple_to_send = (self.parameters.down_compression_model.compress(self.g), model_param)
             local_model = worker.local_update.send_global_informations_and_update_local_param(tuple_to_send, self.step)
             all_local_models.append(local_model)
         return all_local_models
@@ -307,7 +314,7 @@ class SympaUpdate(AbstractFLUpdate):
             compressed_delta_i = worker.local_update.compute_locally(cost_model, j)
             if compressed_delta_i is not None:
                 self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
-                self.h[worker.ID] += self.parameters.learning_rate * compressed_delta_i
+                self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
 
         # Aggregating all delta
         self.g = self.compute_aggregation(self.all_delta_i)
@@ -325,16 +332,27 @@ class DownCompressModelUpdate(AbstractFLUpdate):
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
+    def build_randomized_omega(self, cost_models):
+        randomized_omega_k = [torch.zeros(self.parameters.n_dimensions, dtype=np.float)
+                                for i in range(self.parameters.nb_devices)]
+        for i in range(self.parameters.nb_devices):
+            randomized_omega_k[i] = self.parameters.down_compression_model.compress(self.value_to_compress[i])
+        self.omega = randomized_omega_k
+        self.omega_k.append(self.omega)
+
     def send_back_global_informations_and_update(self, cost_models):
-        cpt = 0
         for worker, _ in self.get_set_of_workers(cost_models):
             # We just have to send what has been compressed (i.e omega).
             if self.parameters.randomized:
-                models_to_send = self.omega[cpt]
-                cpt += 1
+                models_to_send = self.omega[worker.ID]
             else:
                 models_to_send = self.omega
             worker.local_update.send_global_informations_and_update_local_param(models_to_send, self.step)
+            # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
+            if self.parameters.use_down_memory and self.parameters.randomized:
+                self.H[worker.ID] = self.H[worker.ID] + self.parameters.down_learning_rate * self.omega[worker.ID]
+        if self.parameters.use_down_memory and not self.parameters.randomized:
+            self.H = self.H + self.parameters.down_learning_rate * self.omega
 
     def update_model(self, model_param):
         self.v = self.parameters.momentum * self.v + self.g
@@ -351,20 +369,13 @@ class DownCompressModelUpdate(AbstractFLUpdate):
             compressed_delta_i = worker.local_update.compute_locally(cost_model, j)
             if compressed_delta_i is not None:
                 self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
-                self.h[worker.ID] += self.parameters.learning_rate * compressed_delta_i
+                self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
 
         # Aggregating all delta
         self.g = self.compute_aggregation(self.all_delta_i)
 
         model_param = self.update_model(model_param)
         self.perform_down_compression(model_param, cost_models)
-
-        # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
-        if self.parameters.double_use_memory:
-            if self.parameters.randomized:
-                self.l = [self.l[i] + self.parameters.learning_rate * self.omega[i] for i in range(self.parameters.nb_devices)]
-            else:
-                self.l = self.l + self.parameters.learning_rate * self.omega
 
         return model_param
 
@@ -388,7 +399,7 @@ class FedAvgUpdate(AbstractFLUpdate):
 
         for worker, cost_model in self.get_set_of_workers(cost_models):
             local_nb_points = cost_model.X.shape[0]
-            local_model = worker.local_update.compute_locally(cost_model, j, self.step)
+            local_model = worker.local_update.compute_locally(cost_model, j, self.step) + model_param
             local_models.append(local_model * local_nb_points / total_nb_of_points)
 
         model_param = torch.sum(torch.stack(local_models, dim=0), dim=0)
@@ -425,7 +436,7 @@ class DianaUpdate(AbstractFLUpdate):
             compressed_delta_i = worker.local_update.compute_locally(cost_model, j)
             if compressed_delta_i is not None:
                 self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
-                self.h[worker.ID] += self.parameters.learning_rate * compressed_delta_i
+                self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
 
         # Aggregating all delta
         self.g = self.compute_aggregation(self.all_delta_i)
@@ -451,7 +462,7 @@ class GradientVanillaUpdate(AbstractFLUpdate):
             delta_i = worker.local_update.compute_locally(cost_model, j)
             if delta_i is not None:
                 self.all_delta_i.append(self.h[worker.ID] + delta_i)
-                self.h[worker.ID] += self.parameters.learning_rate * delta_i
+                self.h[worker.ID] += self.parameters.up_learning_rate * delta_i
 
         # Aggregating all delta
         self.g = self.compute_aggregation(self.all_delta_i)

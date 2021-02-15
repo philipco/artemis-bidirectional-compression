@@ -40,13 +40,13 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(params.regularization_rate, 0)
         self.assertEqual(params.momentum, 0)
         self.assertIsNone(params.quantization_param)
-        self.assertEqual(params.learning_rate, None)
+        self.assertEqual(params.up_learning_rate, None)
         self.assertEqual(params.force_learning_rate, False)
         self.assertEqual(params.bidirectional, False)
         self.assertEqual(params.verbose, False)
         self.assertEqual(params.stochastic, True)
         self.assertEqual(params.down_compress_model, True)
-        self.assertEqual(params.double_use_memory, False)
+        self.assertEqual(params.use_down_memory, False)
         self.assertEqual(params.use_averaging, False)
 
     def test_StochasticSingleCompressionWithMemory_iscorrect(self):
@@ -77,7 +77,7 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(params.step_formula.__code__.co_code, step_formula_for_test.__code__.co_code)
         self.assertEqual(params.quantization_param, quantization_param)
         self.assertEqual(params.momentum, 0)
-        self.assertEqual(params.learning_rate, 0)
+        self.assertEqual(params.up_learning_rate, 0)
         self.assertEqual(params.verbose, False)
         self.assertEqual(params.stochastic, True)
         self.assertIs(type(params.cost_models), type(RMSEModel(X, Y_reg)))
@@ -100,7 +100,7 @@ class ParametersTest(unittest.TestCase):
         self.assertIs(type(params.cost_models), type(RMSEModel(X, Y_reg)))
         self.assertEqual(params.use_averaging, False)
         self.assertEqual(params.bidirectional, True)
-        self.assertEqual(params.double_use_memory, False)
+        self.assertEqual(params.use_down_memory, False)
         self.assertEqual(params.down_compress_model, True)
 
     def test_StochasticDoubleGradientsCompressionWithoutMemory_iscorrect(self):
@@ -119,7 +119,7 @@ class ParametersTest(unittest.TestCase):
         self.assertIs(type(params.cost_models), type(RMSEModel(X, Y_reg)))
         self.assertEqual(params.use_averaging, False)
         self.assertEqual(params.bidirectional, True)
-        self.assertEqual(params.double_use_memory, False)
+        self.assertEqual(params.use_down_memory, False)
         self.assertEqual(params.down_compress_model, True)
 
 

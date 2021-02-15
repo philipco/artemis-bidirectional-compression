@@ -42,7 +42,9 @@ class Parameters:
                  regularization_rate: int = 0,
                  momentum: float = 0,
                  compression_model: CompressionModel = None,
-                 learning_rate: int = None,
+                 down_compression_model: CompressionModel = None,
+                 up_learning_rate: int = None,
+                 down_learning_rate: int = None,
                  force_learning_rate: bool = False,
                  bidirectional: bool = False,
                  verbose: bool = False,
@@ -55,7 +57,8 @@ class Parameters:
                  randomized: bool = False,
                  down_error_feedback: bool = False,
                  up_error_feedback: bool = False,
-                 nb_local_update: int = 1) -> None:
+                 nb_local_update: int = 1,
+                 non_degraded: bool = False) -> None:
         super().__init__()
         self.cost_models = cost_models  # Cost model to use for gradient descent.
         self.federated = federated  # Boolean to say if we do federated learning or not.
@@ -67,17 +70,19 @@ class Parameters:
         self.regularization_rate = regularization_rate  # coefficient of regularization
         self.force_learning_rate = force_learning_rate
         self.momentum = momentum  # momentum coefficient
-        self.compression_model = compression_model  # quantization parameter
+        self.up_compression_model = compression_model  # quantization parameter
+        self.down_compression_model = compression_model
         if step_formula is None:
             self.step_formula = default_step_formula(stochastic)
         else:
             self.step_formula = step_formula
-        self.learning_rate = learning_rate  # Learning rate used when updating memory.
+        self.up_learning_rate = up_learning_rate  # Learning rate used when up updating memory.
+        self.down_learning_rate = down_learning_rate  # Learning rate used when down updating memory.
         self.bidirectional = bidirectional
         self.stochastic = stochastic  # true if running a stochastic gradient descent
         self.streaming = streaming  # True if each sample should be used only once !
-        self.use_memory = use_memory  # use memory when sending to global server
-        self.double_use_memory = use_double_memory  # a memory at back communication
+        self.use_up_memory = use_memory  # use memory when sending to global server
+        self.use_down_memory = use_double_memory  # a memory at back communication
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
         self.time_debug = time_debug  # True is one want to debug the time spent in each procedure.
@@ -85,6 +90,7 @@ class Parameters:
         self.down_error_feedback = down_error_feedback
         self.up_error_feedback = up_error_feedback
         self.nb_local_update = nb_local_update
+        self.non_degraded = non_degraded
 
 
     def print(self):

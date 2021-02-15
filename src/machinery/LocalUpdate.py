@@ -35,7 +35,7 @@ class AbstractLocalUpdate(ABC):
 
         # Initialization of model's parameter.
         self.model_param = torch.FloatTensor(
-            [(-1 ** i) / (2 * self.parameters.n_dimensions) for i in range(self.parameters.n_dimensions)]) \
+            [0 for i in range(self.parameters.n_dimensions)]) \
             .to(dtype=torch.float64)
 
         self.error_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -77,7 +77,7 @@ class LocalGradientVanillaUpdate(AbstractLocalUpdate):
         self.compute_local_gradient(cost_model, j)
 
         self.delta_i = deepcopy(self.g_i - self.h_i)
-        self.h_i += self.parameters.learning_rate * self.delta_i
+        self.h_i += self.parameters.up_learning_rate * self.delta_i
         return self.delta_i
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
@@ -99,8 +99,8 @@ class LocalDianaUpdate(AbstractLocalUpdate):
             return None
 
         self.delta_i = deepcopy(self.g_i - self.h_i)
-        quantized_delta_i = self.parameters.compression_model.compress(self.delta_i)
-        self.h_i += self.parameters.learning_rate * quantized_delta_i
+        quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
+        self.h_i += self.parameters.up_learning_rate * quantized_delta_i
         return quantized_delta_i
 
 
@@ -111,26 +111,24 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         super().__init__(parameters)
 
         # For bidirectional compression :
-        self.l_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
-        learning_rate_down = self.parameters.learning_rate
 
         for tensor in tensor_sent:
 
-            # l_i must be update with true omega, not with it "unzip" version which corresponds to compress model param.
-            # As we override model_param, we need to update l_i in the same operation,
-            # to benefit from the true model_param.
-            if self.parameters.double_use_memory:
-                decompressed_value, self.l_i = tensor + self.l_i, self.l_i + learning_rate_down * tensor
+            # H_i must be update with true omega, not with it "unzip" version which corresponds to compress model param.
+            if self.parameters.use_down_memory:
+                decompressed_value = tensor + self.H_i
+                self.H_i = self.H_i + self.parameters.down_learning_rate * tensor
             else:
                 decompressed_value = tensor
 
             self.v = self.parameters.momentum * self.v + decompressed_value
             self.model_param = self.model_param - step * self.v
 
-        if not self.parameters.double_use_memory:
-            assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
+        if not self.parameters.use_down_memory:
+            assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
     def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
@@ -139,10 +137,10 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             return None
 
         self.delta_i = (self.g_i - self.h_i) + self.error_i
-        quantized_delta_i = self.parameters.compression_model.compress(self.delta_i)
+        quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.up_error_feedback:
             self.error_i = self.delta_i - quantized_delta_i
-        self.h_i += self.parameters.learning_rate * quantized_delta_i
+        self.h_i += self.parameters.up_learning_rate * quantized_delta_i
         return quantized_delta_i
 
 class LocalFedAvgUpdate(AbstractLocalUpdate):
@@ -151,11 +149,11 @@ class LocalFedAvgUpdate(AbstractLocalUpdate):
         self.model_param = copy(tensor_sent)
 
     def compute_locally(self, cost_model: ACostModel, j: int, step_size: float):
+        original_model_param = copy(self.model_param)
         for local_iteration in range (self.parameters.nb_local_update):
-             for i in range(cost_model.X.shape[0] // (self.parameters.batch_size * self.parameters.nb_local_update)):
-                self.compute_local_gradient(cost_model, j)
-                self.model_param = copy(self.model_param - step_size * self.g_i)
-        return self.model_param
+            self.compute_local_gradient(cost_model, j)
+            self.model_param = copy(self.model_param - step_size * self.g_i)
+        return self.parameters.up_compression_model.compress(self.model_param - original_model_param)
 
 
 class LocalDownCompressModelUpdate(AbstractLocalUpdate):
@@ -164,20 +162,19 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
         super().__init__(parameters)
 
         # For bidirectional compression :
-        self.l_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
-        learning_rate_down = self.parameters.learning_rate
 
-        if self.parameters.double_use_memory:
-            decompressed_value, self.l_i = tensor_sent + self.l_i, self.l_i + learning_rate_down * tensor_sent
+        if self.parameters.use_down_memory:
+            decompressed_value = tensor_sent + self.H_i
+            self.H_i = deepcopy(self.H_i + self.parameters.down_learning_rate * tensor_sent)
         else:
             decompressed_value = tensor_sent
-
         self.model_param = decompressed_value
 
-        if not self.parameters.double_use_memory:
-            assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
+        if not self.parameters.use_down_memory:
+            assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
     def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
@@ -185,9 +182,9 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.delta_i = (self.g_i - self.h_i) + self.error_i
-        quantized_delta_i = self.parameters.compression_model.compress(self.delta_i)
-        self.h_i += self.parameters.learning_rate * quantized_delta_i
+        self.delta_i = deepcopy((self.g_i - self.h_i) + self.error_i)
+        quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
+        self.h_i = deepcopy(self.h_i + self.parameters.up_learning_rate * quantized_delta_i)
         return quantized_delta_i
 
 
@@ -195,22 +192,21 @@ class LocalSympaUpdate(LocalArtemisUpdate):
     """This class carry out the local update of the Artemis algorithm."""
 
     def send_global_informations_and_update_local_param(self, tuple_sent: torch.FloatTensor, step: float):
-        learning_rate_down = self.parameters.learning_rate
 
         g, model_param = tuple_sent
 
-        # l_i must be update with true omega, not with it "unzip" version which corresponds to compress model param.
-        # As we override model_param, we need to update l_i in the same operation,
+        # H_i must be update with true omega, not with it "unzip" version which corresponds to compress model param.
+        # As we override model_param, we need to update H_i in the same operation,
         # to benefit from the true model_param.
-        if self.parameters.double_use_memory:
-            decompressed_value, self.l_i = g + self.l_i, self.l_i + learning_rate_down * g
+        if self.parameters.use_down_memory:
+            decompressed_value, self.H_i = g + self.H_i, self.H_i + self.parameters.down_learning_rate * g
         else:
             decompressed_value = g
 
         # Updating the model with the new gradients.
         self.model_param = model_param - step * decompressed_value
 
-        if not self.parameters.double_use_memory:
+        if not self.parameters.use_down_memory:
             assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 

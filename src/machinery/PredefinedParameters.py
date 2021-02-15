@@ -118,7 +118,30 @@ class Diana(VanillaSGD):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.use_memory = True
+        params.use_up_memory = True
+        return params
+
+
+
+class DianaOneWay(VanillaSGD):
+    """Predefine parameters to run Diana algorithm.
+    """
+
+    def name(self) -> str:
+        return "Diana"
+
+    def type_FL(self):
+        return DianaDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.use_up_memory = True
+        params.up_compression_model = SQuantization(0, n_dimensions)
+        params.down_compression_model = SQuantization(0, n_dimensions)
         return params
 
 
@@ -141,6 +164,7 @@ class BiQSGD(Qsgd):
         params.bidirectional = True
         return params
 
+
 class Artemis(Diana):
     """Predefine parameters to run Artemis algorithm.
     """
@@ -159,6 +183,48 @@ class Artemis(Diana):
                                 stochastic, streaming, batch_size)
         params.bidirectional = True
         return params
+
+class ArtemisND(Diana):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "Artemis-ND"
+
+    def type_FL(self):
+        return ArtemisDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.bidirectional = True
+        params.non_degraded = True
+        return params
+
+
+class ArtemisOneWay(Artemis):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "Artemis"
+
+    def type_FL(self):
+        return ArtemisDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.up_compression_model = SQuantization(0, n_dimensions)
+        params.down_compression_model = SQuantization(1, n_dimensions)
+        return params
+
 
 class Sympa(Artemis):
     """Predefine parameters to run Artemis algorithm.
@@ -259,7 +325,8 @@ class DoubleSqueeze(BiQSGD):
         params.up_error_feedback = True
         return params
 
-class ArtemisEF(Artemis):
+
+class Dore(Artemis):
     """Predefine parameters to run Artemis algorithm.
     """
 
@@ -278,17 +345,38 @@ class ArtemisEF(Artemis):
         params.down_error_feedback = True
         return params
 
+
+class DoreOneWay(Dore):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "Dore"
+
+    def type_FL(self):
+        return ArtemisDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.up_compression_model = SQuantization(0, n_dimensions)
+        params.down_compression_model = SQuantization(1, n_dimensions)
+        return params
+
 KIND_COMPRESSION_EF = [VanillaSGD(),
                        BiQSGD(),
                        BiQSGD_EF(),
                        Artemis(),
-                       ArtemisEF()
-                    ]
+                       Dore()
+                       ]
 
 KIND_COMPRESSION_RAND = [VanillaSGD(),
                          BiQSGD(),
                          Artemis(),
-                         ArtemisEF(),
+                         Dore(),
                          RArtemis(),
                          RArtemisEF(),
                          ]
@@ -297,7 +385,7 @@ ARTEMIS_LIKE_ALGO = [VanillaSGD(),
                      BiQSGD(),
                      BiQSGD_EF(),
                      Artemis(),
-                     ArtemisEF(),
+                     Dore(),
                      RArtemis(),
                      RArtemisEF()]
 
@@ -320,7 +408,8 @@ class Topk(PredefinedParameters):
         parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
                                     compression_model, step_formula, nb_epoch,
                                     fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
-        parameters.compression_model = TopKSparsification(level, n_dimensions)
+        parameters.up_compression_model = TopKSparsification(level, n_dimensions)
+        parameters.down_compression_model = TopKSparsification(level, n_dimensions)
         return parameters
 
 
@@ -340,7 +429,8 @@ class RandkBiased(PredefinedParameters):
         parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
                                     compression_model, step_formula, nb_epoch,
                                     fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
-        parameters.compression_model = RandomSparsification(level, n_dimensions, biased=False)
+        parameters.up_compression_model = RandomSparsification(level, n_dimensions, biased=False)
+        parameters.down_compression_model = RandomSparsification(level, n_dimensions, biased=False)
         return parameters
 
 
@@ -360,7 +450,8 @@ class Randk(PredefinedParameters):
         parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
                                     compression_model, step_formula, nb_epoch,
                                     fraction_sampled_workers, use_averaging,stochastic, streaming, batch_size)
-        parameters.compression_model = RandomSparsification(level, n_dimensions, biased=False)
+        parameters.up_compression_model = RandomSparsification(level, n_dimensions, biased=False)
+        parameters.down_compression_model = RandomSparsification(level, n_dimensions, biased=False)
         return parameters
 
 
@@ -380,7 +471,8 @@ class Quantiz(PredefinedParameters):
         parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
                                              compression_model, step_formula, nb_epoch,
                                              fraction_sampled_workers, use_averaging, stochastic, streaming, batch_size)
-        parameters.compression_model = SQuantization(level_quantiz, n_dimensions)
+        parameters.up_compression_model = SQuantization(level_quantiz, n_dimensions)
+        parameters.down_compression_model = SQuantization(level_quantiz, n_dimensions)
         return parameters
 
 
@@ -388,7 +480,7 @@ RAND_K = [VanillaSGD(),
           Randk(BiQSGD()),
           Randk(BiQSGD_EF()),
           Randk(Artemis()),
-          Randk(ArtemisEF()),
+          Randk(Dore()),
           Randk(RArtemis()),
           Randk(RArtemisEF())
           ]
@@ -397,7 +489,7 @@ RAND_K_BIASED = [VanillaSGD(),
           RandkBiased(BiQSGD()),
           RandkBiased(BiQSGD_EF()),
           RandkBiased(Artemis()),
-          RandkBiased(ArtemisEF()),
+          RandkBiased(Dore()),
           RandkBiased(RArtemis()),
           RandkBiased(RArtemisEF())
           ]
@@ -406,7 +498,7 @@ TOP_K = [VanillaSGD(),
           Topk(BiQSGD()),
           Topk(BiQSGD_EF()),
           Topk(Artemis()),
-          Topk(ArtemisEF()),
+          Topk(Dore()),
           Topk(RArtemis()),
           Topk(RArtemisEF())
           ]
@@ -415,7 +507,7 @@ QUANTIZATION = [VanillaSGD(),
           Quantiz(BiQSGD()),
           Quantiz(BiQSGD_EF()),
           Quantiz(Artemis()),
-          Quantiz(ArtemisEF()),
+          Quantiz(Dore()),
           Quantiz(RArtemis()),
           Quantiz(RArtemisEF())
           ]
@@ -441,12 +533,13 @@ class ModelCompr(Artemis):
                                 stochastic, streaming, batch_size)
         return params
 
-class ModelComprMem(ModelCompr):
+
+class MCM(ModelCompr):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "ModelComprMem"
+        return "MCM"
 
     def type_FL(self):
         return DownCompressModelDescent
@@ -457,15 +550,19 @@ class ModelComprMem(ModelCompr):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.double_use_memory = True
+        params.use_down_memory = True
+        if fraction_sampled_workers != 1:
+            print("Use randomized version of MCM due to partial participation.")
+            params.randomized = True
         return params
 
-class RandMCM(ModelComprMem):
+
+class MCM0(ModelCompr):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "RandMCM"
+        return r'MCM - $\alpha = 0$'
 
     def type_FL(self):
         return DownCompressModelDescent
@@ -476,8 +573,56 @@ class RandMCM(ModelComprMem):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.randomized = True
+        params.use_down_memory = True
+        params.down_learning_rate = 0
+        if fraction_sampled_workers != 1:
+            params.randomized = True
         return params
+
+
+class MCM1(ModelCompr):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return r'MCM - $\alpha = 1$'
+
+    def type_FL(self):
+        return DownCompressModelDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.use_down_memory = True
+        params.down_learning_rate = 1
+        if fraction_sampled_workers != 1:
+            params.randomized = True
+        return params
+
+
+class MCMOneWay(MCM):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "MCM"
+
+    def type_FL(self):
+        return DownCompressModelDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.up_compression_model = SQuantization(0, n_dimensions)
+        params.down_compression_model = SQuantization(1, n_dimensions)
+        return params
+
 
 class ModelComprEF(ModelCompr):
     """Predefine parameters to run Artemis algorithm.
@@ -497,6 +642,7 @@ class ModelComprEF(ModelCompr):
                                 stochastic, streaming, batch_size)
         params.down_error_feedback = True
         return params
+
 
 class RModelComprEF(ModelComprEF):
     """Predefine parameters to run Artemis algorithm.
@@ -518,12 +664,12 @@ class RModelComprEF(ModelComprEF):
         return params
 
 
-class RModelComprMem(ModelComprMem):
+class RandMCM(MCM):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "RModelComprMem"
+        return "R-MCM"
 
     def type_FL(self):
         return DownCompressModelDescent
@@ -537,11 +683,53 @@ class RModelComprMem(ModelComprMem):
         params.randomized = True
         return params
 
-MODEL_COMPRESSION = [VanillaSGD(), Artemis(), ArtemisEF(), ModelCompr(), ModelComprMem(), ModelComprEF(),
+
+class RandMCMOneWay(MCM):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "R-MCM"
+
+    def type_FL(self):
+        return DownCompressModelDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.up_compression_model = SQuantization(0, n_dimensions)
+        params.down_compression_model = SQuantization(1, n_dimensions)
+        return params
+
+MODEL_COMPRESSION = [VanillaSGD(), Artemis(), Dore(), ModelCompr(), MCM(), ModelComprEF(),
                      RModelComprEF(), Sympa()]
 
 
 ################################################## Federated Learning ##################################################
+
+class FedPAQ(VanillaSGD):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "FedPAQ"
+
+    def type_FL(self):
+        return FedAvgDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.stochastic = True
+        params.nb_local_update = 10
+        params.batch_size = params.batch_size // params.nb_local_update
+        return params
 
 class FedAvg(VanillaSGD):
     """Predefine parameters to run Artemis algorithm.
@@ -559,15 +747,38 @@ class FedAvg(VanillaSGD):
         params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
+        params.up_compression_model = SQuantization(0, params.n_dimensions)
         params.stochastic = True
-        params.nb_local_update = 5
+        params.nb_local_update = 10
+        params.batch_size = params.batch_size // params.nb_local_update
         return params
 
-FL_ALGOS = [VanillaSGD(), FedAvg(), DoubleSqueeze(), ArtemisEF(), Artemis()]
+class FedSGD(FedAvg):
+    """Predefine parameters to run Artemis algorithm.
+    """
 
-ALGO_EF = [Qsgd(), Diana(), Artemis(), ArtemisEF(), DoubleSqueeze()]
+    def name(self) -> str:
+        return "FedSGD"
 
-STUDIED_ALGO = [VanillaSGD(), FedAvg(), ArtemisEF(), DoubleSqueeze(), Artemis(),
-                RArtemis(), RArtemisEF(), Sympa(), ModelComprMem()]
+    def type_FL(self):
+        return FedAvgDescent
 
-GAME_OF_THRONES = [VanillaSGD(), Artemis(), RArtemis(), ModelCompr(), ModelComprMem(), RandMCM()]
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.up_compression_model = SQuantization(0, params.n_dimensions)
+        params.stochastic = False
+        params.nb_local_update = 1
+        return params
+
+FL_ALGOS = [VanillaSGD(), FedAvg(), DoubleSqueeze(), Dore(), Artemis()]
+
+ALGO_EF = [Qsgd(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
+
+STUDIED_ALGO = [VanillaSGD(), FedAvg(), Dore(), DoubleSqueeze(), Artemis(),
+                RArtemis(), RArtemisEF(), Sympa(), MCM()]
+
+GAME_OF_THRONES = [VanillaSGD(), Artemis(), RArtemis(), ModelCompr(), MCM(), RandMCM()]
