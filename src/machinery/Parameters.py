@@ -77,6 +77,7 @@ class Parameters:
             self.step_formula = step_formula
         self.up_learning_rate = up_learning_rate  # Learning rate used when up updating memory.
         self.down_learning_rate = down_learning_rate  # Learning rate used when down updating memory.
+        self.error_feedback_coef = 1
         self.stochastic = stochastic  # true if running a stochastic gradient descent
         self.streaming = streaming  # True if each sample should be used only once !
         self.use_up_memory = use_memory  # use memory when sending to global server

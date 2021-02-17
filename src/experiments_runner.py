@@ -27,7 +27,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                                            in zip(locals().keys(), locals().values())]))
 
     assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-one-way", "mcm-other-options",
-                     "artemis-vs-existing"],\
+                     "artemis-vs-existing", "artemis-and-ef"],\
         "The possible choice of algorithms are : " \
         "uni-vs-bi (to compare uni-compression with bi-compression), " \
         "with-without-ef (to compare algorithms using or not error-feedback), " \
@@ -104,6 +104,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     # Select the list of algorithms:
     if algos == 'uni-vs-bi':
         list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
+    if algos == 'artemis-and-ef':
+        list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis(), Dore()]#, DoubleSqueeze()]
     elif algos == "with-without-ef":
         list_algos = [Qsgd(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
     elif algos == "compress-model":

@@ -186,10 +186,10 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         # We combine with EF and memory to obtain the proper value that will be compressed
         if self.parameters.randomized:
-            self.value_to_compress = [(value_to_consider - self.H[i]) + self.all_error_i[-1][i] * self.parameters.down_learning_rate
+            self.value_to_compress = [(value_to_consider - self.H[i]) + self.all_error_i[-1][i] * self.parameters.error_feedback_coef
                                       for i in range(self.parameters.nb_devices)]
         else:
-            self.value_to_compress = (value_to_consider - self.H) + self.all_error_i[-1] * self.parameters.down_learning_rate
+            self.value_to_compress = (value_to_consider - self.H) + self.all_error_i[-1] * self.parameters.error_feedback_coef
 
         # We build omega i.e, what will be sent to remote devices
         if self.parameters.randomized:
@@ -258,7 +258,8 @@ class ArtemisUpdate(AbstractFLUpdate):
             # exactly once, and if there is different numbers of points on each device.
             if compressed_delta_i is not None:
                 self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
-                self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
+                if self.parameters.use_up_memory:
+                    self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
 
         # Aggregating all delta
         self.g = self.compute_aggregation(self.all_delta_i)

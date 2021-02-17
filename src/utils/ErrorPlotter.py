@@ -16,7 +16,7 @@ markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
 markersize = 1
 curve_size=4
 fontsize=30
-fontsize_legend=14
+fontsize_legend=21
 # figsize=(15,7)
 figsize=(8,7)
 fourfigsize=(13, 8)
@@ -161,7 +161,7 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
         plt.xticks(fontsize=xticks_fontsize)
     ax.set_xlabel(xlegends, fontsize=fontsize)
     ax.set_ylabel(Y_LEGENDS[ylegends], fontsize=fontsize)
-    ax.legend(loc='upper right', fontsize=fontsize_legend)
+    ax.legend(loc='best', fontsize=fontsize_legend)
     fig.tight_layout()
     if True:
         plt.savefig('{0}.eps'.format(picture_name), format='eps')
