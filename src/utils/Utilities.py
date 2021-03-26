@@ -8,6 +8,8 @@ import pickle
 import os
 
 from math import sqrt, log
+from pathlib import Path
+
 from src.machinery.Parameters import Parameters
 import pandas as pd
 
@@ -82,10 +84,9 @@ def pickle_loader(filename: str):
 def get_project_root() -> str:
     import pathlib
     path = str(pathlib.Path().absolute())
-    if not path.find("artemis"):
-        raise ValueError("Current directory looks to be higher than root of the project: {}".format(path))
-    split = path.split("artemis")
-    return split[0] + "artemis"
+    root_dir = str(Path(__file__).parent.parent.parent)
+    split = path.split(root_dir)
+    return split[0] + root_dir
 
 
 def create_folder_if_not_existing(folder):

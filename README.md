@@ -45,7 +45,7 @@ flexibility. Artemis can be ran with various features, namely:
 1. Gradients or models compression
 2. Bidirectional or unidirectional compression
 3. Stochastic or full batch descent
-4. With or without memory
+4. With or without error-feedback
 5. With one or two memories (one for each way)
 6. With or without momentum
 7. With or without Polyak-Ruppert averaging

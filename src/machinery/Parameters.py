@@ -49,8 +49,9 @@ class Parameters:
                  verbose: bool = False,
                  stochastic: bool = True,
                  streaming: bool = False,
-                 use_memory: bool = False,
-                 use_double_memory: bool = False,
+                 use_up_memory: bool = False,
+                 use_down_memory: bool = False,
+                 use_unique_memory: bool = True,
                  use_averaging: bool = False,
                  time_debug: bool = False,
                  randomized: bool = False,
@@ -80,8 +81,9 @@ class Parameters:
         self.error_feedback_coef = 1
         self.stochastic = stochastic  # true if running a stochastic gradient descent
         self.streaming = streaming  # True if each sample should be used only once !
-        self.use_up_memory = use_memory  # use memory when sending to global server
-        self.use_down_memory = use_double_memory  # a memory at back communication
+        self.use_up_memory = use_up_memory  # use memory when sending to global server
+        self.use_down_memory = use_down_memory  # a memory at back communication
+        self.use_unique_memory = [use_unique_memory, True][fraction_sampled_workers==1] # either use N memories, either a single one
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
         self.time_debug = time_debug  # True is one want to debug the time spent in each procedure.

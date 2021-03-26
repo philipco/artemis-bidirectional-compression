@@ -40,7 +40,7 @@ class AbstractGradientUpdate(ABC):
         return loss.item()
 
     @abstractmethod
-    def compute(self, model_param: torch.FloatTensor, cost_models, nb_it: int, j: int) \
+    def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """Compute the model's update.
 
@@ -75,7 +75,10 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         self.all_delta_i = []
 
         # Local memories hold on the central server.
-        self.h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in range(self.parameters.nb_devices)]
+        if not self.parameters.use_unique_memory:
+            self.h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in range(self.parameters.nb_devices)]
+        else:
+            self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         # Omega : used to update the model on central server.
         self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -220,6 +223,29 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             if self.parameters.fraction_sampled_workers == 1.:
                 assert len(self.omega_k[worker.idx_last_update:]) == 1
             worker.idx_last_update = len(self.omega_k)
+            
+    def receive_all_delta(self, cost_models, nb_inside_it: int):
+        # Warning, if one wants to run the case when subset are updating, but then al devices are updated,
+        # the following lines must be changed.
+        for worker, cost_model in self.get_set_of_workers(cost_models):
+            # We get all the compressed gradient computed on each worker.
+            compressed_delta_i = worker.local_update.compute_locally(cost_model, nb_inside_it)
+
+            # If nothing is returned by the device, this device does not participate to the learning at this iterations.
+            # This may happened if it is considered that during one epoch each devices should run through all its data
+            # exactly once, and if there is different numbers of points on each device.
+            if compressed_delta_i is not None:
+                self.all_delta_i.append(compressed_delta_i + [self.h[worker.ID], 0][self.parameters.use_unique_memory])
+            if self.parameters.use_up_memory and not self.parameters.use_unique_memory:
+                self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
+
+        all_delta = self.compute_aggregation(self.all_delta_i)
+
+        # Aggregating all delta
+        self.g = all_delta + [0, self.h][self.parameters.use_unique_memory]
+
+        if self.parameters.use_up_memory and self.parameters.use_unique_memory:
+            self.h += self.parameters.up_learning_rate * all_delta
 
 
 class ArtemisUpdate(AbstractFLUpdate):
@@ -247,22 +273,7 @@ class ArtemisUpdate(AbstractFLUpdate):
 
         self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
-        # Warning, if one wants to run the case when subset are updating, but then al devices are updated,
-        # the following lines must be changed.
-        for worker, cost_model in self.get_set_of_workers(cost_models):
-            # We get all the compressed gradient computed on each worker.
-            compressed_delta_i = worker.local_update.compute_locally(cost_model, nb_inside_it)
-
-            # If nothing is returned by the device, this device does not participate to the learning at this iterations.
-            # This may happened if it is considered that during one epoch each devices should run through all its data
-            # exactly once, and if there is different numbers of points on each device.
-            if compressed_delta_i is not None:
-                self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
-                if self.parameters.use_up_memory:
-                    self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
-
-        # Aggregating all delta
-        self.g = self.compute_aggregation(self.all_delta_i)
+        self.receive_all_delta(cost_models, nb_inside_it)
 
         self.perform_down_compression(self.g, cost_models)
         model_param = self.update_model(model_param)
@@ -304,15 +315,15 @@ class SympaUpdate(AbstractFLUpdate):
             all_local_models.append(local_model)
         return all_local_models
 
-    def compute(self, model_param: torch.FloatTensor, cost_models, nb_it: int, j: int) \
+    def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
-        self.initialization(nb_it, model_param, cost_models[0].L, cost_models)
+        self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
         for worker, cost_model in self.get_set_of_workers(cost_models, all=True):
             # We send previously computed gradients,
             # and carry out the update step which has just been done on the central server.
-            compressed_delta_i = worker.local_update.compute_locally(cost_model, j)
+            compressed_delta_i = worker.local_update.compute_locally(cost_model, nb_inside_it)
             if compressed_delta_i is not None:
                 self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
                 self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
@@ -359,15 +370,15 @@ class DownCompressModelUpdate(AbstractFLUpdate):
         self.v = self.parameters.momentum * self.v + self.g
         return model_param - self.step * self.v
 
-    def compute(self, model_param: torch.FloatTensor, cost_models, nb_it: int, j: int) \
+    def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
-        self.initialization(nb_it, model_param, cost_models[0].L, cost_models)
+        self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
         for worker, cost_model in self.get_set_of_workers(cost_models):
             # We send previously computed gradients,
             # and carry out the update step which has just been done on the central server.
-            compressed_delta_i = worker.local_update.compute_locally(cost_model, j)
+            compressed_delta_i = worker.local_update.compute_locally(cost_model, nb_inside_it)
             if compressed_delta_i is not None:
                 self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
                 self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
@@ -389,7 +400,7 @@ class FedAvgUpdate(AbstractFLUpdate):
     def __init__(self, parameters: Parameters, workers) -> None:
         super().__init__(parameters, workers)
 
-    def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, j: int) \
+    def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
         self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
@@ -400,7 +411,7 @@ class FedAvgUpdate(AbstractFLUpdate):
 
         for worker, cost_model in self.get_set_of_workers(cost_models):
             local_nb_points = cost_model.X.shape[0]
-            local_model = worker.local_update.compute_locally(cost_model, j, self.step) + model_param
+            local_model = worker.local_update.compute_locally(cost_model, nb_inside_it, self.step) + model_param
             local_models.append(local_model * local_nb_points / total_nb_of_points)
 
         model_param = torch.sum(torch.stack(local_models, dim=0), dim=0)
@@ -426,21 +437,13 @@ class DianaUpdate(AbstractFLUpdate):
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
-    def compute(self, model_param: torch.FloatTensor, cost_models, nb_it: int, j: int) \
+    def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
-        self.initialization(nb_it, model_param, cost_models[0].L, cost_models)
+        self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
-        for worker, cost_model in self.get_set_of_workers(cost_models):
-            # We send previously computed gradients,
-            # and carry out the update step which has just been done on the central server.
-            compressed_delta_i = worker.local_update.compute_locally(cost_model, j)
-            if compressed_delta_i is not None:
-                self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
-                self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
-
-        # Aggregating all delta
-        self.g = self.compute_aggregation(self.all_delta_i)
+        self.receive_all_delta(cost_models, nb_inside_it)
+        
         self.v = self.parameters.momentum * self.v + self.g
         model_param = model_param - self.v * self.step
 
@@ -452,23 +455,14 @@ class DianaUpdate(AbstractFLUpdate):
 
 class GradientVanillaUpdate(AbstractFLUpdate):
 
-    def compute(self, model_param: torch.FloatTensor, cost_models, nb_it: int, j: int) \
+    def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
-        self.initialization(nb_it, model_param, cost_models[0].L, cost_models)
+        self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
-        for worker, cost_model in self.get_set_of_workers(cost_models):
-            # We send previously computed gradients,
-            # and carry out the update step which has just been done on the central server.
-            delta_i = worker.local_update.compute_locally(cost_model, j)
-            if delta_i is not None:
-                self.all_delta_i.append(self.h[worker.ID] + delta_i)
-                self.h[worker.ID] += self.parameters.up_learning_rate * delta_i
+        self.receive_all_delta(cost_models, nb_inside_it)
 
-        # Aggregating all delta
-        self.g = self.compute_aggregation(self.all_delta_i)
         self.v = self.parameters.momentum * self.v + self.g
-
         model_param = model_param - self.v * self.step
 
         # We update omega (compression of the sum of compressed gradients).

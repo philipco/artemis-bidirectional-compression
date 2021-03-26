@@ -78,8 +78,24 @@ class VanillaSGD(PredefinedParameters):
                           batch_size=batch_size,
                           cost_models=cost_models,
                           use_averaging=use_averaging,
-                          use_memory=False
+                          use_up_memory=False
                           )
+
+class VanillaSGDMem(VanillaSGD):
+    """Predefine parameters to run Diana algorithm.
+    """
+
+    def name(self) -> str:
+        return "SGDMem"
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.use_up_memory = True
+        return params
 
 
 class Qsgd(VanillaSGD):

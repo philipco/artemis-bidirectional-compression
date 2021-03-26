@@ -34,9 +34,7 @@ class AbstractLocalUpdate(ABC):
         self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         # Initialization of model's parameter.
-        self.model_param = torch.FloatTensor(
-            [0 for i in range(self.parameters.n_dimensions)]) \
-            .to(dtype=torch.float64)
+        self.model_param = torch.FloatTensor([0 for i in range(self.parameters.n_dimensions)]).to(dtype=torch.float64)
 
         self.error_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
@@ -76,8 +74,9 @@ class LocalGradientVanillaUpdate(AbstractLocalUpdate):
     def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
         self.compute_local_gradient(cost_model, j)
 
-        self.delta_i = deepcopy(self.g_i - self.h_i)
-        self.h_i += self.parameters.up_learning_rate * self.delta_i
+        self.delta_i = self.g_i - self.h_i
+        if self.parameters.use_up_memory:
+            self.h_i += self.parameters.up_learning_rate * self.delta_i
         return self.delta_i
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
