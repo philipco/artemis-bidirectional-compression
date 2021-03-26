@@ -570,6 +570,7 @@ class MCM(ModelCompr):
         if fraction_sampled_workers != 1:
             print("Use randomized version of MCM due to partial participation.")
             params.randomized = True
+        params.use_unique_memory = False
         return params
 
 
@@ -697,6 +698,42 @@ class RandMCM(MCM):
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.randomized = True
+        return params
+
+
+class RandMCM1Mem(RandMCM):
+
+    def name(self) -> str:
+        return "R-MCM 1Mem"
+
+    def type_FL(self):
+        return DownCompressModelDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.use_unique_memory = True
+        return params
+
+
+class RandMCM1MemReset(RandMCM1Mem):
+
+    def name(self) -> str:
+        return "R-MCM 1MemReset"
+
+    def type_FL(self):
+        return DownCompressModelDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.reset_memories = True
         return params
 
 

@@ -13,6 +13,7 @@ To add a new update scheme, just extend the abstract class AbstractGradientUpdat
 from __future__ import annotations
 
 from abc import ABC, abstractmethod, ABCMeta
+from math import sqrt
 
 import torch
 from typing import Tuple
@@ -103,10 +104,14 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             self.all_error_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
 
         # Memory for bidirectional compression:
-        if self.parameters.randomized:
+        if self.parameters.randomized and not self.parameters.use_unique_memory:
             self.H = [torch.zeros(parameters.n_dimensions, dtype=np.float) for _ in range(self.parameters.nb_devices)]
         else:
             self.H = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+    def update_model(self, model_param):
+        self.v = self.parameters.momentum * self.v + self.g
+        return model_param - self.step * self.v
 
     def compute_aggregation(self, local_information_to_aggregate):
         # In Artemis there is no weight associated with the aggregation, all nodes must have the same weight equal
@@ -188,8 +193,11 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
     def perform_down_compression(self, value_to_consider, cost_models):
 
         # We combine with EF and memory to obtain the proper value that will be compressed
-        if self.parameters.randomized:
+        if self.parameters.randomized and not self.parameters.use_unique_memory:
             self.value_to_compress = [(value_to_consider - self.H[i]) + self.all_error_i[-1][i] * self.parameters.error_feedback_coef
+                                      for i in range(self.parameters.nb_devices)]
+        elif self.parameters.randomized and self.parameters.use_unique_memory:
+            self.value_to_compress = [(value_to_consider - self.H) + self.all_error_i[-1][i] * self.parameters.error_feedback_coef
                                       for i in range(self.parameters.nb_devices)]
         else:
             self.value_to_compress = (value_to_consider - self.H) + self.all_error_i[-1] * self.parameters.error_feedback_coef
@@ -261,7 +269,7 @@ class ArtemisUpdate(AbstractFLUpdate):
     def update_model(self, model_param):
         if self.parameters.non_degraded:
             self.v = self.parameters.momentum * self.v + self.g
-        elif self.parameters.randomized:
+        elif self.parameters.randomized and not self.parameters.use_unique_memory:
             self.v = self.parameters.momentum * self.v + (torch.mean(torch.stack(self.omega + self.H), dim=0))
         else:
             self.v = self.parameters.momentum * self.v + (self.omega + self.H)
@@ -353,44 +361,42 @@ class DownCompressModelUpdate(AbstractFLUpdate):
         self.omega_k.append(self.omega)
 
     def send_back_global_informations_and_update(self, cost_models):
+        update_H_i = torch.zeros(self.parameters.n_dimensions, dtype=np.float)
         for worker, _ in self.get_set_of_workers(cost_models):
             # We just have to send what has been compressed (i.e omega).
             if self.parameters.randomized:
                 models_to_send = self.omega[worker.ID]
             else:
                 models_to_send = self.omega
-            worker.local_update.send_global_informations_and_update_local_param(models_to_send, self.step)
+            if self.parameters.use_unique_memory and self.parameters.reset_memories and \
+                    worker.full_nb_iterations % 4 * sqrt(self.parameters.n_dimensions) == 0:
+                worker.local_update.send_global_informations_and_update_local_param(models_to_send, self.step, self.H)
+            else:
+                worker.local_update.send_global_informations_and_update_local_param(models_to_send, self.step)
             # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
-            if self.parameters.use_down_memory and self.parameters.randomized:
+            if self.parameters.use_down_memory and self.parameters.randomized and not self.parameters.use_unique_memory:
                 self.H[worker.ID] = self.H[worker.ID] + self.parameters.down_learning_rate * self.omega[worker.ID]
+            elif self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_memory:
+                update_H_i += self.parameters.down_learning_rate * self.omega[worker.ID] / self.parameters.nb_devices
+        if self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_memory:
+            self.H = self.H + update_H_i
         if self.parameters.use_down_memory and not self.parameters.randomized:
             self.H = self.H + self.parameters.down_learning_rate * self.omega
-
-    def update_model(self, model_param):
-        self.v = self.parameters.momentum * self.v + self.g
-        return model_param - self.step * self.v
 
     def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
+        for worker, _ in self.get_set_of_workers(cost_models, all=True):
+            worker.full_nb_iterations = full_nb_iterations
+
         self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
-        for worker, cost_model in self.get_set_of_workers(cost_models):
-            # We send previously computed gradients,
-            # and carry out the update step which has just been done on the central server.
-            compressed_delta_i = worker.local_update.compute_locally(cost_model, nb_inside_it)
-            if compressed_delta_i is not None:
-                self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
-                self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
-
-        # Aggregating all delta
-        self.g = self.compute_aggregation(self.all_delta_i)
+        self.receive_all_delta(cost_models, nb_inside_it)
 
         model_param = self.update_model(model_param)
         self.perform_down_compression(model_param, cost_models)
 
         return model_param
-
 
 class FedAvgUpdate(AbstractFLUpdate):
     """This class implement the proper update of the Artemis schema.
@@ -443,9 +449,8 @@ class DianaUpdate(AbstractFLUpdate):
         self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
         self.receive_all_delta(cost_models, nb_inside_it)
-        
-        self.v = self.parameters.momentum * self.v + self.g
-        model_param = model_param - self.v * self.step
+
+        model_param = self.update_model(model_param)
 
         self.omega = self.g
         self.omega_k.append(self.omega)
@@ -462,8 +467,7 @@ class GradientVanillaUpdate(AbstractFLUpdate):
 
         self.receive_all_delta(cost_models, nb_inside_it)
 
-        self.v = self.parameters.momentum * self.v + self.g
-        model_param = model_param - self.v * self.step
+        model_param = self.update_model(model_param)
 
         # We update omega (compression of the sum of compressed gradients).
         self.omega = self.g

@@ -83,6 +83,7 @@ class Parameters:
         self.streaming = streaming  # True if each sample should be used only once !
         self.use_up_memory = use_up_memory  # use memory when sending to global server
         self.use_down_memory = use_down_memory  # a memory at back communication
+        self.reset_memories = False
         self.use_unique_memory = [use_unique_memory, True][fraction_sampled_workers==1] # either use N memories, either a single one
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.

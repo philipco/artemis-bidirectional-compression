@@ -165,11 +165,15 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
         # For bidirectional compression :
         self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
-    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float,
+                                                        H_i: torch.FloatTensor = None):
+
+        if H_i is not None:
+            self.H_i = H_i
 
         if self.parameters.use_down_memory:
             decompressed_value = tensor_sent + self.H_i
-            self.H_i = deepcopy(self.H_i + self.parameters.down_learning_rate * tensor_sent)
+            self.H_i = self.H_i + self.parameters.down_learning_rate * tensor_sent
         else:
             decompressed_value = tensor_sent
         self.model_param = decompressed_value
