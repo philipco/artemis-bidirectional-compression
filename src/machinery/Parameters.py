@@ -51,7 +51,7 @@ class Parameters:
                  streaming: bool = False,
                  use_up_memory: bool = False,
                  use_down_memory: bool = False,
-                 use_unique_memory: bool = True,
+                 use_unique_up_memory: bool = True,
                  use_averaging: bool = False,
                  time_debug: bool = False,
                  randomized: bool = False,
@@ -84,7 +84,8 @@ class Parameters:
         self.use_up_memory = use_up_memory  # use memory when sending to global server
         self.use_down_memory = use_down_memory  # a memory at back communication
         self.reset_memories = False
-        self.use_unique_memory = [use_unique_memory, True][fraction_sampled_workers==1] # either use N memories, either a single one
+        self.use_unique_up_memory = False#[use_unique_up_memory, True][fraction_sampled_workers == 1] # either use N memories, either a single one
+        self.use_unique_down_memory = False#[use_unique_up_memory, True][fraction_sampled_workers == 1]
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
         self.time_debug = time_debug  # True is one want to debug the time spent in each procedure.

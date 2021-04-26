@@ -21,7 +21,7 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False):
+                    scenario: str = None, fraction_sampled_workers: int = 0.5, plot_only: bool = True):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
@@ -119,7 +119,10 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     elif algos == "compress-model":
         list_algos = [VanillaSGD(), Artemis(), RArtemis(), ModelCompr(), MCM(), RandMCM()]
     elif algos == "mcm-vs-existing":
-        list_algos = [VanillaSGD(), Diana(), Artemis(), Dore(), MCM(), RandMCM()]
+        if fraction_sampled_workers==1:
+            list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1MemReset()]#MCMOneWay(), RandMCMOneWay()]#Diana(), Artemis(), Dore(), MCM(), RandMCM()]
+        else:
+            list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1MemReset()]
     elif algos == "mcm-other-options":
         list_algos = [ArtemisND(), MCM0(), MCM1(), MCM()]
     elif algos == "mcm-one-way":
@@ -156,8 +159,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                                   momentum=0.,
                                                   verbose=True,
                                                   cost_models=cost_models,
-                                                  stochastic=False,
-                                                  bidirectional=False
+                                                  stochastic=False
                                                   ))
         obj_min_by_N_descent.run(cost_models)
         obj_min = obj_min_by_N_descent.losses[-1]

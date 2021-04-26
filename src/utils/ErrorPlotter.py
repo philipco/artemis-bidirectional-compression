@@ -12,7 +12,7 @@ from numpy import quantile
 
 from src.utils.Utilities import drop_nan_values, keep_until_found_nan
 
-#colors=["tab:blue", "tab:brown", "tab:orange", "tab:green", "tab:red", "tab:purple"]
+# colors=["tab:blue", "tab:brown", "tab:orange", "tab:green", "tab:red", "tab:purple"]
 markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
 markersize = 1
 curve_size=4
@@ -37,7 +37,7 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
 
     assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
 
-    #legend = [l if l != "Diana" else r"Art. $\omega_{C}^{dwn}=0$" for l in legend]
+    # legend = [l if l != "Diana" else r"Art. $\omega_{C}^{dwn}=0$" for l in legend]
 
     N_it = len(all_losses[0])
 
@@ -162,7 +162,7 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
         plt.xticks(fontsize=xticks_fontsize)
     ax.set_xlabel(xlegends, fontsize=fontsize)
     ax.set_ylabel(Y_LEGENDS[ylegends], fontsize=fontsize)
-    ax.legend(loc='best', fontsize=fontsize_legend)
+    ax.legend(loc='upper right', fontsize=fontsize_legend)
     fig.tight_layout()
     if picture_name:
         plt.savefig('{0}.eps'.format(picture_name), format='eps')

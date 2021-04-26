@@ -197,6 +197,7 @@ class Artemis(Diana):
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.use_down_memory = True
+        params.use_unique_up_memory = True
         params.down_compression_model = up_compression_model
         return params
 
@@ -570,7 +571,9 @@ class MCM(ModelCompr):
         if fraction_sampled_workers != 1:
             print("Use randomized version of MCM due to partial participation.")
             params.randomized = True
-        params.use_unique_memory = False
+        params.use_unique_up_memory = False
+        params.use_unique_up_memory = True
+        params.use_unique_down_memory = True
         return params
 
 
@@ -594,6 +597,10 @@ class MCM0(ModelCompr):
         params.down_learning_rate = 0
         if fraction_sampled_workers != 1:
             params.randomized = True
+
+        params.use_unique_up_memory = True
+        params.use_unique_down_memory = True
+
         return params
 
 
@@ -617,6 +624,10 @@ class MCM1(ModelCompr):
         params.down_learning_rate = 1
         if fraction_sampled_workers != 1:
             params.randomized = True
+
+        params.use_unique_up_memory = True
+        params.use_unique_down_memory = True
+
         return params
 
 
@@ -638,6 +649,8 @@ class MCMOneWay(MCM):
                                 stochastic, streaming, batch_size)
         params.up_compression_model = SQuantization(0, n_dimensions)
         params.down_compression_model = SQuantization(1, n_dimensions)
+        params.use_unique_up_memory = True
+        params.use_unique_down_memory = True
         return params
 
 
@@ -694,10 +707,13 @@ class RandMCM(MCM):
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        print(self.name())
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.randomized = True
+        params.use_unique_up_memory = True
+        params.use_unique_down_memory = False
         return params
 
 
@@ -715,14 +731,14 @@ class RandMCM1Mem(RandMCM):
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.use_unique_memory = True
+        params.use_unique_down_memory = True
         return params
 
 
 class RandMCM1MemReset(RandMCM1Mem):
 
     def name(self) -> str:
-        return "R-MCM 1MemReset"
+        return "R-MCM 1Mem"
 
     def type_FL(self):
         return DownCompressModelDescent
@@ -753,6 +769,9 @@ class RandMCMOneWay(MCM):
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
+        params.randomized = True
+        params.use_unique_up_memory = True
+        params.use_unique_down_memory = False
         params.up_compression_model = SQuantization(0, n_dimensions)
         params.down_compression_model = SQuantization(1, n_dimensions)
         return params

@@ -76,9 +76,11 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         self.all_delta_i = []
 
         # Local memories hold on the central server.
-        if not self.parameters.use_unique_memory:
+        if not self.parameters.use_unique_up_memory:
+            if self.parameters.use_up_memory: print("Using multiple up memories.")
             self.h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in range(self.parameters.nb_devices)]
         else:
+            if self.parameters.use_up_memory: print("Using a single up memory.")
             self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         # Omega : used to update the model on central server.
@@ -104,9 +106,11 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             self.all_error_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
 
         # Memory for bidirectional compression:
-        if self.parameters.randomized and not self.parameters.use_unique_memory:
+        if self.parameters.randomized and not self.parameters.use_unique_down_memory:
+            if self.parameters.use_down_memory: print("Using multiple down memories.")
             self.H = [torch.zeros(parameters.n_dimensions, dtype=np.float) for _ in range(self.parameters.nb_devices)]
         else:
+            if self.parameters.use_down_memory: print("Using a single down memory.")
             self.H = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def update_model(self, model_param):
@@ -193,10 +197,10 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
     def perform_down_compression(self, value_to_consider, cost_models):
 
         # We combine with EF and memory to obtain the proper value that will be compressed
-        if self.parameters.randomized and not self.parameters.use_unique_memory:
+        if self.parameters.randomized and not self.parameters.use_unique_down_memory:
             self.value_to_compress = [(value_to_consider - self.H[i]) + self.all_error_i[-1][i] * self.parameters.error_feedback_coef
                                       for i in range(self.parameters.nb_devices)]
-        elif self.parameters.randomized and self.parameters.use_unique_memory:
+        elif self.parameters.randomized and self.parameters.use_unique_down_memory:
             self.value_to_compress = [(value_to_consider - self.H) + self.all_error_i[-1][i] * self.parameters.error_feedback_coef
                                       for i in range(self.parameters.nb_devices)]
         else:
@@ -243,17 +247,27 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             # This may happened if it is considered that during one epoch each devices should run through all its data
             # exactly once, and if there is different numbers of points on each device.
             if compressed_delta_i is not None:
-                self.all_delta_i.append(compressed_delta_i + [self.h[worker.ID], 0][self.parameters.use_unique_memory])
-            if self.parameters.use_up_memory and not self.parameters.use_unique_memory:
+                self.all_delta_i.append(compressed_delta_i + [self.h[worker.ID], 0][self.parameters.use_unique_up_memory])
+            if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
                 self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
 
         all_delta = self.compute_aggregation(self.all_delta_i)
 
         # Aggregating all delta
-        self.g = all_delta + [0, self.h][self.parameters.use_unique_memory]
+        self.g = all_delta + [0, self.h][self.parameters.use_unique_up_memory]
 
-        if self.parameters.use_up_memory and self.parameters.use_unique_memory:
+        if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
             self.h += self.parameters.up_learning_rate * all_delta
+
+        if self.parameters.up_compression_model.level != 0:
+            if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
+                assert isinstance(self.h, torch.Tensor), "Up memory is not a tensor."
+                assert not torch.equal(self.h, torch.zeros(self.parameters.n_dimensions, dtype=np.float)), "Up memory is still null."
+            if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
+                assert not isinstance(self.h, torch.FloatTensor) and len(self.h) == self.parameters.nb_devices, \
+                    "Up memory should be a list of length equal to the number of devices."
+                assert all([not torch.equal(e, torch.zeros(self.parameters.n_dimensions, dtype=np.float)) for e in self.h]), \
+                    "Up memories are still null."
 
 
 class ArtemisUpdate(AbstractFLUpdate):
@@ -269,7 +283,7 @@ class ArtemisUpdate(AbstractFLUpdate):
     def update_model(self, model_param):
         if self.parameters.non_degraded:
             self.v = self.parameters.momentum * self.v + self.g
-        elif self.parameters.randomized and not self.parameters.use_unique_memory:
+        elif self.parameters.randomized and not self.parameters.use_unique_down_memory:
             self.v = self.parameters.momentum * self.v + (torch.mean(torch.stack(self.omega + self.H), dim=0))
         else:
             self.v = self.parameters.momentum * self.v + (self.omega + self.H)
@@ -368,20 +382,30 @@ class DownCompressModelUpdate(AbstractFLUpdate):
                 models_to_send = self.omega[worker.ID]
             else:
                 models_to_send = self.omega
-            if self.parameters.use_unique_memory and self.parameters.reset_memories and \
+            if self.parameters.use_unique_down_memory and self.parameters.reset_memories and \
                     worker.full_nb_iterations % 4 * sqrt(self.parameters.n_dimensions) == 0:
                 worker.local_update.send_global_informations_and_update_local_param(models_to_send, self.step, self.H)
             else:
                 worker.local_update.send_global_informations_and_update_local_param(models_to_send, self.step)
             # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
-            if self.parameters.use_down_memory and self.parameters.randomized and not self.parameters.use_unique_memory:
+            if self.parameters.use_down_memory and self.parameters.randomized and not self.parameters.use_unique_down_memory:
                 self.H[worker.ID] = self.H[worker.ID] + self.parameters.down_learning_rate * self.omega[worker.ID]
-            elif self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_memory:
+            elif self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_down_memory:
                 update_H_i += self.parameters.down_learning_rate * self.omega[worker.ID] / self.parameters.nb_devices
-        if self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_memory:
+        if self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_down_memory:
             self.H = self.H + update_H_i
         if self.parameters.use_down_memory and not self.parameters.randomized:
             self.H = self.H + self.parameters.down_learning_rate * self.omega
+
+        if self.parameters.use_down_memory and self.parameters.use_unique_down_memory:
+            assert isinstance(self.H, torch.Tensor), "Down memory is not a tensor."
+            assert not torch.equal(self.H, torch.zeros(self.parameters.n_dimensions, dtype=np.float)), "Down memory is still null."
+        if self.parameters.use_down_memory and not self.parameters.use_unique_down_memory:
+            assert not isinstance(self.H, torch.Tensor) and len(self.H) == self.parameters.nb_devices, \
+                "Down memory should be a list of length equal to the number of devices."
+            assert any([not torch.equal(e, torch.zeros(self.parameters.n_dimensions, dtype=np.float)) for e in self.H]),\
+                "Down memory are still null."
+
 
     def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
