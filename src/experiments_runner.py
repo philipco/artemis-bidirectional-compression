@@ -20,14 +20,14 @@ def deacreasing_step_size(it, L, omega, N): return 1 / (L * sqrt(it))
 def batch_step_size(it, L, omega, N): return 1 / L
 
 
-def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str,
-                    use_averaging: bool = False, scenario: str = None, plot_only: bool = False):
+def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
+                    scenario: str = None, fraction_sampled_workers: int = 0.5, plot_only: bool = True):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
 
     assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-one-way", "mcm-other-options",
-                     "artemis-vs-existing"],\
+                     "artemis-vs-existing", "artemis-and-ef"],\
         "The possible choice of algorithms are : " \
         "uni-vs-bi (to compare uni-compression with bi-compression), " \
         "with-without-ef (to compare algorithms using or not error-feedback), " \
@@ -39,12 +39,17 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     foldername = "{0}-{1}-N{2}".format(dataset, iid, nb_devices)
     picture_path = "{0}/pictures/{1}/{2}".format(get_project_root(), foldername, algos)
+    if fraction_sampled_workers != 1:
+        picture_path += "/pp-{0}".format(fraction_sampled_workers)
+    print(picture_path)
     # Contains the pickle of the dataset
     data_path = "{0}/pickle".format(get_project_root(), foldername)
     # Contains the pickle of the minimum objective.
     pickle_path = "{0}/{1}".format(data_path, foldername)
     # Contains the pickle of the gradient descent for each kind of algorithms.
     algos_pickle_path = "{0}/{1}".format(pickle_path, algos)
+    if fraction_sampled_workers != 1:
+        algos_pickle_path += "/pp-{0}".format(fraction_sampled_workers)
 
     # Create folders for pictures and pickle files
     create_folder_if_not_existing(algos_pickle_path)
@@ -103,13 +108,21 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     # Select the list of algorithms:
     if algos == 'uni-vs-bi':
-        list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
+        if fraction_sampled_workers==1:
+            list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
+        else:
+            list_algos = [VanillaSGD(), VanillaSGDMem(), Qsgd(), Diana(), BiQSGD(), Artemis()]
+    if algos == 'artemis-and-ef':
+        list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis(), Dore()]#, DoubleSqueeze()]
     elif algos == "with-without-ef":
         list_algos = [Qsgd(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
     elif algos == "compress-model":
         list_algos = [VanillaSGD(), Artemis(), RArtemis(), ModelCompr(), MCM(), RandMCM()]
     elif algos == "mcm-vs-existing":
-        list_algos = [VanillaSGD(), Diana(), Artemis(), Dore(), MCM(), RandMCM()]
+        if fraction_sampled_workers==1:
+            list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1MemReset()]#MCMOneWay(), RandMCMOneWay()]#Diana(), Artemis(), Dore(), MCM(), RandMCM()]
+        else:
+            list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1MemReset()]
     elif algos == "mcm-other-options":
         list_algos = [ArtemisND(), MCM0(), MCM1(), MCM()]
     elif algos == "mcm-one-way":
@@ -146,8 +159,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                                   momentum=0.,
                                                   verbose=True,
                                                   cost_models=cost_models,
-                                                  stochastic=False,
-                                                  bidirectional=False
+                                                  stochastic=False
                                                   ))
         obj_min_by_N_descent.run(cost_models)
         obj_min = obj_min_by_N_descent.losses[-1]
@@ -166,20 +178,17 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     if not plot_only:
         if scenario == "compression":
             run_for_different_scenarios(cost_models, list_algos[1:], values_compression, label_compression,
-                                        filename=algos_pickle_path,
-                                        batch_size=batch_size, stochastic=stochastic, step_formula=step_size,
-                                        scenario=scenario)
+                                        filename=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
+                                        step_formula=step_size, scenario=scenario)
         elif scenario == "step":
             run_for_different_scenarios(cost_models, list_algos, step_formula, label_step_formula,
-                                        filename=algos_pickle_path,
-                                        batch_size=batch_size, stochastic=stochastic, scenario=scenario,
-                                        compression=compression_by_default)
+                                        filename=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
+                                        scenario=scenario, compression=compression_by_default)
         else:
-            run_one_scenario(cost_models=cost_models, list_algos=list_algos,
-                             filename=algos_pickle_path, batch_size=batch_size,
-                             stochastic=stochastic, nb_epoch=nb_epoch, step_size=step_size,
-                             use_averaging=use_averaging,
-                             compression=compression_by_default)
+            run_one_scenario(cost_models=cost_models, list_algos=list_algos, filename=algos_pickle_path,
+                             batch_size=batch_size, stochastic=stochastic, nb_epoch=nb_epoch, step_size=step_size,
+                             use_averaging=use_averaging, compression=compression_by_default,
+                             fraction_sampled_workers=fraction_sampled_workers)
 
     obj_min = pickle_loader("{0}/obj_min".format(pickle_path))
 

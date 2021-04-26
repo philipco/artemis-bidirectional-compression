@@ -68,12 +68,14 @@ class AGradientDescent(ABC):
 
         if self.parameters.use_up_memory and self.parameters.up_compression_model.omega_c != 0 and self.parameters.up_learning_rate is None:
             self.parameters.up_learning_rate = 1 / (2 * (self.parameters.up_compression_model.omega_c + 1))
-        elif not self.parameters.use_up_memory:
+        elif not self.parameters.use_up_memory or self.parameters.up_compression_model.omega_c == 0:
             self.parameters.up_learning_rate = 0
         if self.parameters.use_down_memory and self.parameters.down_compression_model.omega_c != 0 and self.parameters.down_learning_rate is None:
             self.parameters.down_learning_rate = 1 / (2 * (self.parameters.down_compression_model.omega_c + 1))
-        elif not self.parameters.use_down_memory:
+        elif not self.parameters.use_down_memory or self.parameters.down_compression_model.omega_c == 0:
             self.parameters.down_learning_rate = 0
+
+        self.parameters.error_feedback_coef = 1 / (self.parameters.up_compression_model.omega_c + 1)
 
         # Creating each worker of the network.
         self.workers = [Worker(i, parameters, self.__local_update__()) for i in range(self.parameters.nb_devices)]
@@ -307,6 +309,10 @@ class DianaDescent(AGradientDescent):
         return "Diana"
 
 class FedAvgDescent(AGradientDescent):
+
+    def __init__(self, parameters: Parameters) -> None:
+        super().__init__(parameters)
+        self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
 
     def __local_update__(self):
         return LocalFedAvgUpdate

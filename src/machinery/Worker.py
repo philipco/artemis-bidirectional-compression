@@ -17,6 +17,7 @@ class Worker:
         self.local_update = localUpdate(parameters)
         self.idx_last_update = 0
         self.ID = ID
+        self.nb_inside_it = 0
 
     def set_idx_last_update(self, j: int):
         self.idx_last_update = j

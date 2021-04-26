@@ -59,7 +59,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                                               streaming=streaming,
                                               batch_size=batch_size,
                                               fraction_sampled_workers=fraction_sampled_workers,
-                                              compression_model=compression_model)
+                                              up_compression_model=compression_model)
         model_descent = predefined_parameters.type_FL()(params)
         model_descent.run(cost_models)
         multiple_descent.append(model_descent)
@@ -80,9 +80,9 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
     model_descent.run(cost_models)
     return model_descent
 
-def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1,
-                                stochastic: bool = True, nb_epoch: int = 250, step_size = None,
-                                compression: CompressionModel = None, use_averaging: bool = False) -> None:
+def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1, stochastic: bool = True,
+                     nb_epoch: int = 250, step_size = None, compression: CompressionModel = None,
+                     use_averaging: bool = False, fraction_sampled_workers: int = 1) -> None:
     all_descent = {}
     for type_params in tqdm(list_algos):
         multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models,
@@ -93,7 +93,7 @@ def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1
                                                    step_formula=step_size,
                                                    batch_size=batch_size,
                                                    logs_file=filename,
-                                                   fraction_sampled_workers=1)
+                                                   fraction_sampled_workers=fraction_sampled_workers)
         all_descent[type_params.name()] = multiple_sg_descent
     res = ResultsOfSeveralDescents(all_descent, len(cost_models))
     stochasticity = 'sto' if stochastic else "full"

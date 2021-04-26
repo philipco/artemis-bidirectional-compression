@@ -34,9 +34,7 @@ class AbstractLocalUpdate(ABC):
         self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         # Initialization of model's parameter.
-        self.model_param = torch.FloatTensor(
-            [0 for i in range(self.parameters.n_dimensions)]) \
-            .to(dtype=torch.float64)
+        self.model_param = torch.FloatTensor([0 for i in range(self.parameters.n_dimensions)]).to(dtype=torch.float64)
 
         self.error_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
@@ -76,8 +74,9 @@ class LocalGradientVanillaUpdate(AbstractLocalUpdate):
     def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
         self.compute_local_gradient(cost_model, j)
 
-        self.delta_i = deepcopy(self.g_i - self.h_i)
-        self.h_i += self.parameters.up_learning_rate * self.delta_i
+        self.delta_i = self.g_i - self.h_i
+        if self.parameters.use_up_memory:
+            self.h_i += self.parameters.up_learning_rate * self.delta_i
         return self.delta_i
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
@@ -100,7 +99,8 @@ class LocalDianaUpdate(AbstractLocalUpdate):
 
         self.delta_i = deepcopy(self.g_i - self.h_i)
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
-        self.h_i += self.parameters.up_learning_rate * quantized_delta_i
+        if self.parameters.use_up_memory:
+            self.h_i += self.parameters.up_learning_rate * quantized_delta_i
         return quantized_delta_i
 
 
@@ -136,11 +136,12 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.delta_i = (self.g_i - self.h_i) + self.error_i
+        self.delta_i = (self.g_i - self.h_i) + self.error_i * self.parameters.error_feedback_coef
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.up_error_feedback:
             self.error_i = self.delta_i - quantized_delta_i
-        self.h_i += self.parameters.up_learning_rate * quantized_delta_i
+        if self.parameters.use_up_memory:
+            self.h_i += self.parameters.up_learning_rate * quantized_delta_i
         return quantized_delta_i
 
 class LocalFedAvgUpdate(AbstractLocalUpdate):
@@ -164,11 +165,15 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
         # For bidirectional compression :
         self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
-    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float,
+                                                        H_i: torch.FloatTensor = None):
+
+        if H_i is not None:
+            self.H_i = H_i
 
         if self.parameters.use_down_memory:
             decompressed_value = tensor_sent + self.H_i
-            self.H_i = deepcopy(self.H_i + self.parameters.down_learning_rate * tensor_sent)
+            self.H_i = self.H_i + self.parameters.down_learning_rate * tensor_sent
         else:
             decompressed_value = tensor_sent
         self.model_param = decompressed_value
@@ -184,7 +189,8 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
 
         self.delta_i = deepcopy((self.g_i - self.h_i) + self.error_i)
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
-        self.h_i = deepcopy(self.h_i + self.parameters.up_learning_rate * quantized_delta_i)
+        if self.parameters.use_up_memory:
+            self.h_i = deepcopy(self.h_i + self.parameters.up_learning_rate * quantized_delta_i)
         return quantized_delta_i
 
 

@@ -48,7 +48,7 @@ class PerformancesTest(unittest.TestCase):
         # Defining parameters for the performances test.
         cls.linear_params = Parameters(n_dimensions=dim_test + 1,
                                        nb_devices=nb_devices,
-                                       compression_model=SQuantization(1, dim_test + 1),
+                                       up_compression_model=SQuantization(1, dim_test + 1),
                                        step_formula=deacreasing_step_size,
                                        nb_epoch=nb_epoch,
                                        use_averaging=False,
@@ -74,7 +74,7 @@ class PerformancesTest(unittest.TestCase):
         # Defining parameters for the performances test.
         cls.logistic_params = Parameters(n_dimensions=2,
                                          nb_devices=nb_devices,
-                                         compression_model=SQuantization(1, 3),
+                                         up_compression_model=SQuantization(1, 3),
                                          step_formula=deacreasing_step_size,
                                          nb_epoch=nb_epoch,
                                          use_averaging=False,

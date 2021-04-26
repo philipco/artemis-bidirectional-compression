@@ -47,11 +47,11 @@ class TestRandomizedAlgo(unittest.TestCase):
         super(TestRandomizedAlgo, cls).setUpClass()
         cls.cost_models = build_several_cost_model(RMSEModel, X, Y, number_of_device)
         cls.params = RandMCM().define(n_dimensions=dim,
-                                   nb_devices=number_of_device,
-                                   compression_model=SQuantization(1,dim),
-                                   nb_epoch=1,
-                                   cost_models=cls.cost_models,
-                                   step_formula=constant_step_size)
+                                      nb_devices=number_of_device,
+                                      up_compression_model=SQuantization(1, dim),
+                                      nb_epoch=1,
+                                      cost_models=cls.cost_models,
+                                      step_formula=constant_step_size)
         cls.params.down_learning_rate = 1 / cls.params.down_compression_model.omega_c
         cls.params.up_learning_rate = 1
         cls.workers = [Worker(i, cls.params, LocalArtemisUpdate) for i in range(number_of_device)]
