@@ -68,7 +68,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
         if logs_file:
             logs = open("{0}/logs.txt".format(logs_file), "a+")
             logs.write("{0} - run {1}, final loss : {2}, memory : {3} Mbytes\n"
-                       .format(predefined_parameters.name(), i, model_descent.losses[-1], model_descent.memory_info))
+                       .format(predefined_parameters.name(), i, model_descent.train_losses[-1], model_descent.memory_info))
             logs.close()
         del model_descent
         gc.collect()
@@ -143,7 +143,7 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
 
             # Picking the minimum values for each of the run.
             for seq_losses, seq_losses_avg, seq_norm_ef, seq_dist_model, seq_var_models in \
-                    zip(multiple_sg_descent.losses, multiple_sg_descent.averaged_losses,
+                    zip(multiple_sg_descent.train_losses, multiple_sg_descent.averaged_train_losses,
                         multiple_sg_descent.norm_error_feedback, multiple_sg_descent.dist_to_model,
                         multiple_sg_descent.var_models):
 
@@ -166,8 +166,8 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
         min_loss_desc = 10e12
         opt_desc = None
         for desc in descent_by_step_size.values():
-            if min_loss_desc > min([desc.losses[j][-1] for j in range(len(desc.losses))]):
-                min_loss_desc = min([desc.losses[j][-1] for j in range(len(desc.losses))])
+            if min_loss_desc > min([desc.train_losses[j][-1] for j in range(len(desc.train_losses))]):
+                min_loss_desc = min([desc.train_losses[j][-1] for j in range(len(desc.train_losses))])
                 opt_desc = desc
         # Adding the optimal descent to the dict of optimal descent
         optimal_descents[param_algo.name()] = opt_desc

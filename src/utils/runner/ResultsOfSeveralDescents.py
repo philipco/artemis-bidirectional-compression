@@ -4,6 +4,8 @@ Created by Philippenko, 8th June 2020.
 
 import numpy as np
 
+from src.machinery.GradientDescent import AGradientDescent
+
 
 class ResultsOfSeveralDescents:
     """This class collect useful results obtained after running multiple gradient descent of different kind.
@@ -17,22 +19,27 @@ class ResultsOfSeveralDescents:
     """
 
     def __init__(self, all_descent, nb_devices_for_the_run):
-        if not all_descent[next(iter(all_descent))].artificial:
+        print(list(all_descent.values())[-1].multiple_descent[-1])
+        if not all_descent[next(iter(all_descent))].artificial and isinstance(list(all_descent.values())[-1].multiple_descent[-1], AGradientDescent):
             self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in all_descent.values()]
             self.X_number_of_bits = [desc.theoretical_nb_bits for desc in all_descent.values()]
             self.omega_c = [desc.omega_c for desc in all_descent.values()]
-        self.all_losses = [desc.losses for desc in all_descent.values()]
-        self.all_losses_averaged = [desc.averaged_losses for desc in all_descent.values()]
+        self.all_train_losses = [desc.train_losses for desc in all_descent.values()]
+        self.all_train_losses_averaged = [desc.averaged_train_losses for desc in all_descent.values()]
         self.norm_error_feedback = [desc.norm_error_feedback for desc in all_descent.values()]
         self.distance_to_model = [desc.dist_to_model for desc in all_descent.values()]
         self.var_models = [desc.var_models for desc in all_descent.values()]
         self.nb_devices_for_the_run = nb_devices_for_the_run
         self.names = [names for names in all_descent]
 
+        # Required for Deep Learning
+        self.all_test_losses = [desc.test_losses for desc in all_descent.values()]
+        self.all_test_accuracies = [desc.test_accuracies for desc in all_descent.values()]
+
     def get_losses_i(self, i: int, averaged: bool = False):
         if averaged:
-            return self.all_losses_averaged[i]
-        return self.all_losses[i]
+            return self.all_train_losses_averaged[i]
+        return self.all_train_losses[i]
 
     def get_loss(self, obj, averaged: bool = False, in_log = True):
         """Return the sequence of averaged losses for each of the algorithm.
@@ -43,9 +50,9 @@ class ResultsOfSeveralDescents:
             in_log: return the result using log scale.
         """
         if averaged:
-            all_losses = self.all_losses_averaged
+            all_losses = self.all_train_losses_averaged
         else:
-            all_losses = self.all_losses
+            all_losses = self.all_train_losses
         mean_losses = []
         for losses in all_losses:
             if in_log:
@@ -64,9 +71,9 @@ class ResultsOfSeveralDescents:
             in_log: return the result using log scale.
         """
         if averaged:
-            all_losses = self.all_losses_averaged
+            all_losses = self.all_train_losses_averaged
         else:
-            all_losses = self.all_losses
+            all_losses = self.all_train_losses
         std_losses = []
         for losses in all_losses:
             if in_log:
@@ -119,5 +126,17 @@ class ResultsOfSeveralDescents:
 
     def get_var_models_std(self, in_log=True):
         return self.getter_std(self.var_models)
+
+    def get_test_accuracies(self):
+        return self.getter(self.all_test_accuracies)
+
+    def get_test_accuracies_std(self):
+        return self.getter_std(self.all_test_accuracies)
+
+    def get_test_losses(self):
+        return self.getter(self.all_test_losses)
+
+    def get_test_losses_std(self):
+        return self.getter_std(self.all_test_losses)
 
 

@@ -11,14 +11,24 @@ from torch.distributions.bernoulli import Bernoulli
 from math import sqrt
 
 
+def prep_grad(vector):
+    flat_vector = torch.unsqueeze(vector, 0).flatten()
+    dim = vector.shape
+    flat_dim = flat_vector.shape[0]
+    return flat_vector, dim, flat_dim
+
+
 class CompressionModel(ABC):
     """
     """
     
-    def __init__(self, level: int, dim: int):
+    def __init__(self, level: int, dim: int = None):
         self.level = level
         self.dim = dim
-        self.omega_c = self.__compute_omega_c__(dim)
+        if dim is not None:
+            self.omega_c = self.__compute_omega_c__(dim)
+        else:
+            self.omega_c = None
     
     @abstractmethod
     def compress(self, vector: torch.FloatTensor):
@@ -35,19 +45,22 @@ class CompressionModel(ABC):
 
 class TopKSparsification(CompressionModel):
 
-    def __init__(self, level: int, dim: int):
+    def __init__(self, level: int, dim: int = None):
         super().__init__(level, dim)
-        assert 0 <= level < dim, "k must be inferior to the number of dimension and superior to zero."
+        if dim is not None:
+            assert 0 <= level < dim, "k must be inferior to the number of dimension and superior to zero."
         self.biased = True
 
     def compress(self, vector: torch.FloatTensor):
         if self.level == 0:
             return vector
+        vector, dim, flat_dim = prep_grad(vector)
+
         values, indices = torch.topk(abs(vector), self.level)
         compression = torch.zeros_like(vector)
         for i in indices:
             compression[i.item()] = vector[i.item()]
-        return compression
+        return compression.reshape(dim)
 
     def __compute_omega_c__(self, dim: int):
         if self.level == 0:
@@ -61,7 +74,7 @@ class TopKSparsification(CompressionModel):
 
 class RandomSparsification(CompressionModel):
 
-    def __init__(self, level: int, dim: int, biased = True):
+    def __init__(self, level: int, dim: int = None, biased = True):
         """
 
         :param level: number of dimension to select at compression step
@@ -75,13 +88,16 @@ class RandomSparsification(CompressionModel):
     def compress(self, vector: torch.FloatTensor):
         if self.level == 0:
             return vector
+
+        vector, dim, flat_dim = prep_grad(vector)
+
         proba = self.level/self.dim
         indices = bernoulli.rvs(proba, size=len(vector))
         compression = torch.zeros_like(vector)
         for i in range(len(vector)):
             if indices[i]:
                 compression[i] = vector[i] * [self.dim/self.level, 1][self.biased]
-        return compression
+        return compression.reshape(dim)
 
     def __compute_omega_c__(self, dim: int):
         proba = self.level / self.dim
@@ -99,7 +115,7 @@ class RandomSparsification(CompressionModel):
 
 class SQuantization(CompressionModel):
 
-    def __init__(self, level: int, dim: int):
+    def __init__(self, level: int, dim: int = None):
         super().__init__(level, dim)
         self.biased = False
 
@@ -115,15 +131,17 @@ class SQuantization(CompressionModel):
         """
         if self.level == 0:
             return vector
+        vector, dim, flat_dim = prep_grad(vector)
+
         norm_x = torch.norm(vector, p=2)
         if norm_x == 0:
-            return vector
+            return vector.reshape(dim)
         ratio = torch.abs(vector) / norm_x
         l = torch.floor(ratio * self.level)
         p = ratio * self.level - l
         sampled = Bernoulli(p).sample()
         qtzt = torch.sign(vector) * norm_x * (l + sampled) / self.level
-        return qtzt
+        return qtzt.reshape(dim)
 
     def __compute_omega_c__(self, dim: int):
         """Return the value of omega_c (involved in variance) of the s-quantization."""

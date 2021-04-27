@@ -6,14 +6,16 @@ In this python file, we put all utilities function not related with the proper r
 
 import pickle
 import os
-
+import random
+import torch
+import numpy as np
 from math import sqrt, log
 from pathlib import Path
+import pandas as pd
+from pympler import tracker
 
 from src.machinery.Parameters import Parameters
-import pandas as pd
 
-from pympler import tracker
 
 
 def number_of_bits_needed_to_communicates_compressed(nb_devices: int, s: int, d: int) -> int:
@@ -81,6 +83,7 @@ def pickle_loader(filename: str):
     pickle_in = open("{0}.pkl".format(filename), "rb")
     return pickle.load(pickle_in)
 
+
 def get_project_root() -> str:
     import pathlib
     path = str(pathlib.Path().absolute())
@@ -120,3 +123,18 @@ def keep_until_found_nan(values):
         result.append(values[k])
         k+=1
     return result
+
+def seed_everything(seed=42):
+    """
+    :param seed:
+    :return:
+    """
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    # some cudnn methods can be random even after fixing the seed
+    # unless you tell it to be deterministic
+    torch.backends.cudnn.deterministic = True

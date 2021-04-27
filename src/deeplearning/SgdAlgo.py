@@ -5,35 +5,33 @@ Created by Philippenko, 26th April 2021.
 import torch
 from torch.optim.optimizer import Optimizer
 
+from src.deeplearning.DLParameters import DLParameters
+
+
 class SGDGen(Optimizer):
     """
         Based on torch.optim.SGD implementation
     """
 
-    def __init__(self, params, lr, n_workers, momentum=0, dampening=0,
-                 weight_decay=0, nesterov=False, comp=None, master_comp=None,
-                 error_feedback=False):
-        if lr < 0.0:
-            raise ValueError("Invalid learning rate: {}".format(lr))
+    def __init__(self, nn_model_params, parameters: DLParameters, step_size, momentum=0, dampening=0,
+                 weight_decay=0, nesterov=False):
+        if step_size < 0.0:
+            raise ValueError("Invalid learning rate: {}".format(step_size))
         if momentum < 0.0:
             raise ValueError("Invalid momentum value: {}".format(momentum))
         if weight_decay < 0.0:
             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
 
-        defaults = dict(lr=lr, momentum=momentum, dampening=dampening,
+        defaults = dict(lr=step_size, momentum=momentum, dampening=dampening,
                         weight_decay=weight_decay, nesterov=nesterov)
         if nesterov and (momentum <= 0 or dampening != 0):
             raise ValueError("Nesterov momentum requires a momentum and zero dampening")
-        super(SGDGen, self).__init__(params, defaults)
+        super(SGDGen, self).__init__(nn_model_params, defaults)
 
-        self.comp = comp
-        self.error_feedback = error_feedback
-        if self.error_feedback and self.comp is None:
+        self.parameters = parameters
+        if self.parameters.up_error_feedback and self.parameters.up_compression_model is None:
             raise ValueError("For Error-Feedback, compression can't be None")
 
-        self.master_comp = master_comp  # should be unbiased, Error-Feedback is not supported at the moment
-
-        self.n_workers = n_workers
         self.grads_received = 0
 
     def __setstate__(self, state):
@@ -70,19 +68,19 @@ class SGDGen(Optimizer):
 
                 d_p = p.grad.data
 
-                if self.error_feedback:
+                if self.parameters.up_error_feedback:
                     error_name = 'error_' + str(w_id)
                     if error_name not in param_state:
                         loc_grad = d_p.mul(group['lr'])
                     else:
                         loc_grad = d_p.mul(group['lr']) + param_state[error_name]
 
-                    d_p = self.comp(loc_grad)
+                    d_p = self.parameters.up_compression_model.compress(loc_grad)
                     param_state[error_name] = loc_grad - d_p
 
                 else:
-                    if self.comp is not None:
-                        d_p = self.comp(d_p).mul(group['lr'])
+                    if self.parameters.up_compression_model is not None:
+                        d_p = self.parameters.up_compression_model.compress(d_p).mul(group['lr'])
                     else:
                         d_p = d_p.mul(group['lr'])
 
@@ -91,11 +89,11 @@ class SGDGen(Optimizer):
                 else:
                     param_state['full_grad'] += torch.clone(d_p).detach()
 
-                if self.grads_received == self.n_workers:
-                    grad = param_state['full_grad'] / self.n_workers
+                if self.grads_received == self.parameters.nb_devices:
+                    grad = param_state['full_grad'] / self.parameters.nb_devices
 
-                    if self.master_comp is not None:
-                        grad = self.master_comp(grad)
+                    if self.parameters.down_compression_model is not None:
+                        grad = self.parameters.down_compression_model.compress(grad)
 
                     if weight_decay != 0:
                         grad.add(p, alpha=weight_decay)
@@ -112,7 +110,7 @@ class SGDGen(Optimizer):
 
                     p.data.add_(grad, alpha=-1)
 
-        if self.grads_received == self.n_workers:
+        if self.grads_received == self.parameters.nb_devices:
             self.grads_received = 0
 
         return loss

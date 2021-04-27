@@ -4,7 +4,7 @@ Created by Philippenko, 12th March 2020.
 This python file provide tools to easily customize a gradient descent based on its hyperparameters.
 It also provide predefine parameters to run classical algorithm without introducing an error.
 """
-from src.models.CompressionModel import CompressionModel, RandomSparsification
+from src.models.CompressionModel import *
 from src.utils.Constants import NB_EPOCH, NB_DEVICES, DIM
 
 from math import sqrt
@@ -94,7 +94,6 @@ class Parameters:
         self.up_error_feedback = up_error_feedback
         self.nb_local_update = nb_local_update
         self.non_degraded = non_degraded
-
 
     def print(self):
         print("federated", self.federated)
