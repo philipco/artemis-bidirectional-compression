@@ -19,7 +19,7 @@ from src.utils.Utilities import pickle_saver
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-nb_run = 5  # Number of gradient descent before averaging.
+nb_run = 2  # Number of gradient descent before averaging.
 
 
 def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_models, compression_model: CompressionModel,
@@ -79,6 +79,7 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
     model_descent = model(parameters)
     model_descent.run(cost_models)
     return model_descent
+
 
 def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1, stochastic: bool = True,
                      nb_epoch: int = 250, step_size = None, compression: CompressionModel = None,

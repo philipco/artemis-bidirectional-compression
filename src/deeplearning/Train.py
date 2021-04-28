@@ -9,7 +9,7 @@ from torch import nn
 from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.DeepLearningRun import DeepLearningRun
 from src.deeplearning.NnDataPreparation import create_loaders
-from src.deeplearning.NnModels import SimplestNetwork
+from src.deeplearning.NnModels import SimplestNetwork, resnet18
 from src.deeplearning.SgdAlgo import SGDGen
 from src.utils.Utilities import seed_everything, pickle_saver
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
@@ -103,27 +103,16 @@ def run_workers(step_size, parameters: DLParameters, suffix=None, hpo=False):
     """
     Run the training over all the workers.
     """
-    # dataset_name = exp['dataset_name']
-    # n_workers = parameters.
-    # batch_size = exp['batch_size']
-    # epochs = exp['epochs']
-    # criterion = exp['criterion']
-    # error_feedback = exp['error_feedback']
-    # momentum = exp['momentum']
-    # weight_decay = exp['weight_decay']
-    # compression = get_compression(**exp['compression'])
-    # master_compression = get_compression(**exp['master_compression'])
 
-    net = SimplestNetwork
-    model = net()
+    # net = Resnet
+    model = resnet18()
 
-    train_loader_workers, val_loader, test_loader = create_loaders("fake", parameters.nb_devices, parameters.batch_size)
+    train_loader_workers, val_loader, test_loader = create_loaders("cifar10", parameters.nb_devices, parameters.batch_size)
 
     optimizer = SGDGen(model.parameters(), parameters=parameters, step_size=step_size, momentum=0, weight_decay=0)
 
     val_loss, run = train_workers(suffix, model, optimizer, nn.CrossEntropyLoss(), parameters.nb_epoch, train_loader_workers,
                              val_loader, test_loader, parameters.nb_devices, hpo=hpo)
-
 
     return val_loss, run
 

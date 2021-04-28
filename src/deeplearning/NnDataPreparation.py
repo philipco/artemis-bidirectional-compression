@@ -51,4 +51,19 @@ def load_data(dataset_name: str):
 
         test_data = datasets.FakeData(size=200, transform=transform)
 
+    elif dataset_name == 'cifar10':
+
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            normalize,
+        ])
+
+        train_data = datasets.CIFAR10(root='data', train=True,
+                                      download=True, transform=transform)
+
+        test_data = datasets.CIFAR10(root='data', train=False,
+                                     download=True, transform=transform)
+
     return train_data, test_data
