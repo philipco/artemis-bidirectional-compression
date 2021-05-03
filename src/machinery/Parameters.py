@@ -58,7 +58,8 @@ class Parameters:
                  down_error_feedback: bool = False,
                  up_error_feedback: bool = False,
                  nb_local_update: int = 1,
-                 non_degraded: bool = False) -> None:
+                 non_degraded: bool = False,
+                 log_file: str = None) -> None:
         super().__init__()
         self.cost_models = cost_models  # Cost model to use for gradient descent.
         self.federated = federated  # Boolean to say if we do federated learning or not.
@@ -94,6 +95,7 @@ class Parameters:
         self.up_error_feedback = up_error_feedback
         self.nb_local_update = nb_local_update
         self.non_degraded = non_degraded
+        self.log_file = log_file
 
     def print(self):
         print("federated", self.federated)

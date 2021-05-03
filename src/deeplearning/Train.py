@@ -104,12 +104,16 @@ def run_workers(step_size, parameters: DLParameters, suffix=None, hpo=False):
     Run the training over all the workers.
     """
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    with open(parameters.log_file, 'a') as f:
+        print("Device :", device, file = f)
+
     # net = Resnet
-    model = resnet18()
+    model = parameters.model
 
-    train_loader_workers, val_loader, test_loader = create_loaders("cifar10", parameters.nb_devices, parameters.batch_size)
+    train_loader_workers, val_loader, test_loader = create_loaders(parameters.dataset, parameters.nb_devices, parameters.batch_size)
 
-    optimizer = SGDGen(model.parameters(), parameters=parameters, step_size=step_size, momentum=0, weight_decay=0)
+    optimizer = SGDGen(model.parameters(), parameters=parameters, step_size=step_size, weight_decay=0)
 
     val_loss, run = train_workers(suffix, model, optimizer, nn.CrossEntropyLoss(), parameters.nb_epoch, train_loader_workers,
                              val_loader, test_loader, parameters.nb_devices, hpo=hpo)
@@ -130,7 +134,7 @@ def run_tuned_exp(parameters: DLParameters, runs=nb_run, suffix=None):
 
     multiple_descent = AverageOfSeveralIdenticalRun()
     for i in range(runs):
-        print('Run {:3d}/{:3d}, Name {}:'.format(i+1, runs, suffix))
+        print('Run {:3d}/{:3d}:'.format(i+1, runs))
         suffix_run = suffix + '_' + str(i+1)
         val_loss, run = run_workers(parameters.optimal_step_size, parameters, suffix_run)
         multiple_descent.append_from_DL(run)

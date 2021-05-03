@@ -127,16 +127,16 @@ class ResultsOfSeveralDescents:
     def get_var_models_std(self, in_log=True):
         return self.getter_std(self.var_models)
 
-    def get_test_accuracies(self):
-        return self.getter(self.all_test_accuracies)
+    def get_test_accuracies(self, in_log=False):
+        return self.getter(self.all_test_accuracies, in_log)
 
-    def get_test_accuracies_std(self):
-        return self.getter_std(self.all_test_accuracies)
+    def get_test_accuracies_std(self, in_log=False):
+        return self.getter_std(self.all_test_accuracies, in_log)
 
-    def get_test_losses(self):
-        return self.getter(self.all_test_losses)
+    def get_test_losses(self, in_log=False):
+        return self.getter(self.all_test_losses, in_log)
 
-    def get_test_losses_std(self):
-        return self.getter_std(self.all_test_losses)
+    def get_test_losses_std(self, in_log=False):
+        return self.getter_std(self.all_test_losses, in_log)
 
 

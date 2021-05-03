@@ -5,6 +5,7 @@ Created by Philippenko, 2th April 2021.
 from tqdm import tqdm
 
 from src.deeplearning.DLParameters import cast_to_DL
+from src.deeplearning.NnModels import SimplestNetwork, resnet18
 from src.deeplearning.Train import tune_step_size, run_tuned_exp
 from src.machinery.PredefinedParameters import *
 from src.utils.ErrorPlotter import plot_error_dist
@@ -15,7 +16,7 @@ from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
 if __name__ == '__main__':
 
-    compression_by_default = SQuantization(2)
+    compression_by_default = SQuantization(1)
 
     # if not file_exist("obj_min.pkl"):
     #     params = Artemis().define(cost_models=None,
@@ -32,17 +33,24 @@ if __name__ == '__main__':
 
     all_descent = {}
     nb_devices_for_the_run = 4
-    for type_params in tqdm([Qsgd(), BiQSGD()]):
+    for type_params in [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]:
         params = type_params.define(cost_models=None,
                                   n_dimensions=None,
-                                  nb_epoch=5,
+                                  nb_epoch=6,
                                   nb_devices=nb_devices_for_the_run,
-                                  batch_size=128,
+                                  batch_size=64,
                                   fraction_sampled_workers=1,
                                   up_compression_model=compression_by_default)
 
         params = cast_to_DL(params)
+        params.dataset = "cifar10"
+        params.model = resnet18() #SimplestNetwork() #resnet18()
+        params.log_file = "log.txt"
+        params.up_learning_rate = 0.5
+        params.momentum = 0.9
 
+        with open(params.log_file, 'a') as f:
+            print(type_params, file=f)
         #params = tune_step_size(params)
         params.optimal_step_size = 0.1
         multiple_sg_descent = run_tuned_exp(params)
@@ -59,9 +67,9 @@ if __name__ == '__main__':
 
     # Plotting without averaging
     plot_error_dist(res.get_test_accuracies(), res.names, res.nb_devices_for_the_run, dim_notebook,
-                    all_error=res.get_test_accuracies_std(), x_legend="Number of passes on data\n({0})".format(iid),
-                    picture_name="picture")
-    plot_error_dist(res.get_test_losses(), res.names, res.nb_devices_for_the_run, dim_notebook,
-                    all_error=res.get_test_losses_std(), x_legend="Number of passes on data\n({0})".format(iid),
-                    picture_name="picture2")
+                    all_error=res.get_test_accuracies_std(), x_legend="Number of passes on data",
+                    picture_name="test_accuracies")
+    plot_error_dist(res.get_test_losses(in_log=True), res.names, res.nb_devices_for_the_run, dim_notebook,
+                    all_error=res.get_test_losses_std(in_log=True), x_legend="Number of passes on data",
+                    picture_name="test_losses")
 
