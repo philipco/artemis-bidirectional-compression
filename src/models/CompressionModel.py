@@ -143,13 +143,14 @@ class SQuantization(CompressionModel):
         qtzt = signed_level * norm_x
         return qtzt.reshape(dim)
 
-    def __compute_omega_c__(self, dim: int):
+    def __compute_omega_c__(self, vector: torch.FloatTensor):
         """Return the value of omega_c (involved in variance) of the s-quantization."""
         # If s==0, it means that there is no compression.
         # But for the need of experiments, we may need to compute the quantization constant associated with s=1.
+        _, _, flat_dim = prep_grad(vector)
         if self.level == 0:
-            return 0# TODO This has been changed ! Which impact ? Should be none ... sqrt(dim)
-        return min(dim / self.level*self.level, sqrt(dim) / self.level)
+            return 0
+        return min(flat_dim / self.level*self.level, sqrt(flat_dim) / self.level)
 
     def get_name(self) -> str:
         return "Qtzd"

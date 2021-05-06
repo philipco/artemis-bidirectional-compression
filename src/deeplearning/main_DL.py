@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
     all_descent = {}
     nb_devices_for_the_run = 8
-    for type_params in [Qsgd(), VanillaSGD(), BiQSGD()]:#, Artemis()]:
+    for type_params in [VanillaSGD(), BiQSGD(), Artemis()]:
         print(type_params)
         params = type_params.define(cost_models=None,
                                   n_dimensions=None,
@@ -51,7 +51,7 @@ if __name__ == '__main__':
         params.dataset = "mnist"
         params.model = MNIST_CNN() #SimplestNetwork() #resnet18()
         params.log_file = "log.txt"
-        # params.up_learning_rate = 0.5
+        params.up_learning_rate = 0.01
         params.momentum = 0.9
 
         # with open(params.log_file, 'a') as f:

@@ -65,47 +65,47 @@ class SGDGen(Optimizer):
 
                 up_error_feedback_name = 'up_error_feedback_' + str(w_id)
                 up_memory_name = 'up_memory_' + str(w_id)
+                up_learning_rate_name = 'up_learning_rat_' + str(w_id)
                 loc_grad = d_p.mul(group['lr'])
+
                 if up_error_feedback_name in param_state:
                     loc_grad += param_state[up_error_feedback_name]  # TODO : multiplier par un coef ?
-                # if up_memory_name in param_state:
-                #     loc_grad -= param_state[up_memory_name]
-                # else:
-                #     param_state[up_memory_name] = torch.zeros_like(d_p)
+
+                if up_memory_name in param_state:
+                    loc_grad -= param_state[up_memory_name]
 
                 if self.parameters.up_compression_model is not None:
                     d_p = self.parameters.up_compression_model.compress(loc_grad)
+
                 if self.parameters.up_error_feedback:
                     param_state[up_error_feedback_name] = loc_grad - d_p
-                if self.parameters.use_up_memory:
-                    if up_memory_name in param_state:
-                        param_state[up_memory_name] += d_p.mul(self.parameters.up_learning_rate).detach()
-                    else:
-                        param_state[up_memory_name] = d_p.mul(self.parameters.up_learning_rate).detach()
 
-                # d_p = d_p.mul(group['lr'])
+                if self.parameters.use_up_memory:
+                    # Computing learning rate if not already done
+                    if up_learning_rate_name not in param_state:
+                        param_state[up_learning_rate_name] = 1 / (2 * (self.parameters.up_compression_model.__compute_omega_c__(loc_grad) + 1))
+                    if up_memory_name in param_state:
+                        param_state[up_memory_name] += d_p.mul(param_state[up_learning_rate_name]).detach()
+                    else:
+                        param_state[up_memory_name] = d_p.mul(param_state[up_learning_rate_name]).detach()
+
                 if 'full_grad' not in param_state or self.grads_received == 1:
                     param_state['full_grad'] = torch.clone(d_p).detach()
                 else:
                     param_state['full_grad'] += torch.clone(d_p).detach()
 
-                # if self.parameters.use_up_memory:
-                #     if 'up_global_memory' not in param_state or self.grads_received == 1:
-                #         param_state['up_global_memory'] = torch.clone(param_state[up_memory_name]).detach()
-                #     else:
-                #         param_state['up_global_memory'] += torch.clone(param_state[up_memory_name]).detach()
+                if self.parameters.use_up_memory:
+                    param_state['full_grad'] += param_state[up_memory_name].detach()
 
-                # if not self.parameters.use_up_memory:
-                #     assert up_memory_name not in param_state, "Up memory should not be in parameters' state."#torch.equal(param_state['up_global_memory'], torch.zeros_like(param_state['up_global_memory'])), "Global memory must be null."
+                if not self.parameters.use_up_memory:
+                    assert up_memory_name not in param_state, "Up memory should not be in parameters' state."  # torch.equal(param_state['up_global_memory'], torch.zeros_like(param_state['up_global_memory'])), "Global memory must be null."
                 if not self.parameters.up_error_feedback:
                     assert up_error_feedback_name not in param_state, "Error feedback should not be in parameters' state."
 
                 ###### Computation carried out on  the global server's side. ######
                 if self.grads_received == self.parameters.nb_devices:
                     grad = param_state['full_grad'] / self.parameters.nb_devices
-                    # if self.parameters.use_up_memory:
-                    #     grad += param_state['up_global_memory'] / self.parameters.nb_devices
-                    # grad = grad * group['lr']
+
                     if self.parameters.down_compression_model is not None:
                         grad = self.parameters.down_compression_model.compress(grad)
 
