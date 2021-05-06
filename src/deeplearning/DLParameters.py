@@ -1,7 +1,7 @@
 """
 Created by Philippenko, 26th April 2021.
 """
-from src.deeplearning.NnModels import SimplestNetwork
+from src.deeplearning.NnModels import SimplestNetwork, MNIST_CNN
 from src.machinery.Parameters import Parameters
 
 
@@ -10,8 +10,8 @@ class DLParameters(Parameters):
     def __init__(self):
         super().__init__()
         self.optimal_step_size = None
-        self.dataset = "fake"
-        self.model = SimplestNetwork()
+        self.dataset = "mnist"
+        self.model = MNIST_CNN()
 
 
 def cast_to_DL(parameters: Parameters) -> DLParameters:

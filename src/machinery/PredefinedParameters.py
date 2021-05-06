@@ -72,7 +72,7 @@ class VanillaSGD(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
-                          up_compression_model=SQuantization(0, n_dimensions),
+                          up_compression_model=up_compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,

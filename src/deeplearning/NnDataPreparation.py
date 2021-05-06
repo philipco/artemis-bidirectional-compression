@@ -3,6 +3,7 @@ Created by Philippenko, 26th April 2021.
 """
 
 import numpy as np
+import torchvision
 from torchvision import datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Subset
@@ -60,10 +61,20 @@ def load_data(dataset_name: str):
             normalize,
         ])
 
-        train_data = datasets.CIFAR10(root='data', train=True,
+        train_data = datasets.CIFAR10(root='../dataset/', train=True,
                                       download=True, transform=transform)
 
-        test_data = datasets.CIFAR10(root='data', train=False,
+        test_data = datasets.CIFAR10(root='../dataset/', train=False,
                                      download=True, transform=transform)
+
+    elif dataset_name == 'mnist':
+
+        transform = transforms.ToTensor()
+
+        train_data = datasets.MNIST(root='../dataset/', train=True,
+                                    download=True, transform=transform)
+
+        test_data = datasets.MNIST(root='../dataset/', train=False,
+                                   download=True, transform=transform)
 
     return train_data, test_data

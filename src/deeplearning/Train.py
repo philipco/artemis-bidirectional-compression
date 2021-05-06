@@ -26,8 +26,8 @@ def train_workers(suffix, model, optimizer, criterion, epochs, train_loader_work
     train_loss = np.inf
 
     best_val_loss = np.inf
-    test_loss = np.inf
-    test_acc = 0
+    test_loss_val = np.inf
+    test_acc_val = 0
 
     for e in range(epochs):
         model.train()
@@ -56,7 +56,7 @@ def train_workers(suffix, model, optimizer, criterion, epochs, train_loader_work
         run.update_run(train_loss, test_loss_val, test_acc_val)
 
         print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
-              .format(e + 1, epochs, train_loss, test_loss, test_acc), end='\r')
+              .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val), end='\r')
 
     return best_val_loss, run
 
@@ -88,9 +88,14 @@ def tune_step_size(parameters: DLParameters):
     seed_everything()
     hpo = True
 
-    for lr in np.array([0.5, 0.1, 0.05]):
+    for lr in np.array([0.5, 0.1, 0.05, 0.01]):
         print('Learning rate {:2.4f}:'.format(lr))
-        val_loss, run = run_workers(lr, parameters, hpo=hpo)
+        try:
+            val_loss, run = run_workers(lr, parameters, hpo=hpo)
+        except RuntimeError as err:
+            with open(parameters.log_file, 'a') as f:
+                print("Fail with step size:", lr, file=f)
+            continue
 
         if val_loss < best_val_loss:
             best_lr = lr

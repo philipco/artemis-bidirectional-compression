@@ -5,9 +5,9 @@ This python file provide facilities to quantize tensors.
 """
 from abc import ABC, abstractmethod
 
+import numpy as np
 import torch
 from scipy.stats import bernoulli
-from torch.distributions.bernoulli import Bernoulli
 from math import sqrt
 
 
@@ -129,18 +129,18 @@ class SQuantization(CompressionModel):
         Returns:
             The quantizated tensor.
         """
+
         if self.level == 0:
             return vector
         vector, dim, flat_dim = prep_grad(vector)
 
-        norm_x = torch.norm(vector, p=2)
+        norm_x = torch.norm(vector, p=np.inf)
         if norm_x == 0:
             return vector.reshape(dim)
-        ratio = torch.abs(vector) / norm_x
-        l = torch.floor(ratio * self.level)
-        p = ratio * self.level - l
-        sampled = Bernoulli(p).sample()
-        qtzt = torch.sign(vector) * norm_x * (l + sampled) / self.level
+
+        all_levels = torch.floor(self.level * torch.abs(vector) / norm_x + torch.rand_like(vector)) / self.level
+        signed_level = torch.sign(vector) * all_levels
+        qtzt = signed_level * norm_x
         return qtzt.reshape(dim)
 
     def __compute_omega_c__(self, dim: int):
