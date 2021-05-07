@@ -13,7 +13,22 @@ class DLParameters(Parameters):
         self.dataset = "mnist"
         self.model = MNIST_CNN()
 
+    def print(self):
+        print("== Settings ==")
+        if self.use_up_memory:
+            print("Use UP memory.")
+        if self.up_error_feedback:
+            print("Use UP error-feedback.")
+        print("Step size: {0}".format(self.optimal_step_size))
+        if self.up_compression_model is not None:
+            print("UP compression model: {0}".format(self.up_compression_model.__class__.__name__))
+        if self.down_compression_model is not None:
+            print("DOWN compression model: {0}".format(self.down_compression_model.__class__.__name__))
+
 
 def cast_to_DL(parameters: Parameters) -> DLParameters:
     parameters.__class__ = DLParameters
+    parameters.optimal_step_size = None
+    parameters.dataset = "mnist"
+    parameters.model = MNIST_CNN()
     return parameters

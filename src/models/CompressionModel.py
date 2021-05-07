@@ -150,7 +150,7 @@ class SQuantization(CompressionModel):
         _, _, flat_dim = prep_grad(vector)
         if self.level == 0:
             return 0
-        return min(flat_dim / self.level*self.level, sqrt(flat_dim) / self.level)
+        return min(flat_dim / (self.level*self.level), sqrt(flat_dim) / self.level)
 
     def get_name(self) -> str:
         return "Qtzd"

@@ -64,6 +64,7 @@ class SGDGen(Optimizer):
                 d_p = p.grad.data
 
                 up_error_feedback_name = 'up_error_feedback_' + str(w_id)
+                down_error_feedback_name = 'down_error_feedback_' + str(w_id)
                 up_memory_name = 'up_memory_' + str(w_id)
                 up_learning_rate_name = 'up_learning_rat_' + str(w_id)
                 loc_grad = d_p.mul(group['lr'])
@@ -104,10 +105,18 @@ class SGDGen(Optimizer):
 
                 ###### Computation carried out on  the global server's side. ######
                 if self.grads_received == self.parameters.nb_devices:
-                    grad = param_state['full_grad'] / self.parameters.nb_devices
+                    full_grad = param_state['full_grad'] / self.parameters.nb_devices
+
+                    if down_error_feedback_name in param_state:
+                        full_grad += param_state[down_error_feedback_name]
 
                     if self.parameters.down_compression_model is not None:
-                        grad = self.parameters.down_compression_model.compress(grad)
+                        grad = self.parameters.down_compression_model.compress(full_grad)
+                    else:
+                        grad = full_grad
+
+                    if self.parameters.up_error_feedback:
+                        param_state[up_error_feedback_name] = full_grad - grad
 
                     if weight_decay != 0:
                         grad.add(p, alpha=weight_decay)
