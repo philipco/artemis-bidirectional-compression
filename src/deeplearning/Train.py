@@ -1,6 +1,7 @@
 """
 Created by Philippenko, 26th April 2021.
 """
+import copy
 
 import torch
 import numpy as np
@@ -9,15 +10,14 @@ from torch import nn
 from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.DeepLearningRun import DeepLearningRun
 from src.deeplearning.NnDataPreparation import create_loaders
-from src.deeplearning.NnModels import SimplestNetwork, resnet18
 from src.deeplearning.SgdAlgo import SGDGen
-from src.utils.Utilities import seed_everything, pickle_saver
+from src.utils.Utilities import seed_everything
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.RunnerUtilities import nb_run
 
 
 def train_workers(suffix, model, optimizer, criterion, epochs, train_loader_workers,
-                  val_loader, test_loader, n_workers, hpo=False):
+                  val_loader, test_loader, n_workers, parameters: DLParameters, hpo=False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
@@ -36,14 +36,31 @@ def train_workers(suffix, model, optimizer, criterion, epochs, train_loader_work
         iter_steps = len(train_loader_workers[0])
         for _ in range(iter_steps):
             for w_id in range(n_workers):
+                preserved_model = copy.deepcopy(model)
+
                 data, labels = next(train_loader_iter[w_id])
                 data, labels = data.to(device), labels.to(device)
                 output = model(data)
                 loss = criterion(output, labels)
                 loss.backward()
+                # if not parameters.non_degraded:
                 running_loss += loss.item()
                 optimizer.step_local_global(w_id)
                 optimizer.zero_grad()
+
+                if parameters.non_degraded:
+
+                    # Before updating model, we compute the non-degraded loss with the old non-degraded model
+                    preserved_output = preserved_model(data)
+                    preserved_loss = criterion(preserved_output, labels)
+                    running_loss += loss.item()
+
+                    with torch.no_grad():
+                        compressed_state_dict = model.state_dict()
+                        for k, v in compressed_state_dict.items():
+                            # print(k)
+                            compressed_state_dict[k] = parameters.down_compression_model.compress(v)
+                    model.load_state_dict(compressed_state_dict)
 
         train_loss = running_loss/(iter_steps*n_workers)
 
@@ -114,14 +131,14 @@ def run_workers(step_size, parameters: DLParameters, suffix=None, hpo=False):
         print("Device :", device, file = f)
 
     # net = Resnet
-    model = parameters.model
+    model = parameters.model()
 
     train_loader_workers, val_loader, test_loader = create_loaders(parameters.dataset, parameters.nb_devices, parameters.batch_size)
 
     optimizer = SGDGen(model.parameters(), parameters=parameters, step_size=step_size, weight_decay=0)
 
     val_loss, run = train_workers(suffix, model, optimizer, nn.CrossEntropyLoss(), parameters.nb_epoch, train_loader_workers,
-                             val_loader, test_loader, parameters.nb_devices, hpo=hpo)
+                             val_loader, test_loader, parameters.nb_devices, hpo=hpo, parameters=parameters)
 
     return val_loss, run
 
@@ -139,6 +156,7 @@ def run_tuned_exp(parameters: DLParameters, runs=nb_run, suffix=None):
 
     multiple_descent = AverageOfSeveralIdenticalRun()
     for i in range(runs):
+        torch.cuda.empty_cache()
         print('Run {:3d}/{:3d}:'.format(i+1, runs))
         suffix_run = suffix + '_' + str(i+1)
         val_loss, run = run_workers(parameters.optimal_step_size, parameters, suffix_run)

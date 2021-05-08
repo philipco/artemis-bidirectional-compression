@@ -574,6 +574,7 @@ class MCM(ModelCompr):
         params.use_unique_up_memory = False
         params.use_unique_up_memory = True
         params.use_unique_down_memory = True
+        params.non_degraded = True
         return params
 
 

@@ -15,11 +15,15 @@ class DLParameters(Parameters):
 
     def print(self):
         print("== Settings ==")
+        print("Step size: {0}".format(self.optimal_step_size))
         if self.use_up_memory:
             print("Use UP memory.")
+        if self.use_down_memory:
+            print("Use DOWN memory.")
         if self.up_error_feedback:
             print("Use UP error-feedback.")
-        print("Step size: {0}".format(self.optimal_step_size))
+        if self.down_error_feedback:
+            print("Use DOWN error-feedback.")
         if self.up_compression_model is not None:
             print("UP compression model: {0}".format(self.up_compression_model.__class__.__name__))
         if self.down_compression_model is not None:

@@ -110,13 +110,13 @@ class SGDGen(Optimizer):
                     if down_error_feedback_name in param_state:
                         full_grad += param_state[down_error_feedback_name]
 
-                    if self.parameters.down_compression_model is not None:
+                    if self.parameters.down_compression_model is not None and not self.parameters.non_degraded:
                         grad = self.parameters.down_compression_model.compress(full_grad)
                     else:
                         grad = full_grad
 
-                    if self.parameters.up_error_feedback:
-                        param_state[up_error_feedback_name] = full_grad - grad
+                    if self.parameters.down_error_feedback:
+                        param_state[down_error_feedback_name] = full_grad - grad
 
                     if weight_decay != 0:
                         grad.add(p, alpha=weight_decay)

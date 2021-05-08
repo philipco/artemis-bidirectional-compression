@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
         params = cast_to_DL(params)
         params.dataset = "mnist"
-        params.model = MNIST_CNN()
+        params.model = MNIST_CNN
         params.log_file = "log.txt"
         params.momentum = 0.9
         params.optimal_step_size = 0.1
