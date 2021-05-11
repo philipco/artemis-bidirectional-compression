@@ -1,10 +1,29 @@
 """
 Created by Philippenko, 26th April 2021.
 """
-
 from torch import nn
 import torch.nn.functional as F
 
+
+class MNIST_FullyConnected(nn.Module):
+
+    def __init__(self):
+        input_size = 784
+        output_size = 10
+        hidden_size = 128
+        super(MNIST_FullyConnected, self).__init__()
+        self.f1 = nn.Flatten()
+        self.l1 = nn.Linear(input_size, hidden_size)
+        self.relu = nn.ReLU()
+        self.tanh = nn.Tanh()
+        self.l3 = nn.Linear(hidden_size, output_size)
+
+    def forward(self, x):
+        x = self.f1(x)
+        x = self.l1(x)
+        x = self.tanh(x)
+        x = self.l3(x)
+        return F.log_softmax(x)
 
 class MNIST_CNN(nn.Module):
     def __init__(self):
@@ -12,14 +31,15 @@ class MNIST_CNN(nn.Module):
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
         self.conv2_drop = nn.Dropout2d()
+        self.tanh = nn.Tanh()
         self.fc1 = nn.Linear(320, 50)
         self.fc2 = nn.Linear(50, 10)
 
     def forward(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = self.tanh(F.max_pool2d(self.conv1(x), 2))
+        x = self.tanh(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
         x = x.view(-1, 320)
-        x = F.relu(self.fc1(x))
+        x = self.tanh(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x)
@@ -66,6 +86,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
         self.linear = nn.Linear(512*block.expansion, num_classes)
+        self.tanh = nn.Tanh()
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -76,7 +97,7 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.tanh(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
@@ -99,11 +120,12 @@ class SimplestNetwork(nn.Module):
         self.linear = nn.Linear(224,224)
         self.relu = nn.ReLU(True)
         self.out_linear = nn.Linear(224 * 224 * 3, 10)
+        self.tanh = nn.Tanh()
 
     def forward(self, x):
         # out = self.conv(x)
         out = self.linear(x)
-        out = self.relu(out)
+        out = self.tanh(out)
         out = out.view(out.size(0), -1)
         out = self.out_linear(out)
         return out

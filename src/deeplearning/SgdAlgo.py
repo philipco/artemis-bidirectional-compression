@@ -77,6 +77,8 @@ class SGDGen(Optimizer):
 
                 if self.parameters.up_compression_model is not None:
                     d_p = self.parameters.up_compression_model.compress(loc_grad)
+                else:
+                    d_p = loc_grad
 
                 if self.parameters.up_error_feedback:
                     param_state[up_error_feedback_name] = loc_grad - d_p
