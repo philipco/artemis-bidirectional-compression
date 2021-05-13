@@ -1,7 +1,7 @@
 """
 Created by Philippenko, 8th June 2020.
 """
-from src.deeplearning.Train import DeepLearningRun
+from src.deeplearning import DeepLearningRun
 from src.machinery import GradientDescent
 
 from src.utils.Utilities import compute_number_of_bits

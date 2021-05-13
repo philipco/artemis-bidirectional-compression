@@ -3,12 +3,9 @@ Created by Philippenko, 6th March 2020.
 
 This python file provide facilities to plot the results of a (multiple) gradient descent run.
 """
-import math
-
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
-from numpy import quantile
 
 from src.utils.Utilities import drop_nan_values, keep_until_found_nan
 
@@ -31,8 +28,8 @@ Y_LEGENDS = {"loss": r"$\log_{10}(F(w^k) - F(w^*))$",
 nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 
-def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all_error=None,
-                    x_points=None, x_legend=None, one_on_two_points=True, xlabels=None,
+def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None, all_error=None,
+                    x_points=None, x_legend=None, one_on_two_points=False, xlabels=None,
                     ylegends="loss", ylim=False, omega_c = None, picture_name=None):
 
     assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
@@ -88,10 +85,12 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim, batch_size=None, all
             # setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw)
         it += 1
 
-    if batch_size is None:
-        title_precision = "\n(N=" + str(nb_devices) +", d=" + str(nb_dim) + ")"
-    else:
-        title_precision = "\n(N=" + str(nb_devices) + ", d=" + str(nb_dim) + ", b=" + str(batch_size) + ")"
+    title_precision = "\n(N=" + str(nb_devices)
+    if nb_dim is not None:
+        title_precision += ", d=" + str(nb_dim)
+    if batch_size is not None:
+        title_precision += ", b=" + str(batch_size)
+    title_precision += ")"
 
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
     setup_plot(x_legend + title_precision, ylegends=ylegends, xlog=xlog, xlabels=xlabels,
