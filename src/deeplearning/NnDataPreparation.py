@@ -8,10 +8,14 @@ from torchvision import datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Subset
 
+from src.deeplearning.DLParameters import DLParameters
+from src.deeplearning.QuantumDataset import QuantumDataset
+from src.utils.runner.RunnerUtilities import create_path_and_folders
 
-def create_loaders(dataset_name: str, nb_devices: int, batch_size: int, seed: int = 42):
 
-    train_data, test_data = load_data(dataset_name)
+def create_loaders(parameters: DLParameters, seed: int = 42):
+
+    train_data, test_data = load_data(parameters)
 
     train_loader_workers = dict()
     n = len(train_data)
@@ -26,25 +30,25 @@ def create_loaders(dataset_name: str, nb_devices: int, batch_size: int, seed: in
 
     indices = indices[n_val:]
     n = len(indices)
-    a = np.int(np.floor(n / nb_devices))
-    top_ind = a * nb_devices
+    a = np.int(np.floor(n / parameters.nb_devices))
+    top_ind = a * parameters.nb_devices
     seq = range(a, top_ind, a)
     split = np.split(indices[:top_ind], seq)
 
     b = 0
     for ind in split:
-        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=batch_size, shuffle=True)
+        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=parameters.batch_size, shuffle=True)
         b = b + 1
 
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
-    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_data, batch_size=parameters.batch_size, shuffle=False)
+    val_loader = DataLoader(val_data, batch_size=parameters.batch_size, shuffle=False)
 
     return train_loader_workers, val_loader, test_loader
 
 
-def load_data(dataset_name: str):
+def load_data(parameters: DLParameters):
 
-    if dataset_name == "fake":
+    if parameters.dataset == "fake":
 
         transform = transforms.ToTensor()
 
@@ -52,7 +56,7 @@ def load_data(dataset_name: str):
 
         test_data = datasets.FakeData(size=200, transform=transform)
 
-    elif dataset_name == 'cifar10':
+    elif parameters.dataset == 'cifar10':
 
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])
@@ -67,7 +71,7 @@ def load_data(dataset_name: str):
         test_data = datasets.CIFAR10(root='../dataset/', train=False,
                                      download=True, transform=transform)
 
-    elif dataset_name == 'mnist':
+    elif parameters.dataset == 'mnist':
 
         transform = transforms.ToTensor()
 
@@ -76,5 +80,10 @@ def load_data(dataset_name: str):
 
         test_data = datasets.MNIST(root='../dataset/', train=False,
                                    download=True, transform=transform)
+
+    elif parameters.dataset == "quantum":
+        train_data = QuantumDataset(train=True)
+
+        test_data = QuantumDataset(train=False)
 
     return train_data, test_data

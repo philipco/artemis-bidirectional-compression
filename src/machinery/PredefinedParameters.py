@@ -595,6 +595,7 @@ class MC(ModelCompr):
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
+        params.non_degraded = True
         return params
 
 

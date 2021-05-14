@@ -1,8 +1,37 @@
 """
 Created by Philippenko, 26th April 2021.
 """
+import torch
 from torch import nn
 import torch.nn.functional as F
+
+
+class Quantum_Linear(nn.Module):
+
+    def __init__(self):
+        input_size = 66
+        output_size = 2
+        super(Quantum_Linear, self).__init__()
+        self.l1 = nn.Linear(input_size, output_size, bias=False)
+
+    def forward(self, x):
+        x = self.l1(x)
+        return torch.sigmoid(x)
+
+
+class MNIST_Linear(nn.Module):
+    
+    def __init__(self):
+        input_size = 784
+        output_size = 10
+        super(MNIST_Linear, self).__init__()
+        self.f1 = nn.Flatten()
+        self.l1 = nn.Linear(input_size, output_size)
+
+    def forward(self, x):
+        x = self.f1(x)
+        x = self.l1(x)
+        return F.log_softmax(x)
 
 
 class MNIST_FullyConnected(nn.Module):
@@ -25,6 +54,7 @@ class MNIST_FullyConnected(nn.Module):
         x = self.l3(x)
         return F.log_softmax(x)
 
+
 class MNIST_CNN(nn.Module):
     def __init__(self):
         super(MNIST_CNN, self).__init__()
@@ -43,6 +73,7 @@ class MNIST_CNN(nn.Module):
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x)
+
 
 class LeNet(nn.Module):
     """From https://github.com/kuangliu/pytorch-cifar/blob/master/models/lenet.py."""
