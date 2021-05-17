@@ -133,6 +133,7 @@ class SGDGen(Optimizer):
                         else:
                             grad = buf
 
+                    param_state['final_grad'] = grad.detach()
                     p.data.add_(grad, alpha=-1)
 
         if self.grads_received == self.parameters.nb_devices:
