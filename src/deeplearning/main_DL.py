@@ -3,6 +3,7 @@ Created by Philippenko, 2th April 2021.
 """
 import numpy
 import logging
+import torchvision.models as tm
 
 import numpy as np
 
@@ -26,12 +27,14 @@ if __name__ == '__main__':
         print("==== NEW RUN ====", file=f)
 
     fraction_sampled_workers = 1
-    dataset = "mnist"
-    model = MNIST_CNN  # MNIST_CNN #MNIST_FullyConnected
-    momentum = 0.9
-    optimal_step_size = 0.1 #0.12
-    level_quantiz = 1
-    batch_size = 128
+    dataset = "quantum" #"cifar10"
+    model = Quantum_Linear#tm.resnet18  # MNIST_CNN #MNIST_FullyConnected
+    momentum = 0.
+    weight_decay = 0#5e-4
+    optimal_step_size = 0.12 #0.12
+    up_quantization_level = 1
+    down_quantization_level = 1
+    batch_size = 400
     nb_devices = 20
     algos = "mcm-vs-existing"
     list_algos = choose_algo(algos)
@@ -40,47 +43,57 @@ if __name__ == '__main__':
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos,
                                                                                       fraction_sampled_workers)
 
-    compression_by_default = SQuantization(level_quantiz)
+    default_up_compression = SQuantization(up_quantization_level)
+    default_down_compression = SQuantization(down_quantization_level)
 
-    if not file_exist("{0}/obj_min.pkl".format(pickle_path)):
+    exp_name = "{0}_m{1}_lr{2}_sup{3}_sdwn{4}_b{5}_wd{6}".format(model.__name__, momentum, optimal_step_size,
+                                                                 default_up_compression.level,
+                                                                 default_down_compression.level, batch_size,
+                                                                 weight_decay)
+
+    if False:#not file_exist("{0}/obj_min.pkl".format(pickle_path)):
         print(pickle_path)
-    #     params = VanillaSGD().define(cost_models=None,
-    #                                 n_dimensions=None,
-    #                                 nb_epoch=500,
-    #                                 nb_devices=nb_devices,
-    #                                 batch_size=1000,
-    #                                 fraction_sampled_workers=1,
-    #                                 up_compression_model=SQuantization(0))
-    #
-    #     params = cast_to_DL(params)
-    #     params.dataset = dataset
-    #     params.model = model
-    #     params.log_file = "log.txt"
-    #     params.momentum = momentum
-    #     params.optimal_step_size = optimal_step_size
-    #
-    #     obj_min_by_N_descent = run_tuned_exp(params)
-    #
-    #     obj_min = obj_min_by_N_descent.losses[-1]
-    #     pickle_saver(obj_min, "{0}/obj_min".format(pickle_path))
-
-    all_descent = {}
-    for type_params in [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis(), MCM()]:#, Artemis(), BiQSGD()]:  # Qsgd(), Diana(), BiQSGD(), Artemis(), Dore(), DoubleSqueeze()]:
-        print(type_params)
-        torch.cuda.empty_cache()
-        params = type_params.define(cost_models=None,
+        params = VanillaSGD().define(cost_models=None,
                                     n_dimensions=None,
-                                    nb_epoch=100,
+                                    nb_epoch=800,
                                     nb_devices=nb_devices,
-                                    batch_size=batch_size,
+                                    batch_size=10000,
                                     fraction_sampled_workers=1,
-                                    up_compression_model=compression_by_default)
+                                    up_compression_model=SQuantization(0))
 
         params = cast_to_DL(params)
         params.dataset = dataset
         params.model = model
         params.log_file = "log.txt"
         params.momentum = momentum
+        params.optimal_step_size = optimal_step_size
+        params.weight_decay = weight_decay
+        params.momentum = 0.9
+
+        obj_min_by_N_descent = run_tuned_exp(params)
+
+        obj_min = np.mean(np.array(obj_min_by_N_descent.train_losses[-1]))
+        pickle_saver(obj_min, "{0}/obj_min_dl".format(pickle_path))
+
+    all_descent = {}
+    for type_params in [VanillaSGD(), Diana(), Artemis(), MCM()]:#, Artemis(), BiQSGD()]:  # Qsgd(), Diana(), BiQSGD(), Artemis(), Dore(), DoubleSqueeze()]:
+        print(type_params)
+        torch.cuda.empty_cache()
+        params = type_params.define(cost_models=None,
+                                    n_dimensions=None,
+                                    nb_epoch=8,
+                                    nb_devices=nb_devices,
+                                    batch_size=batch_size,
+                                    fraction_sampled_workers=1,
+                                    up_compression_model=default_up_compression,
+                                    down_compression_model=default_down_compression)
+
+        params = cast_to_DL(params)
+        params.dataset = dataset
+        params.model = model
+        params.log_file = "log.txt"
+        params.momentum = momentum
+        params.weight_decay = weight_decay
         params.optimal_step_size = optimal_step_size
         params.print()
 
@@ -92,24 +105,21 @@ if __name__ == '__main__':
 
         all_descent[type_params.name()] = multiple_sg_descent
         res = ResultsOfSeveralDescents(all_descent, nb_devices)
-        pickle_saver(res, "{0}/{1}_m{2}_lr{3}_s{4}_b{5}_mem0.01".format(algos_pickle_path, model.__name__, momentum, optimal_step_size, level_quantiz, batch_size))
+        pickle_saver(res, "{0}/{1}".format(algos_pickle_path, exp_name))
 
-    res = pickle_loader("{0}/{1}_m{2}_lr{3}_s{4}_b{5}_mem0.01".format(algos_pickle_path, model.__name__, momentum, optimal_step_size, level_quantiz, batch_size))
-    obj_min = pickle_loader("{0}/obj_min".format(pickle_path))
+    res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
+    obj_min = pickle_loader("{0}/obj_min_dl".format(pickle_path))
 
     # TEMP #
     iid = False
 
     # Plotting without averaging
     plot_error_dist(res.get_loss(np.array(0), in_log=True), res.names, res.nb_devices_for_the_run, batch_size=batch_size,
-                    all_error=res.get_std(np.array(0), in_log=True), x_legend="Number of passes on data",
-                    picture_name="{0}/train_losses_m{1}_lr{2}_s{3}".format(picture_path, momentum, optimal_step_size,
-                                                                           level_quantiz))
-    plot_error_dist(res.get_test_accuracies(), res.names, res.nb_devices_for_the_run,
+                    all_error=res.get_std(np.array(0), in_log=True), x_legend="Number of passes on data", ylegends="train_loss",
+                    picture_name="{0}/{1}_train_losses".format(picture_path, exp_name))
+    plot_error_dist(res.get_test_accuracies(), res.names, res.nb_devices_for_the_run, ylegends="accuracy",
                     all_error=res.get_test_accuracies_std(), x_legend="Number of passes on data", batch_size=batch_size,
-                    picture_name="{0}/test_accuracies_m{1}_lr{2}_s{3}".format(picture_path, momentum, optimal_step_size,
-                                                                              level_quantiz))
+                    picture_name="{0}/{1}_test_accuracies".format(picture_path, exp_name))
     plot_error_dist(res.get_test_losses(in_log=True), res.names, res.nb_devices_for_the_run, batch_size=batch_size,
-                    all_error=res.get_test_losses_std(in_log=True), x_legend="Number of passes on data",
-                    picture_name="{0}/test_losses_m{1}_lr{2}_s{3}".format(picture_path, momentum, optimal_step_size,
-                                                                                level_quantiz))
+                    all_error=res.get_test_losses_std(in_log=True), x_legend="Number of passes on data", ylegends="test_loss",
+                    picture_name="{0}/{1}_test_losses".format(picture_path, exp_name))

@@ -23,7 +23,10 @@ sixfigsize=(13, 11)
 Y_LEGENDS = {"loss": r"$\log_{10}(F(w^k) - F(w^*))$",
              "ef": r"$\log_{10}(\| \| EF_k \| \|)$",
              "rand_dist": r"$\log_{10}(\mathbb{E} \| \| w_k - w_k^i \| \|^2)$",
-             "rand_var": r"$\log_{10}( \| \| \mathbb{V}~[w_k^i] \| \| )$"}
+             "rand_var": r"$\log_{10}( \| \| \mathbb{V}~[w_k^i] \| \| )$",
+             "train_loss": r"$\log($Train loss$)$",
+             "test_loss": r"$\log($Test loss$)$",
+             "accuracy": "Accuracy",}
 
 nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 

@@ -55,7 +55,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
                             param_state[down_memory_name] = torch.zeros_like(p)
                         if parameters.down_compression_model is not None:
                             value_to_compress = p - param_state[down_memory_name]
-                            omega = parameters.up_compression_model.compress(value_to_compress)
+                            omega = parameters.down_compression_model.compress(value_to_compress)
                             p.copy_(omega)
                     # Dezipping memory if required.
                     if parameters.use_down_memory:

@@ -18,8 +18,10 @@ from matplotlib import pyplot as plt
 
 from src.deeplearning.DeepLearningRun import DeepLearningRun
 from src.deeplearning.Train import accuracy_and_loss
+from src.utils.Utilities import pickle_saver
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print("Running on ", device)
 
 # Hyper-parameters
 num_epochs = 2
@@ -157,6 +159,7 @@ if __name__ == '__main__':
             test_loss_val, test_acc_val = accuracy_and_loss(model, test_loader, criterion, device)
 
             run.update_run(loss.item(), test_loss_val, test_acc_val)
+            pickle_saver(run, "run_cifar10.pkl")
 
             if (i+1) % 100 == 0:
                 print ("Epoch [{}/{}], Step [{}/{}] Loss: {:.4f}"
