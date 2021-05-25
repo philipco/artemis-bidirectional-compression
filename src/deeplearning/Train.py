@@ -55,7 +55,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
                             param_state[down_memory_name] = torch.zeros_like(p)
                         if parameters.down_compression_model is not None:
                             value_to_compress = p - param_state[down_memory_name]
-                            omega = parameters.up_compression_model.compress(value_to_compress)
+                            omega = parameters.down_compression_model.compress(value_to_compress)
                             p.copy_(omega)
                     # Dezipping memory if required.
                     if parameters.use_down_memory:
@@ -110,8 +110,9 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
 
         run.update_run(train_loss, test_loss_val, test_acc_val)
 
-        print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
-              .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val), end='\r')
+        if e+1 in [1, epochs]:
+            print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
+                  .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val))
 
     return best_val_loss, run
 
@@ -170,8 +171,8 @@ def run_workers(step_size, parameters: DLParameters, hpo=False):
 
     model = parameters.model()
     # Model's weights are initialized to zero.
-    for p in model.parameters():
-        p.data.fill_(0)
+    # for p in model.parameters():
+    #     p.data.fill_(0)
 
     train_loader_workers, val_loader, test_loader = create_loaders(parameters)
 

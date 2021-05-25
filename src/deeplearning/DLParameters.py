@@ -12,6 +12,7 @@ class DLParameters(Parameters):
         self.optimal_step_size = None
         self.dataset = "mnist"
         self.model = MNIST_CNN()
+        self.weight_decay = 0
 
     def print(self):
         print("== Settings ==")

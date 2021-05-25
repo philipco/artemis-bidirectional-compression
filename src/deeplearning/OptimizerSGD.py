@@ -51,7 +51,6 @@ class SGDGen(Optimizer):
         self.grads_received += 1
 
         for group in self.param_groups:
-            weight_decay = group['weight_decay']
             dampening = group['dampening']
             nesterov = group['nesterov']
 
@@ -120,8 +119,8 @@ class SGDGen(Optimizer):
                     if self.parameters.down_error_feedback:
                         param_state[down_error_feedback_name] = full_grad - grad
 
-                    if weight_decay != 0:
-                        grad.add(p, alpha=weight_decay)
+                    if self.parameters.weight_decay != 0:
+                        grad.add(p, alpha=self.parameters.weight_decay)
                     if self.parameters.momentum != 0:
                         if 'momentum_buffer' not in param_state:
                             buf = param_state['momentum_buffer'] = torch.clone(grad).detach()

@@ -115,9 +115,11 @@ class RandomSparsification(CompressionModel):
 
 class SQuantization(CompressionModel):
 
-    def __init__(self, level: int, dim: int = None):
-        super().__init__(level, dim)
+    def __init__(self, level: int, dim: int = None, div_omega: int = 1):
         self.biased = False
+        self.div_omega = div_omega
+        super().__init__(level, dim)
+
 
     def compress(self, vector: torch.FloatTensor, dim: str = None) -> torch.FloatTensor:
         """Implement the s-quantization
@@ -134,7 +136,7 @@ class SQuantization(CompressionModel):
             return vector
         vector, dim, flat_dim = prep_grad(vector)
 
-        norm_x = torch.norm(vector, p=np.inf)
+        norm_x = torch.norm(vector, p=2)
         if norm_x == 0:
             return vector.reshape(dim)
 
@@ -153,7 +155,7 @@ class SQuantization(CompressionModel):
             _, _, flat_dim = prep_grad(vector)
         if self.level == 0:
             return 0
-        return min(flat_dim / (self.level*self.level), sqrt(flat_dim) / self.level)
+        return min(flat_dim / (self.level*self.level*self.div_omega), sqrt(flat_dim) / (self.level*self.div_omega))
 
     def get_name(self) -> str:
         return "Qtzd"

@@ -75,7 +75,8 @@ class AGradientDescent(ABC):
         elif not self.parameters.use_down_memory or self.parameters.down_compression_model.omega_c == 0:
             self.parameters.down_learning_rate = 0
 
-        self.parameters.error_feedback_coef = 1 / (self.parameters.up_compression_model.omega_c + 1)
+        if self.parameters.use_up_memory:
+            self.parameters.error_feedback_coef = 1 / (self.parameters.up_compression_model.omega_c + 1)
 
         # Creating each worker of the network.
         self.workers = [Worker(i, parameters, self.__local_update__()) for i in range(self.parameters.nb_devices)]

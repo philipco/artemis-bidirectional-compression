@@ -114,7 +114,8 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                                               streaming=streaming,
                                               batch_size=batch_size,
                                               fraction_sampled_workers=fraction_sampled_workers,
-                                              up_compression_model=compression_model)
+                                              up_compression_model=compression_model,
+                                              down_compression_model=compression_model)
         model_descent = predefined_parameters.type_FL()(params)
         model_descent.run(cost_models)
         multiple_descent.append(model_descent)
