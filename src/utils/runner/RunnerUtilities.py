@@ -15,13 +15,12 @@ from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-nb_run = 2  # Number of gradient descent before averaging.
+nb_run = 5  # Number of gradient descent before averaging.
 
 
 def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1):
-    assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-one-way",
-                     "mcm-other-options",
-                     "artemis-vs-existing", "artemis-and-ef"], \
+    assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-1-mem", "mcm-one-way",
+                     "mcm-other-options", "artemis-vs-existing", "artemis-and-ef"], \
         "The possible choice of algorithms are : " \
         "uni-vs-bi (to compare uni-compression with bi-compression), " \
         "with-without-ef (to compare algorithms using or not error-feedback), " \
@@ -38,10 +37,12 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
     elif algos == "compress-model":
         list_algos = [VanillaSGD(), Artemis(), RArtemis(), ModelCompr(), MCM(), RandMCM()]
     elif algos == "mcm-vs-existing":
-        if fraction_sampled_workers==1:
-            list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1MemReset()]#MCMOneWay(), RandMCMOneWay()]#Diana(), Artemis(), Dore(), MCM(), RandMCM()]
+        if fraction_sampled_workers == 1:
+            list_algos = [VanillaSGD(), Diana(), Artemis(), Dore(), MCM(), RandMCM()]
         else:
-            list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1MemReset()]
+            list_algos = [VanillaSGD(), Diana(), Artemis(), Dore(), RandMCM()]
+    elif algos == "mcm-1-mem":
+        list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1MemReset()]
     elif algos == "mcm-other-options":
         list_algos = [ArtemisND(), MCM0(), MCM1(), MCM()]
     elif algos == "mcm-one-way":
