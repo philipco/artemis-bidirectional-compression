@@ -57,13 +57,13 @@ class AGradientDescent(ABC):
         """
         super().__init__()
         self.parameters = parameters
-        self.losses = []
+        self.train_losses = []
         self.norm_error_feedback = []
         self.dist_to_model = [torch.tensor(0.)]
         self.var_models = [torch.tensor(0.)]
         self.model_params = []
         self.averaged_model_params = []
-        self.averaged_losses = []
+        self.averaged_train_losses = []
         self.memory_info = None
 
         if self.parameters.use_up_memory and self.parameters.up_compression_model.omega_c != 0 and self.parameters.up_learning_rate is None:
@@ -75,7 +75,8 @@ class AGradientDescent(ABC):
         elif not self.parameters.use_down_memory or self.parameters.down_compression_model.omega_c == 0:
             self.parameters.down_learning_rate = 0
 
-        self.parameters.error_feedback_coef = 1 / (self.parameters.up_compression_model.omega_c + 1)
+        if self.parameters.use_up_memory:
+            self.parameters.error_feedback_coef = 1 / (self.parameters.up_compression_model.omega_c + 1)
 
         # Creating each worker of the network.
         self.workers = [Worker(i, parameters, self.__local_update__()) for i in range(self.parameters.nb_devices)]
@@ -126,11 +127,11 @@ class AGradientDescent(ABC):
             .to(dtype=torch.float64)
 
         self.model_params.append(current_model_param)
-        self.losses.append(self.update.compute_cost(current_model_param, cost_models))
+        self.train_losses.append(self.update.compute_cost(current_model_param, cost_models))
 
         if self.parameters.use_averaging:
             self.averaged_model_params.append(self.model_params[-1])
-            self.averaged_losses.append(self.losses[-1])
+            self.averaged_train_losses.append(self.train_losses[-1])
 
         full_nb_iterations = 0
 
@@ -161,7 +162,7 @@ class AGradientDescent(ABC):
 
             # We add the past update because at this time, local update has not been yet updated.
             self.model_params.append(past_model)
-            self.losses.append(self.update.compute_cost(self.model_params[-1], cost_models))
+            self.train_losses.append(self.update.compute_cost(self.model_params[-1], cost_models))
             if self.parameters.randomized:
                 self.norm_error_feedback.append(torch.norm(torch.mean(torch.stack(self.update.all_error_i[-1]), dim=0), p=2))
                 self.dist_to_model.append(np.mean(
@@ -190,21 +191,21 @@ class AGradientDescent(ABC):
             start_averaging_time = time.time()
             if self.parameters.use_averaging:
                 self.averaged_model_params.append(torch.mean(torch.stack(self.model_params), 0))
-                self.averaged_losses.append(self.update.compute_cost(self.averaged_model_params[-1], cost_models))
+                self.averaged_train_losses.append(self.update.compute_cost(self.averaged_model_params[-1], cost_models))
             averaging_time += time.time() - start_averaging_time
 
             if self.parameters.verbose:
                 if i == 1:
                     print(' | '.join([name.center(8) for name in ["it", "obj"]]))
                 if i % (nb_epoch / 5) == 0:
-                    print(' | '.join([("%d" % i).rjust(8), ("%.4e" % self.losses[-1]).rjust(8)]))
+                    print(' | '.join([("%d" % i).rjust(8), ("%.4e" % self.train_losses[-1]).rjust(8)]))
 
             # Beyond 1e9, we consider that the algorithm has diverged.
-            if self.losses[-1] == math.inf:
-                self.losses[-1] = MAX_LOSS
+            if self.train_losses[-1] == math.inf:
+                self.train_losses[-1] = MAX_LOSS
                 break
-            elif (self.losses[-1] > 1e9):
-                self.losses[-1] = MAX_LOSS
+            elif (self.train_losses[-1] > 1e9):
+                self.train_losses[-1] = MAX_LOSS
                 break
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -227,12 +228,12 @@ class AGradientDescent(ABC):
 
         # If we interrupted the run, we need to complete the list of loss to reach the number of iterations.
         # Otherwise it may later cause issues.
-        if len(self.losses) != self.parameters.nb_epoch:
-            self.losses = self.losses + [self.losses[-1] for i in range(self.parameters.nb_epoch - len(self.losses))]
+        if len(self.train_losses) != self.parameters.nb_epoch:
+            self.train_losses = self.train_losses + [self.train_losses[-1] for i in range(self.parameters.nb_epoch - len(self.train_losses))]
         if len(self.norm_error_feedback) != self.parameters.nb_epoch:
             self.norm_error_feedback = self.norm_error_feedback + [self.norm_error_feedback[-1] for i in range(self.parameters.nb_epoch - len(self.norm_error_feedback))]
-        if len(self.averaged_losses) != self.parameters.nb_epoch and self.parameters.use_averaging == True:
-            self.averaged_losses = self.averaged_losses + [self.averaged_losses[-1] for i in range(self.parameters.nb_epoch - len(self.averaged_losses))]
+        if len(self.averaged_train_losses) != self.parameters.nb_epoch and self.parameters.use_averaging == True:
+            self.averaged_train_losses = self.averaged_train_losses + [self.averaged_train_losses[-1] for i in range(self.parameters.nb_epoch - len(self.averaged_train_losses))]
         if len(self.dist_to_model) != self.parameters.nb_epoch:
             self.dist_to_model = self.dist_to_model + [self.dist_to_model[-1] for i in range(
                 self.parameters.nb_epoch - len(self.dist_to_model))]
@@ -240,10 +241,10 @@ class AGradientDescent(ABC):
             self.var_models = self.var_models + [self.var_models[-1] for i in range(
                 self.parameters.nb_epoch - len(self.var_models))]
 
-        self.losses = np.array(self.losses)
+        self.train_losses = np.array(self.train_losses)
         if self.parameters.verbose:
             print("Gradient Descent: execution time={t:.3f} seconds".format(t=elapsed_time))
-            print("Final loss : {0:.5f}\n".format(self.losses[-1]))
+            print("Final loss : {0:.5f}\n".format(self.train_losses[-1]))
 
         return elapsed_time
 

@@ -44,7 +44,7 @@ if __name__ == '__main__':
                                              bidirectional=False
                                              ))
     obj_min_descent.run(cost_models)
-    obj_min = obj_min_descent.losses[-1]
+    obj_min = obj_min_descent.train_losses[-1]
 
     # 4) Running descent for two algorithms: Diana and Artemis
     all_descent = {}

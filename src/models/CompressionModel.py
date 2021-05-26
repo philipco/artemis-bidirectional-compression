@@ -26,16 +26,16 @@ class CompressionModel(ABC):
         self.level = level
         self.dim = dim
         if dim is not None:
-            self.omega_c = self.__compute_omega_c__(dim)
+            self.omega_c = self.__compute_omega_c__(flat_dim=dim)
         else:
             self.omega_c = None
     
     @abstractmethod
-    def compress(self, vector: torch.FloatTensor):
+    def compress(self, vector: torch.FloatTensor, dim: int = None):
         pass
 
     @abstractmethod
-    def __compute_omega_c__(self, dim: int):
+    def __compute_omega_c__(self, vector: torch.FloatTensor = None, flat_dim: int =None):
         pass
 
     @abstractmethod
@@ -51,7 +51,7 @@ class TopKSparsification(CompressionModel):
             assert 0 <= level < dim, "k must be inferior to the number of dimension and superior to zero."
         self.biased = True
 
-    def compress(self, vector: torch.FloatTensor):
+    def compress(self, vector: torch.FloatTensor, dim: int = None):
         if self.level == 0:
             return vector
         vector, dim, flat_dim = prep_grad(vector)
@@ -62,7 +62,7 @@ class TopKSparsification(CompressionModel):
             compression[i.item()] = vector[i.item()]
         return compression.reshape(dim)
 
-    def __compute_omega_c__(self, dim: int):
+    def __compute_omega_c__(self, vector: torch.FloatTensor = None, flat_dim: int =None):
         if self.level == 0:
             return 0
         proba = self.level / self.dim
@@ -85,7 +85,7 @@ class RandomSparsification(CompressionModel):
         super().__init__(level, dim)
         assert 0 <= level < dim, "k must be expressed in percent."
 
-    def compress(self, vector: torch.FloatTensor):
+    def compress(self, vector: torch.FloatTensor, dim: int = None):
         if self.level == 0:
             return vector
 
@@ -99,7 +99,7 @@ class RandomSparsification(CompressionModel):
                 compression[i] = vector[i] * [self.dim/self.level, 1][self.biased]
         return compression.reshape(dim)
 
-    def __compute_omega_c__(self, dim: int):
+    def __compute_omega_c__(self, vector: torch.FloatTensor = None, flat_dim: int =None):
         proba = self.level / self.dim
         if self.level == 0:
             return 0
@@ -116,11 +116,12 @@ class RandomSparsification(CompressionModel):
 class SQuantization(CompressionModel):
 
     def __init__(self, level: int, dim: int = None, div_omega: int = 1):
-        super().__init__(level, dim)
         self.biased = False
         self.div_omega = div_omega
+        super().__init__(level, dim)
 
-    def compress(self, vector: torch.FloatTensor) -> torch.FloatTensor:
+
+    def compress(self, vector: torch.FloatTensor, dim: str = None) -> torch.FloatTensor:
         """Implement the s-quantization
 
         Args:
@@ -144,11 +145,14 @@ class SQuantization(CompressionModel):
         qtzt = signed_level * norm_x
         return qtzt.reshape(dim)
 
-    def __compute_omega_c__(self, vector: torch.FloatTensor):
+    def __compute_omega_c__(self, vector: torch.FloatTensor = None, flat_dim: int =None):
         """Return the value of omega_c (involved in variance) of the s-quantization."""
         # If s==0, it means that there is no compression.
         # But for the need of experiments, we may need to compute the quantization constant associated with s=1.
-        _, _, flat_dim = prep_grad(vector)
+        if flat_dim is None and vector is None:
+            raise RuntimeError("The flat dimension and the vector cannot be None together.")
+        if flat_dim is None:
+            _, _, flat_dim = prep_grad(vector)
         if self.level == 0:
             return 0
         return min(flat_dim / (self.level*self.level*self.div_omega), sqrt(flat_dim) / (self.level*self.div_omega))
