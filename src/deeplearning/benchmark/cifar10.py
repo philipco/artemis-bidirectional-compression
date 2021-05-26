@@ -18,7 +18,7 @@ from matplotlib import pyplot as plt
 
 from src.deeplearning.DeepLearningRun import DeepLearningRun
 from src.deeplearning.Train import accuracy_and_loss
-from src.utils.Utilities import pickle_saver
+from src.utils.Utilities import pickle_saver, pickle_loader
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Running on ", device)
@@ -126,7 +126,7 @@ model = ResNet(ResidualBlock, [2, 2, 2]).to(device)
 
 # Loss and optimizer
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
 # For updating learning rate
 def update_lr(optimizer, lr):
@@ -159,11 +159,12 @@ if __name__ == '__main__':
             test_loss_val, test_acc_val = accuracy_and_loss(model, test_loader, criterion, device)
 
             run.update_run(loss.item(), test_loss_val, test_acc_val)
-            pickle_saver(run, "run_cifar10.pkl")
+            pickle_saver(run, "run_cifar10")
 
             if (i+1) % 100 == 0:
-                print ("Epoch [{}/{}], Step [{}/{}] Loss: {:.4f}"
-                       .format(epoch+1, num_epochs, i+1, total_step, loss.item()))
+                with open("log_cifar10.txt", 'a') as f:
+                    print ("Epoch [{}/{}], Step [{}/{}] Loss: {:.4f}"
+                           .format(epoch+1, num_epochs, i+1, total_step, loss.item()), file=f)
 
         # Decay learning rate
         if (epoch+1) % 20 == 0:
@@ -188,9 +189,11 @@ if __name__ == '__main__':
     # Save the model checkpoint
     torch.save(model.state_dict(), 'resnet.ckpt')
 
-    plt.plot(range(num_epochs), run.train_losses)
+    res = pickle_loader("run_cifar10")
+
+    plt.plot(list(range(num_epochs)), run.train_losses)
     plt.savefig('{0}.eps'.format("cifar10_train_losses"), format='eps')
-    plt.plot(range(num_epochs), run.test_losses)
+    plt.plot(list(range(num_epochs)), run.test_losses)
     plt.savefig('{0}.eps'.format("cifar10_test_losses"), format='eps')
-    plt.plot(range(num_epochs), run.test_accuracies)
+    plt.plot(list(range(num_epochs)), run.test_accuracies)
     plt.savefig('{0}.eps'.format("cifar10_accuracy"), format='eps')

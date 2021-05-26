@@ -23,9 +23,12 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
     # preparing iterators for workers and validation set
     np.random.seed(seed)
     indices = np.arange(n)
-    np.random.shuffle(indices)
+    # np.random.shuffle(indices)
 
-    n_val = np.int(np.floor(0.1 * n))
+    if parameters.dataset == "quantum":
+        n_val = train_data.ind_val
+    else:
+        n_val = np.int(np.floor(0.1 * n))
     val_data = Subset(train_data, indices=indices[:n_val])
 
     indices = indices[n_val:]
@@ -33,7 +36,10 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
     a = np.int(np.floor(n / parameters.nb_devices))
     top_ind = a * parameters.nb_devices
     seq = range(a, top_ind, a)
-    split = np.split(indices[:top_ind], seq)
+    if False:#parameters.dataset == "quantum":
+        split = train_data.split
+    else:
+        split = np.split(indices[:top_ind], seq)
 
     b = 0
     for ind in split:

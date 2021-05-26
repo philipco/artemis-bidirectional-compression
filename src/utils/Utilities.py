@@ -14,6 +14,7 @@ from pathlib import Path
 import pandas as pd
 from pympler import tracker
 
+from src.deeplearning.DLParameters import DLParameters
 from src.machinery.Parameters import Parameters
 
 
@@ -29,13 +30,10 @@ def number_of_bits_needed_to_communicates_no_compressed(nb_devices:int, d: int) 
     return nb_devices * d * 32
 
 
-def compute_number_of_bits(type_params: Parameters, nb_epoch: int, compress_model: bool):
-    """Computing the theoretical number of bits used by an algorithm (with Elias encoding)."""
-    # Initialization, the first element needs to be removed at the end.
+def compute_number_of_bits_by_layer(type_params: Parameters, d: int, nb_epoch: int, compress_model: bool):
+    fraction = type_params.fraction_sampled_workers
     number_of_bits = [0]
     nb_devices = type_params.nb_devices
-    d = type_params.n_dimensions
-    fraction = type_params.fraction_sampled_workers
     for i in range(nb_epoch):
         nb_bits = 0
         if type_params.up_compression_model.omega_c != 0:
@@ -45,12 +43,27 @@ def compute_number_of_bits(type_params: Parameters, nb_epoch: int, compress_mode
             nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d) * fraction
         if type_params.down_compression_model.omega_c != 0:
             s = type_params.down_compression_model.level
-            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s, d) * [1, fraction][compress_model]
+            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s, d) * [1, fraction][
+                compress_model]
         else:
             nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d)
 
         number_of_bits.append(nb_bits + number_of_bits[-1])
-    return number_of_bits[1:]
+    return np.array(number_of_bits[1:])
+
+
+def compute_number_of_bits(type_params: Parameters, nb_epoch: int, compress_model: bool):
+    """Computing the theoretical number of bits used by an algorithm (with Elias encoding)."""
+    # Initialization, the first element needs to be removed at the end.
+    number_of_bits = np.array([0 for i in range(len(nb_epoch))])
+    if isinstance(type_params, DLParameters):
+        for p in type_params.model.parameters():
+            d = p.numel()
+            number_of_bits += compute_number_of_bits_by_layer(type_params, d, nb_epoch, compress_model)
+        return number_of_bits
+    else:
+        d = type_params.n_dimensions
+        return compute_number_of_bits_by_layer(type_params, d, nb_epoch, compress_model)
 
 
 def pickle_saver(data, filename: str) -> None:
