@@ -1,10 +1,13 @@
 """
 Created by Philippenko, 8th June 2020.
 """
+from random import random, choice
 
 import numpy as np
 
+from src.deeplearning.DeepLearningRun import DeepLearningRun
 from src.machinery.GradientDescent import AGradientDescent
+from src.utils.Utilities import compute_number_of_bits
 
 
 class ResultsOfSeveralDescents:
@@ -20,10 +23,18 @@ class ResultsOfSeveralDescents:
 
     def __init__(self, all_descent, nb_devices_for_the_run):
         self.all_descent = all_descent
-        if not self.all_descent[next(iter(self.all_descent))].artificial and isinstance(list(self.all_descent.values())[-1].multiple_descent[-1], AGradientDescent):
+        element = list(self.all_descent.values())[-1].multiple_descent[-1]
+        if not self.all_descent[next(iter(self.all_descent))].artificial and isinstance(element, AGradientDescent):
             self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in self.all_descent.values()]
             self.X_number_of_bits = [desc.theoretical_nb_bits for desc in self.all_descent.values()]
             self.omega_c = [desc.omega_c for desc in self.all_descent.values()]
+        elif isinstance(element, DeepLearningRun):
+            X_number_of_bits = []
+            for key, value in self.all_descent.items():
+                compress_model = True if 'MCM' in key else False
+                params = value.multiple_descent[-1].parameters
+                X_number_of_bits.append(compute_number_of_bits(params, params.nb_epoch, compress_model))
+            self.X_number_of_bits = X_number_of_bits
         self.nb_devices_for_the_run = nb_devices_for_the_run
         self.update()
 

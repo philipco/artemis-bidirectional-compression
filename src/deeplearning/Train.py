@@ -21,7 +21,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    run = DeepLearningRun()
+    run = DeepLearningRun(parameters)
 
     train_loss = np.inf
 
