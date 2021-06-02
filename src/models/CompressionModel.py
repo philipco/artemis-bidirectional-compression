@@ -22,9 +22,10 @@ class CompressionModel(ABC):
     """
     """
     
-    def __init__(self, level: int, dim: int = None):
+    def __init__(self, level: int, dim: int = None, norm: int = 2):
         self.level = level
         self.dim = dim
+        self.norm = norm
         if dim is not None:
             self.omega_c = self.__compute_omega_c__(flat_dim=dim)
         else:
@@ -45,8 +46,8 @@ class CompressionModel(ABC):
 
 class TopKSparsification(CompressionModel):
 
-    def __init__(self, level: int, dim: int = None):
-        super().__init__(level, dim)
+    def __init__(self, level: int, dim: int = None, norm: int = 2):
+        super().__init__(level, dim, norm)
         if dim is not None:
             assert 0 <= level < dim, "k must be inferior to the number of dimension and superior to zero."
         self.biased = True
@@ -74,7 +75,7 @@ class TopKSparsification(CompressionModel):
 
 class RandomSparsification(CompressionModel):
 
-    def __init__(self, level: int, dim: int = None, biased = True):
+    def __init__(self, level: int, dim: int = None, biased = True, norm: int = 2):
         """
 
         :param level: number of dimension to select at compression step
@@ -82,7 +83,7 @@ class RandomSparsification(CompressionModel):
         :param biased: set to True to used to biased version of this operators
         """
         self.biased = biased
-        super().__init__(level, dim)
+        super().__init__(level, dim, norm)
         assert 0 <= level < dim, "k must be expressed in percent."
 
     def compress(self, vector: torch.FloatTensor, dim: int = None):
@@ -115,10 +116,10 @@ class RandomSparsification(CompressionModel):
 
 class SQuantization(CompressionModel):
 
-    def __init__(self, level: int, dim: int = None, div_omega: int = 1):
+    def __init__(self, level: int, dim: int = None, norm: int = 2, div_omega: int = 1):
         self.biased = False
         self.div_omega = div_omega
-        super().__init__(level, dim)
+        super().__init__(level, dim, norm)
 
 
     def compress(self, vector: torch.FloatTensor, dim: str = None) -> torch.FloatTensor:
@@ -136,7 +137,7 @@ class SQuantization(CompressionModel):
             return vector
         vector, dim, flat_dim = prep_grad(vector)
 
-        norm_x = torch.norm(vector, p=2)
+        norm_x = torch.norm(vector, p=self.norm)
         if norm_x == 0:
             return vector.reshape(dim)
 

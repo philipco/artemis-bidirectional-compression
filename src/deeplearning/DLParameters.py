@@ -1,18 +1,20 @@
 """
 Created by Philippenko, 26th April 2021.
 """
-from src.deeplearning.NnModels import SimplestNetwork, MNIST_CNN
 from src.machinery.Parameters import Parameters
 
 
 class DLParameters(Parameters):
 
-    def __init__(self):
-        super().__init__()
-        self.optimal_step_size = None
-        self.dataset = "mnist"
-        self.model = MNIST_CNN()
-        self.weight_decay = 0
+    def __init__(self, dataset: str, model, optimal_step_size: int, weight_decay: int):
+        super().__init__(None)
+        self.initialize_DL_params(dataset, model, optimal_step_size, weight_decay)
+
+    def initialize_DL_params(self, dataset: str, model, optimal_step_size: int, weight_decay: int):
+        self.optimal_step_size = optimal_step_size
+        self.dataset = dataset
+        self.model = model
+        self.weight_decay = weight_decay
 
     def print(self):
         print("== Settings ==")
@@ -31,9 +33,7 @@ class DLParameters(Parameters):
             print("DOWN compression model: {0}".format(self.down_compression_model.__class__.__name__))
 
 
-def cast_to_DL(parameters: Parameters) -> DLParameters:
+def cast_to_DL(parameters: Parameters, dataset: str, model, optimal_step_size: int, weight_decay: int) -> DLParameters:
     parameters.__class__ = DLParameters
-    parameters.optimal_step_size = None
-    parameters.dataset = "mnist"
-    parameters.model = MNIST_CNN()
+    parameters.initialize_DL_params(dataset, model, optimal_step_size, weight_decay)
     return parameters

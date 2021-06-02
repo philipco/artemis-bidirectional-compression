@@ -66,10 +66,10 @@ class MNIST_CNN(nn.Module):
         self.fc2 = nn.Linear(50, 10)
 
     def forward(self, x):
-        x = self.tanh(F.max_pool2d(self.conv1(x), 2))
-        x = self.tanh(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = F.relu(F.max_pool2d(self.conv1(x), 2))
+        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
         x = x.view(-1, 320)
-        x = self.tanh(self.fc1(x))
+        x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x)
@@ -126,6 +126,37 @@ class BasicBlock(nn.Module):
         return out
 
 
+class Bottleneck(nn.Module):
+    expansion = 4
+
+    def __init__(self, in_planes, planes, stride=1):
+        super(Bottleneck, self).__init__()
+        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
+                               stride=stride, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(planes)
+        self.conv3 = nn.Conv2d(planes, self.expansion *
+                               planes, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(self.expansion*planes)
+
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_planes != self.expansion*planes:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_planes, self.expansion*planes,
+                          kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(self.expansion*planes)
+            )
+
+    def forward(self, x):
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = F.relu(self.bn2(self.conv2(out)))
+        out = self.bn3(self.conv3(out))
+        out += self.shortcut(x)
+        out = F.relu(out)
+        return out
+
+
 class ResNet(nn.Module):
     def __init__(self, block, num_blocks, num_classes=10):
         super(ResNet, self).__init__()
@@ -139,7 +170,6 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
         self.linear = nn.Linear(512*block.expansion, num_classes)
-        self.tanh = nn.Tanh()
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -150,7 +180,7 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = self.tanh(self.bn1(self.conv1(x)))
+        out = F.relu(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
@@ -161,24 +191,10 @@ class ResNet(nn.Module):
         return out
 
 
-def resnet18():
+def ResNet18():
+    """From https://github.com/kuangliu/pytorch-cifar/blob/master/models/resnet.py"""
     return ResNet(BasicBlock, [2, 2, 2, 2])
 
 
-class SimplestNetwork(nn.Module):
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.conv = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
-        self.linear = nn.Linear(224,224)
-        self.relu = nn.ReLU(True)
-        self.out_linear = nn.Linear(224 * 224 * 3, 10)
-        self.tanh = nn.Tanh()
-
-    def forward(self, x):
-        # out = self.conv(x)
-        out = self.linear(x)
-        out = self.tanh(out)
-        out = out.view(out.size(0), -1)
-        out = self.out_linear(out)
-        return out
+def ResNet50():
+    return ResNet(Bottleneck, [3, 4, 6, 3])

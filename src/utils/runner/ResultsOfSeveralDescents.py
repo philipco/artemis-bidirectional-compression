@@ -38,6 +38,17 @@ class ResultsOfSeveralDescents:
         self.nb_devices_for_the_run = nb_devices_for_the_run
         self.update()
 
+    def recompute_nb_bits(self):
+        X_number_of_bits = []
+        for key, value in self.all_descent.items():
+            if 'SGD' == key:
+                X_number_of_bits.append(self.X_number_of_bits[0])
+            elif 'Diana' == key or 'QSGD' == key:
+                X_number_of_bits.append(self.X_number_of_bits[0] / 2)
+            else:
+                X_number_of_bits.append(self.X_number_of_bits[0] / 16)
+        self.X_number_of_bits = X_number_of_bits
+
     def add_descent(self, descent, name):
         self.all_descent[name] = descent
         self.update()
