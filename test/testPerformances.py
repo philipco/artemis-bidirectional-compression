@@ -65,7 +65,7 @@ class PerformancesTest(unittest.TestCase):
                                                       bidirectional=False
                                                       ))
         obj_min_by_N_descent.run(cls.linear_cost_models)
-        cls.linear_obj = obj_min_by_N_descent.losses[-1]
+        cls.linear_obj = obj_min_by_N_descent.train_losses[-1]
 
         # For LOGISTIC:
         
@@ -91,38 +91,38 @@ class PerformancesTest(unittest.TestCase):
                                                       bidirectional=False
                                                       ))
         obj_min_by_N_descent.run(cls.logistic_cost_models)
-        cls.logistic_obj = obj_min_by_N_descent.losses[-1]
+        cls.logistic_obj = obj_min_by_N_descent.train_losses[-1]
 
     def test_artemis(self):
         model_descent = single_run_descent(self.linear_cost_models, ArtemisDescent, self.linear_params)
-        self.assertLess(np.log10(model_descent.losses[-1] - self.linear_obj), -2)
+        self.assertLess(np.log10(model_descent.train_losses[-1] - self.linear_obj), -2)
         model_descent = single_run_descent(self.logistic_cost_models, ArtemisDescent, self.logistic_params)
-        self.assertLess(np.log10(model_descent.losses[-1] - self.logistic_obj), -3.5)
+        self.assertLess(np.log10(model_descent.train_losses[-1] - self.logistic_obj), -3.5)
 
     def test_bi_qsgd(self):
         model_descent = single_run_descent(self.linear_cost_models, ArtemisDescent, self.linear_params)
-        self.assertLess(np.log10(model_descent.losses[-1] - self.linear_obj), -2)
+        self.assertLess(np.log10(model_descent.train_losses[-1] - self.linear_obj), -2)
         model_descent = single_run_descent(self.logistic_cost_models, ArtemisDescent, self.logistic_params)
-        self.assertLess(np.log10(model_descent.losses[-1] - self.logistic_obj), -3.5)
+        self.assertLess(np.log10(model_descent.train_losses[-1] - self.logistic_obj), -3.5)
 
     def test_diana(self):
         model_descent = single_run_descent(self.linear_cost_models, SGD_Descent, self.linear_params)
-        self.assertLess(np.log10(model_descent.losses[-1] - self.linear_obj), -2.5)
+        self.assertLess(np.log10(model_descent.train_losses[-1] - self.linear_obj), -2.5)
         model_descent = single_run_descent(self.logistic_cost_models, SGD_Descent, self.logistic_params)
-        self.assertLess(np.log10(model_descent.losses[-1] - self.logistic_obj), -3.5)
+        self.assertLess(np.log10(model_descent.train_losses[-1] - self.logistic_obj), -3.5)
 
 
     def test_qsgd(self):
         model_descent = single_run_descent(self.linear_cost_models, SGD_Descent, self.linear_params)
-        self.assertLess(np.log10(model_descent.losses[-1] - self.linear_obj), -2.5)
+        self.assertLess(np.log10(model_descent.train_losses[-1] - self.linear_obj), -2.5)
         model_descent = single_run_descent(self.logistic_cost_models, SGD_Descent, self.logistic_params)
-        self.assertLess(np.log10(model_descent.losses[-1] - self.logistic_obj), -3.5)
+        self.assertLess(np.log10(model_descent.train_losses[-1] - self.logistic_obj), -3.5)
 
     def test_vanilla(self):
         model_descent = single_run_descent(self.linear_cost_models, SGD_Descent, self.linear_params)
-        self.assertLess(np.log10(model_descent.losses[-1] - self.linear_obj), -3)
+        self.assertLess(np.log10(model_descent.train_losses[-1] - self.linear_obj), -3)
         model_descent = single_run_descent(self.logistic_cost_models, SGD_Descent, self.logistic_params)
-        self.assertLess(np.log10(model_descent.losses[-1] - self.logistic_obj), -3.5)
+        self.assertLess(np.log10(model_descent.train_losses[-1] - self.logistic_obj), -3.5)
 
 
 if __name__ == '__main__':

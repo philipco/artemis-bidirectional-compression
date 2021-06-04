@@ -4,7 +4,6 @@ Created by Philippenko, 15 January 2021
 import sys
 
 from src.models.CostModel import LogisticModel, RMSEModel, build_several_cost_model
-from src.machinery.PredefinedParameters import *
 
 from src.utils.ErrorPlotter import *
 from src.utils.data.DataPreparation import build_data_logistic, build_data_linear
@@ -25,36 +24,14 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
-
-    assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-one-way", "mcm-other-options",
-                     "artemis-vs-existing", "artemis-and-ef"],\
-        "The possible choice of algorithms are : " \
-        "uni-vs-bi (to compare uni-compression with bi-compression), " \
-        "with-without-ef (to compare algorithms using or not error-feedback), " \
-        "compress-model (algorithms compressing the model)."
     assert dataset in ["quantum", "superconduct", 'synth_logistic', 'synth_linear_noised', 'synth_linear_nonoised'], \
         "The available dataset are ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']."
     assert iid in ['iid', 'non-iid'], "The iid option are ['iid', 'non-iid']."
     assert scenario in [None, "compression", "step"], "The possible scenario are [None, 'compression', 'step']."
 
-    foldername = "{0}-{1}-N{2}".format(dataset, iid, nb_devices)
-    picture_path = "{0}/pictures/{1}/{2}".format(get_project_root(), foldername, algos)
-    if fraction_sampled_workers != 1:
-        picture_path += "/pp-{0}".format(fraction_sampled_workers)
-    print(picture_path)
-    # Contains the pickle of the dataset
-    data_path = "{0}/pickle".format(get_project_root(), foldername)
-    # Contains the pickle of the minimum objective.
-    pickle_path = "{0}/{1}".format(data_path, foldername)
-    # Contains the pickle of the gradient descent for each kind of algorithms.
-    algos_pickle_path = "{0}/{1}".format(pickle_path, algos)
-    if fraction_sampled_workers != 1:
-        algos_pickle_path += "/pp-{0}".format(fraction_sampled_workers)
+    data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos, fraction_sampled_workers)
 
-    # Create folders for pictures and pickle files
-    create_folder_if_not_existing(algos_pickle_path)
-    create_folder_if_not_existing(picture_path)
-
+    list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
     nb_epoch = 100 if stochastic else 400
 
@@ -105,33 +82,6 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             X, Y = pickle_loader(pickle_path + "/data")
         model = RMSEModel
         batch_size = 1
-
-    # Select the list of algorithms:
-    if algos == 'uni-vs-bi':
-        if fraction_sampled_workers==1:
-            list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
-        else:
-            list_algos = [VanillaSGD(), VanillaSGDMem(), Qsgd(), Diana(), BiQSGD(), Artemis()]
-    if algos == 'artemis-and-ef':
-        list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis(), Dore()]#, DoubleSqueeze()]
-    elif algos == "with-without-ef":
-        list_algos = [Qsgd(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
-    elif algos == "compress-model":
-        list_algos = [VanillaSGD(), Artemis(), RArtemis(), ModelCompr(), MCM(), RandMCM()]
-    elif algos == "mcm-vs-existing":
-        if fraction_sampled_workers==1:
-            list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1MemReset()]#MCMOneWay(), RandMCMOneWay()]#Diana(), Artemis(), Dore(), MCM(), RandMCM()]
-        else:
-            list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1MemReset()]
-    elif algos == "mcm-other-options":
-        list_algos = [ArtemisND(), MCM0(), MCM1(), MCM()]
-    elif algos == "mcm-one-way":
-        list_algos = [VanillaSGD(), DianaOneWay(), ArtemisOneWay(), DoreOneWay(), MCMOneWay(), RandMCMOneWay()]
-    elif algos == "artemis-vs-existing":
-        if stochastic:
-            list_algos = [VanillaSGD(), FedAvg(), FedPAQ(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
-        else:
-            list_algos = [VanillaSGD(), FedSGD(), FedPAQ(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
 
     compression_by_default = SQuantization(1, dim_notebook)
 
@@ -201,22 +151,22 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         res = pickle_loader("{0}/descent-{1}".format(algos_pickle_path, experiments_settings))
 
         # Plotting without averaging
-        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
+        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook,
                         all_error=res.get_std(obj_min), x_legend="Number of passes on data\n({0})".format(iid),
                         picture_name="{0}/it-noavg-{1}".format(picture_path, experiments_settings))
-        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
+        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook,
                         x_points=res.X_number_of_bits, x_legend="Communicated bits ({0})".format(iid),
                         all_error=res.get_std(obj_min), picture_name="{0}/bits-noavg-{1}"
                         .format(picture_path, experiments_settings))
 
         # Plotting with averaging
         if use_averaging:
-            plot_error_dist(res.get_loss(obj_min, averaged=True), res.names, res.nb_devices_for_the_run,
+            plot_error_dist(res.get_loss(obj_min, averaged=True), res.names, res.nb_devices,
                             dim_notebook, all_error=res.get_std(obj_min, averaged=True),
                             x_legend="Number of passes on data\n(Avg, {0})".format(iid),
                             picture_name="{0}/it-avg-{1}"
                             .format(picture_path, experiments_settings))
-            plot_error_dist(res.get_loss(obj_min, averaged=True), res.names, res.nb_devices_for_the_run, dim_notebook,
+            plot_error_dist(res.get_loss(obj_min, averaged=True), res.names, res.nb_devices, dim_notebook,
                             x_points=res.X_number_of_bits, all_error=res.get_std(obj_min, averaged=True),
                             x_legend="Communicated bits (Avg, {0})".format(iid),
                             picture_name="{0}/bits-avg-{1}"
@@ -225,7 +175,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     if scenario == "step":
         res = pickle_loader("{0}/{1}-{2}".format(algos_pickle_path, scenario, experiments_settings))
 
-        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
+        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook,
                         batch_size=batch_size,
                         all_error=res.get_std(obj_min),
                         x_legend="Step size ({0}, {1})".format(iid, str(compression_by_default.omega_c)[:4]),
@@ -234,29 +184,29 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
         res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
 
-        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
+        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook,
                         all_error=res.get_std(obj_min), batch_size=batch_size,
                         x_legend="(non-iid)", ylim=True,
                         picture_name="{0}/{1}-optimal-it-{2}".format(picture_path, scenario, experiments_settings))
-        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
+        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook,
                         x_points=res.X_number_of_bits, batch_size=batch_size,
                         x_legend="Communicated bits\n(non-iid)", all_error=res.get_std(obj_min), ylim=True,
                         picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
 
     if scenario == "compression":
         res = pickle_loader("{0}/{1}-{2}".format(algos_pickle_path, scenario, experiments_settings))
-        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook, batch_size=batch_size,
+        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook, batch_size=batch_size,
                         all_error=res.get_std(obj_min), x_legend="$\omega_c$ ({0})".format(iid),
                         one_on_two_points=True, xlabels=label_compression,
                         picture_name="{0}/{1}-{2}".format(picture_path, scenario, experiments_settings))
 
         res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
 
-        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
+        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook,
                         all_error=res.get_std(obj_min), batch_size=batch_size,
                         x_legend="(non-iid)", ylim=True,
                         picture_name="{0}/{1}-optimal-it-{2}".format(picture_path, scenario, experiments_settings))
-        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices_for_the_run, dim_notebook,
+        plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook,
                         x_points=res.X_number_of_bits, batch_size=batch_size,
                         x_legend="Communicated bits\n(non-iid)", all_error=res.get_std(obj_min), ylim=True,
                         picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
