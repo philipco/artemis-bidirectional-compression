@@ -6,6 +6,7 @@ import copy
 import torch
 import numpy as np
 from torch import nn
+import torch.backends.cudnn as cudnn
 
 from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.DeepLearningRun import DeepLearningRun
@@ -17,9 +18,12 @@ from src.utils.runner.RunnerUtilities import nb_run
 
 
 def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
-                  val_loader, test_loader, n_workers, parameters: DLParameters, hpo=False):
+                  val_loader, test_loader, n_workers, parameters: DLParameters):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    model = model.to(device)
+    if device == 'cuda':
+        model = torch.nn.DataParallel(model)
+        cudnn.benchmark = True
 
     run = DeepLearningRun(parameters)
 
@@ -180,7 +184,7 @@ def run_workers(step_size, parameters: DLParameters, hpo=False):
 
     criterion = nn.CrossEntropyLoss() #torch.nn.BCELoss(size_average=True) #nn.CrossEntropyLoss()
     val_loss, run = train_workers(model, optimizer, criterion, parameters.nb_epoch, train_loader_workers,
-                             val_loader, test_loader, parameters.nb_devices, hpo=hpo, parameters=parameters)
+                             val_loader, test_loader, parameters.nb_devices, parameters=parameters)
 
     return val_loss, run
 

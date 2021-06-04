@@ -6,7 +6,7 @@ from src.deeplearning.DLParameters import DLParameters
 
 class DeepLearningRun:
 
-    def __init__(self, parameters: DLParameters) -> None:
+    def __init__(self, parameters: DLParameters = None) -> None:
         super().__init__()
         self.parameters = parameters
         self.train_losses = []

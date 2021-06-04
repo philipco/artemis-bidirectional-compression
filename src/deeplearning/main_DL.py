@@ -16,11 +16,12 @@ from src.utils.runner.RunnerUtilities import choose_algo, create_path_and_folder
 
 logging.basicConfig(level=logging.INFO)
 
-models = {"cifar10": LeNet, "mnist": MNIST_CNN, "quantum": Quantum_Linear}
+models = {"cifar10": ResNet18, "mnist": MNIST_CNN, "quantum": Quantum_Linear}
 momentums = {"cifar10": 0.9, "mnist": 0, "quantum": 0}
-optimal_steps_size = {"cifar10": 0.01, "mnist": 0.1, "quantum": 0.12}
+optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "quantum": 0.12}
 quantization_levels= {"cifar10": 4, "mnist": 1, "quantum": 1}
 norm_quantization = {"cifar10": np.inf, "mnist": np.inf, "quantum": np.inf}
+weight_decay = {"cifar10": 5e-4, "mnist": 0, "quantum": 0}
 
 def run_experiments_in_deeplearning(dataset: str):
 
@@ -28,7 +29,6 @@ def run_experiments_in_deeplearning(dataset: str):
         print("==== NEW RUN ====", file=f)
 
     fraction_sampled_workers = 1
-    weight_decay = 0
     batch_size = 128
     nb_devices = 20
     algos = "mcm-vs-existing"
@@ -44,7 +44,7 @@ def run_experiments_in_deeplearning(dataset: str):
                                                                  optimal_steps_size[dataset],
                                                                  default_up_compression.level,
                                                                  default_down_compression.level, batch_size,
-                                                                 weight_decay)
+                                                                 weight_decay[dataset])
 
     all_descent = {}
     for type_params in [VanillaSGD(), Diana(), Artemis(), MCM()]:
@@ -52,14 +52,14 @@ def run_experiments_in_deeplearning(dataset: str):
         torch.cuda.empty_cache()
         params = type_params.define(cost_models=None,
                                     n_dimensions=None,
-                                    nb_epoch=5,
+                                    nb_epoch=200,
                                     nb_devices=nb_devices,
                                     batch_size=batch_size,
                                     fraction_sampled_workers=1,
                                     up_compression_model=default_up_compression,
                                     down_compression_model=default_down_compression)
 
-        params = cast_to_DL(params, dataset, models[dataset], optimal_steps_size[dataset], weight_decay)
+        params = cast_to_DL(params, dataset, models[dataset], optimal_steps_size[dataset], weight_decay[dataset])
         params.log_file = "log.txt"
         params.momentum = momentums[dataset]
         params.print()
@@ -73,12 +73,10 @@ def run_experiments_in_deeplearning(dataset: str):
         all_descent[type_params.name()] = multiple_sg_descent
 
         res = ResultsOfSeveralDescents(all_descent, nb_devices)
+        # res.add_descent(multiple_sg_descent, type_params.name())
         pickle_saver(res, "{0}/{1}".format(algos_pickle_path, exp_name))
 
     res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
-
-    # TEMP #
-    iid = False
 
     # Plotting without averaging
     plot_error_dist(res.get_loss(np.array(0), in_log=True), res.names, res.nb_devices_for_the_run, batch_size=batch_size,
