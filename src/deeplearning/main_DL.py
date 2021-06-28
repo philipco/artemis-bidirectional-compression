@@ -16,12 +16,14 @@ from src.utils.runner.RunnerUtilities import choose_algo, create_path_and_folder
 
 logging.basicConfig(level=logging.INFO)
 
-models = {"cifar10": ResNet18, "mnist": MNIST_CNN, "quantum": Quantum_Linear}
-momentums = {"cifar10": 0.9, "mnist": 0, "quantum": 0}
-optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "quantum": 0.12}
-quantization_levels= {"cifar10": 4, "mnist": 1, "quantum": 1}
-norm_quantization = {"cifar10": np.inf, "mnist": np.inf, "quantum": np.inf}
-weight_decay = {"cifar10": 5e-4, "mnist": 0, "quantum": 0}
+models = {"cifar10": ResNet18, "mnist": MNIST_CNN, "fashion_mnist": FashionMNIST_CNN, "femnist": FEMNIST_CNN,
+          "quantum": Quantum_Linear}
+momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "quantum": 0}
+optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.001, "femnist": 0.001, "quantum": 0.12}
+quantization_levels= {"cifar10": 4, "mnist": 1, "fashion_mnist": 1, "femnist": 1, "quantum": 1}
+norm_quantization = {"cifar10": np.inf, "mnist": np.inf, "fashion_mnist": np.inf, "femnist": np.inf,
+                     "quantum": np.inf}
+weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "quantum": 0}
 
 def run_experiments_in_deeplearning(dataset: str):
 
@@ -29,7 +31,7 @@ def run_experiments_in_deeplearning(dataset: str):
         print("==== NEW RUN ====", file=f)
 
     fraction_sampled_workers = 1
-    batch_size = 128
+    batch_size = 256
     nb_devices = 20
     algos = "mcm-vs-existing"
     iid = "non-iid"
@@ -52,7 +54,7 @@ def run_experiments_in_deeplearning(dataset: str):
         torch.cuda.empty_cache()
         params = type_params.define(cost_models=None,
                                     n_dimensions=None,
-                                    nb_epoch=200,
+                                    nb_epoch=4,
                                     nb_devices=nb_devices,
                                     batch_size=batch_size,
                                     fraction_sampled_workers=1,
@@ -79,17 +81,17 @@ def run_experiments_in_deeplearning(dataset: str):
     res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
 
     # Plotting without averaging
-    plot_error_dist(res.get_loss(np.array(0), in_log=True), res.names, res.nb_devices_for_the_run, batch_size=batch_size,
+    plot_error_dist(res.get_loss(np.array(0), in_log=True), res.names, res.nb_devices, batch_size=batch_size,
                     all_error=res.get_std(np.array(0), in_log=True), x_legend="Number of passes on data", ylegends="train_loss",
                     picture_name="{0}/{1}_train_losses".format(picture_path, exp_name))
-    plot_error_dist(res.get_loss(np.array(0), in_log=True), res.names, res.nb_devices_for_the_run,
+    plot_error_dist(res.get_loss(np.array(0), in_log=True), res.names, res.nb_devices,
                     batch_size=batch_size, x_points=res.X_number_of_bits, ylegends="train_loss",
                     all_error=res.get_std(np.array(0), in_log=True), x_legend="Communicated bits",
                     picture_name="{0}/{1}_train_losses_bits".format(picture_path, exp_name))
-    plot_error_dist(res.get_test_accuracies(), res.names, res.nb_devices_for_the_run, ylegends="accuracy",
+    plot_error_dist(res.get_test_accuracies(), res.names, res.nb_devices, ylegends="accuracy",
                     all_error=res.get_test_accuracies_std(), x_legend="Number of passes on data", batch_size=batch_size,
                     picture_name="{0}/{1}_test_accuracies".format(picture_path, exp_name))
-    plot_error_dist(res.get_test_losses(in_log=True), res.names, res.nb_devices_for_the_run, batch_size=batch_size,
+    plot_error_dist(res.get_test_losses(in_log=True), res.names, res.nb_devices, batch_size=batch_size,
                     all_error=res.get_test_losses_std(in_log=True), x_legend="Number of passes on data", ylegends="test_loss",
                     picture_name="{0}/{1}_test_losses".format(picture_path, exp_name))
 

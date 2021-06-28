@@ -34,7 +34,7 @@ class AverageOfSeveralIdenticalRun:
         return self.multiple_descent[-1]
 
     def append(self, new_descent: GradientDescent):
-        if not self.theoretical_nb_bits:
+        if self.theoretical_nb_bits is None:
             compress_model = True if new_descent.get_name() == "DwnComprModel" else False
             self.theoretical_nb_bits = compute_number_of_bits(new_descent.parameters, len(new_descent.train_losses), compress_model)
             self.omega_c = new_descent.parameters.up_compression_model.omega_c

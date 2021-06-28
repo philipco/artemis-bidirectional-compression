@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Subset
 
 from src.deeplearning.DLParameters import DLParameters
-from src.deeplearning.QuantumDataset import QuantumDataset
+from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset
 
 
 def create_loaders(parameters: DLParameters, seed: int = 42):
@@ -74,21 +74,35 @@ def load_data(parameters: DLParameters):
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ])
 
-        train_data = datasets.CIFAR10(root='../dataset/', train=True,
-                                      download=True, transform=transform_train)
+        train_data = datasets.CIFAR10(root='../dataset/', train=True, download=True, transform=transform_train)
 
-        test_data = datasets.CIFAR10(root='../dataset/', train=False,
-                                     download=True, transform=transform_test)
+        test_data = datasets.CIFAR10(root='../dataset/', train=False, download=True, transform=transform_test)
 
     elif parameters.dataset == 'mnist':
 
         transform = transforms.ToTensor()
 
-        train_data = datasets.MNIST(root='../dataset/', train=True,
-                                    download=True, transform=transform)
+        train_data = datasets.MNIST(root='../dataset/', train=True, download=True, transform=transform)
 
-        test_data = datasets.MNIST(root='../dataset/', train=False,
-                                   download=True, transform=transform)
+        test_data = datasets.MNIST(root='../dataset/', train=False, download=True, transform=transform)
+
+    elif parameters.dataset == "fashion_mnist":
+
+        transform = transforms.Compose([transforms.ToTensor()])
+
+        # Download and load the training data
+        train_data = datasets.FashionMNIST('../dataset/', download=True, train=True, transform=transform)
+
+        # Download and load the test data
+        test_data = datasets.FashionMNIST('../dataset/', download=True, train=False, transform=transform)
+
+    elif parameters.dataset == "femnist":
+
+        transform = transforms.Compose([transforms.ToTensor()])
+
+        train_data = FEMNISTDataset('../dataset/', download=True, train=True, transform=transform)
+
+        test_data = FEMNISTDataset('../dataset/', download=True, train=False, transform=transform)
 
     elif parameters.dataset == "quantum":
         train_data = QuantumDataset(train=True)

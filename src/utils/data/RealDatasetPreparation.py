@@ -7,7 +7,7 @@ import pandas as pd
 import logging
 
 import torch
-from sklearn.preprocessing import scale
+from sklearn.preprocessing import scale, LabelEncoder
 
 from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, get_project_root
 from src.utils.data.DataClustering import find_cluster, clustering_data, tsne, check_data_clusterisation
@@ -141,4 +141,36 @@ def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     else:
         X, Y = prepare_noniid_dataset(data, "state", data_path + "/quantum", pickle_path, nb_devices, double_check)
 
+    return X, Y, dim + 1 # Because we added one column for the bias
+
+def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+    data = pd.read_csv('{0}/dataset/mushroom/mushrooms.csv'.format(get_project_root()))
+
+    # The data is categorial so I convert it with LabelEncoder to transfer to ordinal.
+    labelencoder = LabelEncoder()
+    for column in data.columns:
+        data[column] = labelencoder.fit_transform(data[column])
+
+    # it can be seen that the column "veil-type" is 0 and not contributing to the data so I remove it.
+    data = data.drop(["veil-type"], axis=1)
+
+    if data.isnull().values.any():
+        print("There is missing value.")
+    else:
+        print("No missing value. Great !")
+
+    data = data.replace({'class': {0: -1}})
+
+    scaled_data = scale(data.loc[:, data.columns != "class"])
+    X_data = pd.DataFrame(data=scaled_data, columns=data.loc[:, data.columns != "class"].columns)
+    Y_data = data.loc[:, data.columns == "class"]
+    dim = len(X_data.columns)
+    logging.debug("There is " + str(dim) + " dimensions.")
+
+    if iid:
+        X_merged = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
+        Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
+    else:
+        X, Y = prepare_noniid_dataset(data, "class", data_path + "/mushroom", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias

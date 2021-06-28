@@ -75,6 +75,74 @@ class MNIST_CNN(nn.Module):
         return F.log_softmax(x)
 
 
+class FashionMNIST_CNN(nn.Module):
+
+    def __init__(self):
+        super(FashionMNIST_CNN, self).__init__()
+
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+
+        self.fc1 = nn.Linear(in_features=64 * 6 * 6, out_features=600)
+        self.drop = nn.Dropout2d(0.25)
+        self.fc2 = nn.Linear(in_features=600, out_features=120)
+        self.fc3 = nn.Linear(in_features=120, out_features=10)
+
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = out.view(out.size(0), -1)
+        out = self.fc1(out)
+        out = self.drop(out)
+        out = self.fc2(out)
+        out = self.fc3(out)
+
+        return out
+
+class FEMNIST_CNN(nn.Module):
+    """Model for FEMNIST
+
+    This class is taken from the code of paper Federated Learning on Non-IID Data Silos: An Experimental Study.
+    https://github.com/Xtra-Computing/NIID-Bench
+    """
+
+    def __init__(self):
+        super(FEMNIST_CNN, self).__init__()
+        input_dim = (16 * 4 * 4)
+        hidden_dims = [120, 84]
+        output_dim = 10
+        self.conv1 = nn.Conv2d(1, 6, 5)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+
+        # for now, we hard coded this network
+        # i.e. we fix the number of hidden layers i.e. 2 layers
+        self.fc1 = nn.Linear(input_dim, hidden_dims[0])
+        self.fc2 = nn.Linear(hidden_dims[0], hidden_dims[1])
+        self.fc3 = nn.Linear(hidden_dims[1], output_dim)
+
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = x.view(-1, 16 * 4 * 4)
+
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+
 class LeNet(nn.Module):
     """From https://github.com/kuangliu/pytorch-cifar/blob/master/models/lenet.py."""
     def __init__(self):

@@ -35,7 +35,7 @@ class ResultsOfSeveralDescents:
                 params = value.multiple_descent[-1].parameters
                 X_number_of_bits.append(compute_number_of_bits(params, params.nb_epoch, compress_model))
             self.X_number_of_bits = X_number_of_bits
-        self.nb_devices_for_the_run = nb_devices_for_the_run
+        self.nb_devices = nb_devices_for_the_run
         self.update()
 
     def recompute_nb_bits(self):
