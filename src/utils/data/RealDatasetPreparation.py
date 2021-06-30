@@ -3,10 +3,12 @@ Created by Philippenko, 10 January 2020.
 
 This class prepare the real dataset for usage.
 """
+import numpy as np
 import pandas as pd
 import logging
 
 import torch
+from sklearn.datasets import load_svmlight_file
 from sklearn.preprocessing import scale, LabelEncoder
 
 from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, get_project_root
@@ -65,112 +67,137 @@ def prepare_noniid_dataset(data, pivot_label: str, data_path: str, pickle_path: 
     return X, Y
 
 def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool = False):
-    data = pd.read_csv('{0}/dataset/superconduct/train.csv'.format(get_project_root()), sep=",")
-    if data.isnull().values.any():
+    raw_data = pd.read_csv('{0}/dataset/superconduct/train.csv'.format(get_project_root()), sep=",")
+    if raw_data.isnull().values.any():
         logging.warning("There is missing value.")
     else:
         logging.debug("No missing value. Great !")
     logging.debug("Scaling data.")
-    scaled_data = scale(data)
-    data = pd.DataFrame(data=scaled_data, columns = data.columns)
-    X_data = data.loc[:, data.columns != "critical_temp"]
-    Y_data = data.loc[:, data.columns == "critical_temp"]
+    scaled_data = scale(raw_data)
+
+    scaled_data = pd.DataFrame(data=scaled_data, columns = raw_data.columns)
+    X_data = scaled_data.loc[:, scaled_data.columns != "critical_temp"]
+    Y_data = scaled_data.loc[:, scaled_data.columns == "critical_temp"]
     dim = len(X_data.columns)
     logging.debug("There is " + str(dim) + " dimensions.")
 
     logging.debug("Head of the dataset:")
-    logging.debug(data.head())
+    logging.debug(raw_data.head())
 
     if iid:
-        X_merged = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
-        Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
-        X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
+        Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(data, "critical_temp", data_path + "/superconduct", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "critical_temp", data_path + "/superconduct", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
+
 def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
-    data = pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_project_root()), sep="\t", header=None)
+    raw_data = pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_project_root()), sep="\t", header=None)
 
     # Looking for missing values.
     columns_with_missing_values = []
-    for col in range(1, len(data.columns)):
-        if (not data[data[col] == 999].empty) or (not data[data[col] == 9999].empty):
+    for col in range(1, len(raw_data.columns)):
+        if (not raw_data[raw_data[col] == 999].empty) or (not raw_data[raw_data[col] == 9999].empty):
             columns_with_missing_values.append(col)
     logging.debug("Following columns has missing values:", columns_with_missing_values)
-    data.drop(data.columns[columns_with_missing_values], axis=1, inplace=True)
+    raw_data.drop(raw_data.columns[columns_with_missing_values], axis=1, inplace=True)
     logging.debug("The columns with empty values have been removed.")
-    data = data.rename(columns={0: "ID", 1: "state", 80: "nothing"})
-    data = data.drop(['ID', 'nothing'], axis=1)
-    data.head()
+    raw_data = raw_data.rename(columns={0: "ID", 1: "state", 80: "nothing"})
+    raw_data = raw_data.drop(['ID', 'nothing'], axis=1)
+    raw_data.head()
 
     # Looking for empty columns (with null std).
     small_std = []
-    std_data = data.std()
-    for i in range(len(data.columns)):
+    std_data = raw_data.std()
+    for i in range(len(raw_data.columns)):
         if std_data.iloc[i] < 1e-5:
             small_std.append(i)
     logging.debug("This columns are empty: {0}".format(small_std))
-    data.iloc[:, small_std].describe()
+    raw_data.iloc[:, small_std].describe()
 
     # Removing columns with null std
-    data = data.loc[:, (data.std() > 1e-6)]
-    dim = len(data.columns) - 1 # The dataset still contains the label
+    raw_data = raw_data.loc[:, (raw_data.std() > 1e-6)]
+    dim = len(raw_data.columns) - 1 # The dataset still contains the label
     logging.debug("Now, there is " + str(dim) + " dimensions.")
 
-    data = data.replace({'state': {0: -1}})
+    raw_data = raw_data.replace({'state': {0: -1}})
 
     logging.debug("Head of the dataset (columns has not been re-indexed).")
-    logging.debug(data.head())
+    logging.debug(raw_data.head())
 
     logging.debug("Labels repartition:")
-    logging.debug(data['state'].value_counts())
+    logging.debug(raw_data['state'].value_counts())
+
+    Y_data = raw_data.loc[:, raw_data.columns == "state"]  # We do not scale labels (+/-1).
 
     logging.debug("Scaling data.")
-    scaled_data = scale(data.loc[:, data.columns != "state"])
-    X_data = pd.DataFrame(data=scaled_data, columns=data.loc[:, data.columns != "state"].columns)
-    Y_data = data.loc[:, data.columns == "state"] # We do not scale labels (+/-1).
+    scaled_data = scale(raw_data.loc[:, raw_data.columns != "state"])
+    scaled_X = pd.DataFrame(data=scaled_data, columns=raw_data.loc[:, raw_data.columns != "state"].columns)
+
     # Merging dataset in one :
-    data = pd.concat([X_data, Y_data], axis=1, sort=False)
+    scaled_data = pd.concat([scaled_X, Y_data], axis=1, sort=False)
 
     if iid:
         # Transforming into torch.FloatTensor
-        X_merged = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
-        Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
-        X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
+        X_tensor = torch.tensor(scaled_X.to_numpy(), dtype=torch.float64)
+        Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(data, "state", data_path + "/quantum", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "state", data_path + "/quantum", pickle_path, nb_devices, double_check)
 
     return X, Y, dim + 1 # Because we added one column for the bias
 
 def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
-    data = pd.read_csv('{0}/dataset/mushroom/mushrooms.csv'.format(get_project_root()))
+    raw_data = pd.read_csv('{0}/dataset/mushroom/mushrooms.csv'.format(get_project_root()))
 
     # The data is categorial so I convert it with LabelEncoder to transfer to ordinal.
     labelencoder = LabelEncoder()
-    for column in data.columns:
-        data[column] = labelencoder.fit_transform(data[column])
+    for column in raw_data.columns:
+        raw_data[column] = labelencoder.fit_transform(raw_data[column])
 
-    # it can be seen that the column "veil-type" is 0 and not contributing to the data so I remove it.
-    data = data.drop(["veil-type"], axis=1)
+    # It can be seen that the column "veil-type" is 0 and not contributing to the data so I remove it.
+    raw_data = raw_data.drop(["veil-type"], axis=1)
+    raw_data = raw_data.replace({'class': {0: -1}})
 
-    if data.isnull().values.any():
-        print("There is missing value.")
-    else:
-        print("No missing value. Great !")
+    Y_data = raw_data.loc[:, raw_data.columns == "class"]
 
-    data = data.replace({'class': {0: -1}})
+    scaled_data = scale(raw_data.loc[:, raw_data.columns != "class"])
+    scaled_X = pd.DataFrame(data=scaled_data, columns=raw_data.loc[:, raw_data.columns != "class"].columns)
 
-    scaled_data = scale(data.loc[:, data.columns != "class"])
-    X_data = pd.DataFrame(data=scaled_data, columns=data.loc[:, data.columns != "class"].columns)
-    Y_data = data.loc[:, data.columns == "class"]
-    dim = len(X_data.columns)
-    logging.debug("There is " + str(dim) + " dimensions.")
+    # Merging dataset in one :
+    scaled_data = pd.concat([scaled_X, Y_data], axis=1, sort=False)
+    dim = len(scaled_X.columns)
 
     if iid:
-        X_merged = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
+        X_merged = torch.tensor(scaled_X.to_numpy(), dtype=torch.float64)
         Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(data, "class", data_path + "/mushroom", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "class", data_path + "/mushroom", pickle_path, nb_devices, double_check)
+    return X, Y, dim + 1 # Because we added one column for the bias
+
+
+def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+
+    raw_X, raw_Y = load_svmlight_file("../dataset/phishing/phishing.txt")
+
+    for i in range(len(raw_Y)):
+        if raw_Y[i] == 0:
+            raw_Y[i] = -1
+
+    scaled_X = scale(np.array(raw_X.todense(), dtype=np.float64))
+    scaled_data = pd.DataFrame(data=scaled_X)
+    scaled_data["target"] = raw_Y
+    dim = len(scaled_data.columns) - 1
+
+    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+
+    if iid:
+        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
+    else:
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/mushroom", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
