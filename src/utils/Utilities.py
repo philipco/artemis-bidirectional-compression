@@ -21,6 +21,8 @@ from src.machinery.Parameters import Parameters
 
 def number_of_bits_needed_to_communicates_compressed(nb_devices: int, s: int, d: int) -> int:
     """Computing the theoretical number of bits used for a single way when using compression (with Elias encoding)."""
+    if s==0:
+        return nb_devices * d * 32
     frac = 2*(s**2+d) / (s * (s+sqrt(d)))
     return nb_devices * (3 + 3/2) * log(frac) * s * (s + sqrt(d)) + 32
 

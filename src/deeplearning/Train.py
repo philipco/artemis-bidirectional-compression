@@ -13,8 +13,7 @@ from src.deeplearning.DeepLearningRun import DeepLearningRun
 from src.deeplearning.NnDataPreparation import create_loaders
 from src.deeplearning.OptimizerSGD import SGDGen
 from src.utils.Utilities import seed_everything
-from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
-from src.utils.runner.RunnerUtilities import nb_run
+from src.utils.runner.RunnerUtilities import NB_RUN
 
 
 def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
@@ -173,7 +172,8 @@ def run_workers(step_size, parameters: DLParameters, hpo=False):
     with open(parameters.log_file, 'a') as f:
         print("Device :", device, file = f)
 
-    model = parameters.model()
+    net = parameters.model
+    model = net()
     # Model's weights are initialized to zero.
     # for p in model.parameters():
     #     p.data.fill_(0)
@@ -189,21 +189,22 @@ def run_workers(step_size, parameters: DLParameters, hpo=False):
     return val_loss, run
 
 
-def run_tuned_exp(parameters: DLParameters, runs=nb_run, suffix=None):
+def run_tuned_exp(parameters: DLParameters, runs=NB_RUN, suffix=None):
 
     if parameters.optimal_step_size is None:
         raise ValueError("Tune step size first")
     else:
         print("Optimal step size is ", parameters.optimal_step_size)
 
-    seed_everything()
+    # seed_everything(seed=25)
 
-    multiple_descent = AverageOfSeveralIdenticalRun()
-    for i in range(runs):
-        torch.cuda.empty_cache()
-        print('Run {:3d}/{:3d}:'.format(i+1, runs))
-        val_loss, run = run_workers(parameters.optimal_step_size, parameters)
-        multiple_descent.append_from_DL(run)
+    # multiple_descent = AverageOfSeveralIdenticalRun()
+    # for i in range(runs):
 
-    return multiple_descent
+    torch.cuda.empty_cache()
+    # print('Run {:3d}/{:3d}:'.format(i+1, runs))
+    val_loss, run = run_workers(parameters.optimal_step_size, parameters)
+    # multiple_descent.append_from_DL(run)
+
+    return run
 

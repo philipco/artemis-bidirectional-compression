@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Subset
 
 from src.deeplearning.DLParameters import DLParameters
-from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset
+from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset, PhishingDataset
 
 
 def create_loaders(parameters: DLParameters, seed: int = 42):
@@ -23,7 +23,7 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
     indices = np.arange(n)
     # np.random.shuffle(indices)
 
-    if parameters.dataset == "quantum":
+    if parameters.dataset == "qu2antum":
         n_val = train_data.ind_val
     else:
         n_val = np.int(np.floor(0.1 * n))
@@ -80,7 +80,7 @@ def load_data(parameters: DLParameters):
 
     elif parameters.dataset == 'mnist':
 
-        transform = transforms.ToTensor()
+        transform = transforms.Compose([transforms.ToTensor()])
 
         train_data = datasets.MNIST(root='../dataset/', train=True, download=True, transform=transform)
 
@@ -103,6 +103,18 @@ def load_data(parameters: DLParameters):
         train_data = FEMNISTDataset('../dataset/', download=True, train=True, transform=transform)
 
         test_data = FEMNISTDataset('../dataset/', download=True, train=False, transform=transform)
+
+    elif parameters.dataset == "a9a":
+
+        train_data = A9ADataset('../dataset/', train=True)
+
+        test_data = A9ADataset('../dataset/', train=False)
+
+    elif parameters.dataset == "phishing":
+
+        train_data = PhishingDataset(train=True)
+
+        test_data = PhishingDataset( train=False)
 
     elif parameters.dataset == "quantum":
         train_data = QuantumDataset(train=True)

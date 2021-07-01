@@ -5,18 +5,93 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+class FullyConnected_Network(nn.Module):
+    """
+    Fully connected network
+
+    Taken from https://github.com/Xtra-Computing/NIID-Bench/blob/main/model.py
+    """
+
+    def __init__(self, input_dim, hidden_dims, output_dim, dropout_p=0.0):
+        super().__init__()
+
+        self.input_dim = input_dim
+        self.hidden_dims = hidden_dims
+        self.output_dim = output_dim
+        self.dropout_p = dropout_p
+
+        self.dims = [self.input_dim]
+        self.dims.extend(hidden_dims)
+        self.dims.append(self.output_dim)
+
+        self.layers = nn.ModuleList([])
+
+        for i in range(len(self.dims) - 1):
+            ip_dim = self.dims[i]
+            op_dim = self.dims[i + 1]
+            self.layers.append(
+                nn.Linear(ip_dim, op_dim, bias=True)
+            )
+        self.__init_net_weights__()
+
+    def __init_net_weights__(self):
+        for m in self.layers:
+            m.weight.data.normal_(0.0, 0.1)
+            m.bias.data.fill_(0.1)
+
+    def forward(self, x):
+        x = x.view(-1, self.input_dim)
+        for i, layer in enumerate(self.layers):
+            x = layer(x)
+            # Do not apply ReLU on the final layer
+            if i < (len(self.layers) - 1):
+                x = F.relu(x)
+            if i < (len(self.layers) - 1):  # No dropout on output layer
+                x = F.dropout(x, p=self.dropout_p, training=self.training)
+        return x
+
+class A9A_Linear(nn.Module):
+
+    def __init__(self):
+        input_size = 123
+        output_size = 2
+        super(A9A_Linear, self).__init__()
+        self.l1 = nn.Linear(input_size, output_size)
+
+    def forward(self, x):
+        x = self.l1(x)
+        return x
+
+class A9A_FullyConnected(FullyConnected_Network):
+
+    def __init__(self, dropout_p=0.0):
+        super().__init__(input_dim=123, hidden_dims=[32,16,8], output_dim=2)
+
 
 class Quantum_Linear(nn.Module):
 
     def __init__(self):
-        input_size = 66
+        input_size = 65
         output_size = 2
         super(Quantum_Linear, self).__init__()
-        self.l1 = nn.Linear(input_size, output_size, bias=False)
+        self.l1 = nn.Linear(input_size, output_size, bias=True)
 
     def forward(self, x):
         x = self.l1(x)
-        return torch.sigmoid(x)
+        return x
+
+
+class Phishing_Linear(nn.Module):
+
+    def __init__(self):
+        input_size = 68
+        output_size = 2
+        super(Phishing_Linear, self).__init__()
+        self.l1 = nn.Linear(input_size, output_size, bias=True)
+
+    def forward(self, x):
+        x = self.l1(x)
+        return x
 
 
 class MNIST_Linear(nn.Module):
@@ -31,7 +106,7 @@ class MNIST_Linear(nn.Module):
     def forward(self, x):
         x = self.f1(x)
         x = self.l1(x)
-        return F.log_softmax(x)
+        return x
 
 
 class MNIST_FullyConnected(nn.Module):
@@ -52,7 +127,7 @@ class MNIST_FullyConnected(nn.Module):
         x = self.l1(x)
         x = self.tanh(x)
         x = self.l3(x)
-        return F.log_softmax(x)
+        return x
 
 
 class MNIST_CNN(nn.Module):
@@ -72,7 +147,7 @@ class MNIST_CNN(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
-        return F.log_softmax(x)
+        return x
 
 
 class FashionMNIST_CNN(nn.Module):
@@ -107,7 +182,6 @@ class FashionMNIST_CNN(nn.Module):
         out = self.drop(out)
         out = self.fc2(out)
         out = self.fc3(out)
-
         return out
 
 class FEMNIST_CNN(nn.Module):

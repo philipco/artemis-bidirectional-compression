@@ -93,7 +93,7 @@ def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid:
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
-def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False, for_dl=False):
     raw_data = pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_project_root()), sep="\t", header=None)
 
     # Looking for missing values.
@@ -130,10 +130,15 @@ def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     logging.debug("Labels repartition:")
     logging.debug(raw_data['state'].value_counts())
 
+    X_data = raw_data.loc[:, raw_data.columns != "state"]
     Y_data = raw_data.loc[:, raw_data.columns == "state"]  # We do not scale labels (+/-1).
+
+    if for_dl:
+        return X_data.to_numpy(dtype=np.float64), np.concatenate(Y_data.to_numpy()), dim
 
     logging.debug("Scaling data.")
     scaled_data = scale(raw_data.loc[:, raw_data.columns != "state"])
+
     scaled_X = pd.DataFrame(data=scaled_data, columns=raw_data.loc[:, raw_data.columns != "state"].columns)
 
     # Merging dataset in one :

@@ -4,8 +4,11 @@ Created by Philippenko, 13rd May 2021.
 import itertools
 import os
 
+import numpy as np
 import torch
 from PIL import Image
+from sklearn.datasets import load_svmlight_file
+from sklearn.preprocessing import scale
 from torch.utils.data import Dataset
 from torchvision.datasets import MNIST
 from torchvision.datasets.utils import download_and_extract_archive
@@ -89,46 +92,112 @@ class QuantumDataset(Dataset):
     def __init__(self, train=True):
         root = get_project_root()
         create_folder_if_not_existing("{0}/pickle/quantum-non-iid-N21".format(root))
-        X, Y, dim_notebook = prepare_quantum(20, data_path="{0}/pickle/".format(root), pickle_path="{0}/pickle/quantum-non-iid-N20".format(root), iid=False)
-        for y in Y:
-            for i in range(len(y)):
-                if y[i].item() == -1:
-                    y[i] = 0
-                else:
-                    y[i] = 1
+        X, Y, dim_notebook = prepare_quantum(20, data_path="{0}/pickle/".format(root),
+                                             pickle_path="{0}/pickle/quantum-non-iid-N20".format(root),
+                                             iid=True, for_dl=True)
 
-        test_data, test_labels = [], []
-        eval_data, eval_labels = [], []
-        last_index = 0
-        split = []
-        for i in range(len(X)):
-            x, y = X[i], Y[i]
-            n = int(len(x) * 10 / 100)
-            test_data += x[:n]
-            test_labels += y[:n]
-            eval_data += x[n:2*n]
-            eval_labels += y[n:2*n]
-            X[i], Y[i] = X[i][n:], Y[i][n:]
-            split.append(list(range(last_index, last_index + len(X[i]))))
-            last_index += len(X[i])
+        X = scale(X)
+        Y = np.array(Y, dtype=np.float64)
+
+        for i in range(len(Y)):
+            if Y[i] == -1:
+                Y[i] = 0
+
+        n = int(len(X) * 10 / 100)
+
+        test_data = X[:n]
+        test_labels = Y[:n]
+        X, Y = X[n:], Y[n:]
 
         self.train = train
         if self.train:
-            self.data = eval_data + list(itertools.chain.from_iterable(X[:20]))
-            self.labels = eval_labels + list(itertools.chain.from_iterable(Y[:20]))
-            self.ind_val = len(eval_data)
-            self.split = [[s[i] + len(eval_data) for i in range(len(s))] for s in split]
+            self.data = X
+            self.labels = Y
         else:
             self.data = test_data
             self.labels = test_labels
-
-
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, index: int):
-        return self.data[index].float(), self.labels[index].type(torch.LongTensor)
+        return torch.tensor(self.data[index]).float(), torch.tensor(self.labels[index]).type(torch.LongTensor)
+
+class PhishingDataset(Dataset):
+
+    def __init__(self, train=True):
+        root = get_project_root()
+        create_folder_if_not_existing("{0}/pickle/quantum-non-iid-N21".format(root))
+        X, Y = load_svmlight_file("../dataset/phishing/phishing.txt")
+
+        X = scale(np.array(X.todense(), dtype=np.float64))
+        Y = np.array(Y, dtype=np.float64)
+
+        n = int(len(X) * 10 / 100)
+
+        test_data = X[:n]
+        test_labels = Y[:n]
+        X, Y = X[n:], Y[n:]
+
+        self.train = train
+        if self.train:
+            self.data = X
+            self.labels = Y
+        else:
+            self.data = test_data
+            self.labels = test_labels
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, index: int):
+        return torch.tensor(self.data[index]).float(), torch.tensor(self.labels[index]).type(torch.LongTensor)
+
+class A9ADataset(Dataset):
+    """ `A9A <https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#a9a>`_ Dataset.
+
+    This class is taken from the code of Accelerated Stochastic Gradient-free and Projection-free Methods
+    https://github.com/TLMichael/Acc-SZOFW/blob/main/app/datasets.py"""
+
+    def __init__(self, path, train=True):
+        self.path = path
+        X_train, y_train = load_svmlight_file("../dataset/a9a/a9a.txt")
+        X_test, y_test = load_svmlight_file("../dataset/a9a/a9a_test.txt")
+        X_train = X_train.todense()
+        X_test = X_test.todense()
+        X_test = np.c_[X_test, np.zeros((len(y_test), X_train.shape[1] - np.size(X_test[0, :])))]
+
+        X_train = np.array(X_train, dtype=np.float64)
+        X_test = np.array(X_test, dtype=np.float64)
+        y_train = (y_train + 1) / 2
+        y_test = (y_test + 1) / 2
+        y_train = np.array(y_train, dtype=np.float64)
+        y_test = np.array(y_test, dtype=np.float64)
+
+        if train:
+            self.data = X_train
+            self.targets = y_train
+        else:
+            self.data = X_test
+            self.targets = y_test
+
+    def __len__(self):
+        return len(self.targets)
+
+    def __getitem__(self, idx):
+        x = self.data[idx]
+        y = self.targets[idx]
+        x = torch.tensor(x)#, device=DEVICE)
+        y = torch.tensor(y)#, device=DEVICE)
+        return x.float(), y.type(torch.LongTensor)
+
+    def __repr__(self):
+        head = self.__class__.__name__ + ' ' + self.split
+        body = ["Number of datapoints: {}".format(self.__len__())]
+        if self.path is not None:
+            body.append("File location: {}".format(self.path))
+        lines = [head] + [" " * 4 + line for line in body]
+        return '\n'.join(lines)
 
 
 if __name__ == '__main__':
