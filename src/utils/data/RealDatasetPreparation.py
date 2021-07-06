@@ -186,7 +186,7 @@ def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: boo
 
 def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("../dataset/phishing/phishing.txt")
+    raw_X, raw_Y = load_svmlight_file("{0}/dataset/phishing/phishing.txt".format(get_project_root()))
 
     for i in range(len(raw_Y)):
         if raw_Y[i] == 0:
@@ -205,4 +205,28 @@ def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: boo
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
         X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/mushroom", pickle_path, nb_devices, double_check)
+    return X, Y, dim + 1 # Because we added one column for the bias
+
+
+def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+
+    raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a.txt".format(get_project_root()))
+
+    for i in range(len(raw_Y)):
+        if raw_Y[i] == 0:
+            raw_Y[i] = -1
+
+    scaled_X = scale(np.array(raw_X.todense(), dtype=np.float64))
+    scaled_data = pd.DataFrame(data=scaled_X)
+    scaled_data["target"] = raw_Y
+    dim = len(scaled_data.columns) - 1
+
+    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+
+    if iid:
+        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
+    else:
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/a9a", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias

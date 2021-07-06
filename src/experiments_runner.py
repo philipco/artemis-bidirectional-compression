@@ -8,7 +8,7 @@ from src.models.CostModel import LogisticModel, RMSEModel, build_several_cost_mo
 from src.utils.ErrorPlotter import *
 from src.utils.data.DataPreparation import build_data_logistic, build_data_linear
 from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_superconduct, prepare_mushroom, \
-    prepare_phishing
+    prepare_phishing, prepare_a9a
 from src.utils.Constants import *
 from src.utils.data.DataClustering import *
 from src.utils.Utilities import pickle_loader, file_exist, create_folder_if_not_existing, get_project_root
@@ -25,7 +25,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
-    assert dataset in ["quantum", "superconduct", "mushroom", "phishing", 'synth_logistic', 'synth_linear_noised', 'synth_linear_nonoised'], \
+    assert dataset in ["quantum", "superconduct", "mushroom", "phishing", "a9a", 'synth_logistic',
+                       'synth_linear_noised', 'synth_linear_nonoised'], \
         "The available dataset are ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']."
     assert iid in ['iid', 'non-iid'], "The iid option are ['iid', 'non-iid']."
     assert scenario in [None, "compression", "step"], "The possible scenario are [None, 'compression', 'step']."
@@ -39,6 +40,11 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     iid_data = True if iid == 'iid' else False
 
     # Select the correct dataset
+    if dataset == "a9a":
+        X, Y, dim_notebook = prepare_a9a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
+        batch_size = 50
+        model = LogisticModel
+        nb_epoch = 200 if stochastic else 400
     if dataset == "phishing":
         X, Y, dim_notebook = prepare_phishing(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50
@@ -240,11 +246,18 @@ if __name__ == '__main__':
     elif sys.argv[1] == "real":
         for sto in [True, False]:
             for iid in ["non-iid", "iid"]:
-                for dataset in ["quantum", "superconduct", "phishing", "mushroom"]:
+                for dataset in ["quantum", "superconduct", "phishing", "mushroom", "a9a"]:
                     run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=iid, algos=sys.argv[2],
                                     use_averaging=True)
-                    # run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
-                    #                 use_averaging=True, scenario="step")
-                    # run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
-                    #                   use_averaging=True, scenario="compression")
+
+        for sto in [True, False]:
+            for iid in ["non-iid", "iid"]:
+                for dataset in ["quantum", "superconduct", "phishing", "mushroom", "a9a"]:
+                    run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=iid,
+                                    algos=sys.argv[2],
+                                    use_averaging=True)
+                    run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
+                                    use_averaging=True, scenario="step")
+                    run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
+                                      use_averaging=True, scenario="compression")
 

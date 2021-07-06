@@ -56,11 +56,11 @@ class A9A_Linear(nn.Module):
         input_size = 123
         output_size = 2
         super(A9A_Linear, self).__init__()
-        self.l1 = nn.Linear(input_size, output_size)
+        self.l1 = nn.Linear(input_size, output_size, bias=True)
 
     def forward(self, x):
         x = self.l1(x)
-        return x
+        return F.sigmoid(x)
 
 class A9A_FullyConnected(FullyConnected_Network):
 
@@ -91,6 +91,21 @@ class Phishing_Linear(nn.Module):
 
     def forward(self, x):
         x = self.l1(x)
+        return x
+
+class Phishing_HiddenLayer(nn.Module):
+
+    def __init__(self):
+        input_size = 68
+        output_size = 2
+        hidden_size = 10
+        super(Phishing_HiddenLayer, self).__init__()
+        self.hidden_l = nn.Linear(input_size, hidden_size)
+        self.predictive_l = nn.Linear(hidden_size, output_size)
+
+    def forward(self, x):
+        x = F.relu(self.hidden_l(x))
+        x = self.predictive_l(x)
         return x
 
 
@@ -151,38 +166,35 @@ class MNIST_CNN(nn.Module):
 
 
 class FashionMNIST_CNN(nn.Module):
+    """From https://www.kaggle.com/pankajj/fashion-mnist-with-pytorch-93-accuracy"""
 
     def __init__(self):
         super(FashionMNIST_CNN, self).__init__()
-
-        self.layer1 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2)
-        )
-
-        self.layer2 = nn.Sequential(
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.MaxPool2d(2)
-        )
-
-        self.fc1 = nn.Linear(in_features=64 * 6 * 6, out_features=600)
-        self.drop = nn.Dropout2d(0.25)
-        self.fc2 = nn.Linear(in_features=600, out_features=120)
-        self.fc3 = nn.Linear(in_features=120, out_features=10)
+        self.conv1 = nn.Conv2d(1, 15, kernel_size=3, stride=1)
+        self.conv2 = nn.Conv2d(15, 30, kernel_size=3, stride=2)
+        self.fc1 = nn.Linear(1080, 100)
+        self.fc2 = nn.Linear(100, 10)
 
     def forward(self, x):
-        out = self.layer1(x)
-        out = self.layer2(out)
-        out = out.view(out.size(0), -1)
-        out = self.fc1(out)
-        out = self.drop(out)
-        out = self.fc2(out)
-        out = self.fc3(out)
-        return out
+        # conv1(kernel=3, filters=15) 28x28x1 -> 26x26x15
+        x = F.relu(self.conv1(x))
+
+        # conv2(kernel=3, filters=20) 26x26x15 -> 13x13x30
+        # max_pool(kernel=2) 13x13x30 -> 6x6x30
+        x = F.relu(F.max_pool2d(self.conv2(x), 2, stride=2))
+
+        # flatten 6x6x30 = 1080
+        x = x.view(-1, 1080)
+
+        # 1080 -> 100
+        x = F.relu(self.fc1(x))
+
+        # 100 -> 10
+        x = self.fc2(x)
+
+        # transform to logits
+        return x
+
 
 class FEMNIST_CNN(nn.Module):
     """Model for FEMNIST

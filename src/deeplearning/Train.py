@@ -2,10 +2,13 @@
 Created by Philippenko, 26th April 2021.
 """
 import copy
+import random
+import time
 
 import torch
 import numpy as np
 from torch import nn
+from torch.utils.data import DataLoader
 import torch.backends.cudnn as cudnn
 
 from src.deeplearning.DLParameters import DLParameters
@@ -36,17 +39,27 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
     down_learning_rate_name = 'down_learning_rate'
 
     for e in range(epochs):
+
+        elapsed_time = 0
+
         model.train()
         running_loss = 0
+
         train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
         iter_steps = len(train_loader_workers[0])
+
+        # iter_steps = int(train_loader_workers[0].indices.size / parameters.batch_size)
         for _ in range(iter_steps):
 
             # Saving the data for this iteration
             all_data, all_labels = {}, {}
             for w_id in range(n_workers):
+                # start = time.time()
+                # train_loader = [DataLoader(train_loader_workers[w], batch_size=parameters.batch_size, shuffle=True) for
+                #                 w in range(n_workers)]
+                # train_loader_iter = [iter(train_loader[w]) for w in range(n_workers)]
                 all_data[w_id], all_labels[w_id] = next(train_loader_iter[w_id])
-
+                # elapsed_time += time.time() - start
             # Down-compression step
             if parameters.non_degraded:
                 preserved_model = copy.deepcopy(model)
@@ -116,6 +129,8 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
         if e+1 in [1, epochs]:
             print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
                   .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val))
+
+        # print("Time for computation :", elapsed_time)
 
     return best_val_loss, run
 

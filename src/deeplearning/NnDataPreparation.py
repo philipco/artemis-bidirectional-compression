@@ -5,7 +5,7 @@ Created by Philippenko, 26th April 2021.
 import numpy as np
 from torchvision import datasets
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, SubsetRandomSampler, RandomSampler
 
 from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset, PhishingDataset
@@ -16,24 +16,24 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
     train_data, test_data = load_data(parameters)
 
     train_loader_workers = dict()
-    n = len(train_data)
+    size_dataset = len(train_data)
 
     # preparing iterators for workers and validation set
     np.random.seed(seed)
-    indices = np.arange(n)
+    indices = np.arange(size_dataset)
     # np.random.shuffle(indices)
 
     if parameters.dataset == "qu2antum":
         n_val = train_data.ind_val
     else:
-        n_val = np.int(np.floor(0.1 * n))
+        n_val = np.int(np.floor(0.1 * size_dataset))
     val_data = Subset(train_data, indices=indices[:n_val])
 
     indices = indices[n_val:]
-    n = len(indices)
-    a = np.int(np.floor(n / parameters.nb_devices))
-    top_ind = a * parameters.nb_devices
-    seq = range(a, top_ind, a)
+    size_dataset = len(indices)
+    size_dataset_worker = np.int(np.floor(size_dataset / parameters.nb_devices))
+    top_ind = size_dataset_worker * parameters.nb_devices
+    seq = range(size_dataset_worker, top_ind, size_dataset_worker)
     if False:#parameters.dataset == "quantum":
         split = train_data.split
     else:
@@ -41,7 +41,12 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
 
     b = 0
     for ind in split:
-        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=parameters.batch_size, shuffle=True)
+        # train_loader_workers[b] = Subset(train_data, ind)
+        if parameters.stochastic is False:
+            train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=size_dataset_worker,
+                                                 shuffle=True)
+        else:
+            train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=parameters.batch_size, shuffle=True)
         b = b + 1
 
     test_loader = DataLoader(test_data, batch_size=parameters.batch_size, shuffle=False)
@@ -80,7 +85,8 @@ def load_data(parameters: DLParameters):
 
     elif parameters.dataset == 'mnist':
 
-        transform = transforms.Compose([transforms.ToTensor()])
+        # Normalization see : https://stackoverflow.com/a/67233938
+        transform = transforms.Compose([ transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
 
         train_data = datasets.MNIST(root='../dataset/', train=True, download=True, transform=transform)
 
@@ -88,7 +94,7 @@ def load_data(parameters: DLParameters):
 
     elif parameters.dataset == "fashion_mnist":
 
-        transform = transforms.Compose([transforms.ToTensor()])
+        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)),])
 
         # Download and load the training data
         train_data = datasets.FashionMNIST('../dataset/', download=True, train=True, transform=transform)
