@@ -13,8 +13,10 @@ from torch.utils.data import Dataset
 from torchvision.datasets import MNIST
 from torchvision.datasets.utils import download_and_extract_archive
 
+from src.deeplearning.DLParameters import DLParameters
 from src.utils.Utilities import get_project_root, create_folder_if_not_existing
-from src.utils.data.RealDatasetPreparation import prepare_quantum
+from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_a9a
+
 
 class FEMNISTDataset(MNIST):
     """
@@ -89,15 +91,16 @@ class FEMNISTDataset(MNIST):
 
 class QuantumDataset(Dataset):
 
-    def __init__(self, train=True):
+    def __init__(self, train: bool =True, iid: str = "iid"):
         root = get_project_root()
-        create_folder_if_not_existing("{0}/pickle/quantum-non-iid-N21".format(root))
+        bool_iid = True if iid == "iid" else False
+        create_folder_if_not_existing("{0}/pickle/quantum-{1}-N20".format(root, iid))
         X, Y, dim_notebook = prepare_quantum(20, data_path="{0}/pickle/".format(root),
-                                             pickle_path="{0}/pickle/quantum-non-iid-N20".format(root),
-                                             iid=True, for_dl=True)
+                                             pickle_path="{0}/pickle/quantum-{1}-N20".format(root, iid),
+                                             iid=bool_iid, for_dl=True)
 
-        X = scale(X)
-        Y = np.array(Y, dtype=np.float64)
+        X = torch.cat([x for x in X])
+        Y = torch.cat([y for y in Y])
 
         for i in range(len(Y)):
             if Y[i] == -1:
@@ -111,6 +114,7 @@ class QuantumDataset(Dataset):
 
         self.train = train
         if self.train:
+            print('Total number of point:', len(X))
             self.data = X
             self.labels = Y
         else:
@@ -127,7 +131,7 @@ class PhishingDataset(Dataset):
 
     def __init__(self, train=True):
         root = get_project_root()
-        create_folder_if_not_existing("{0}/pickle/quantum-non-iid-N21".format(root))
+        create_folder_if_not_existing("{0}/pickle/quantum-non-iid-N20".format(root))
         X, Y = load_svmlight_file("../dataset/phishing/phishing.txt")
 
         X = scale(np.array(X.todense(), dtype=np.float64))
@@ -154,27 +158,36 @@ class PhishingDataset(Dataset):
         return torch.tensor(self.data[index]).float(), torch.tensor(self.labels[index]).type(torch.LongTensor)
 
 class A9ADataset(Dataset):
-    """ `A9A <https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#a9a>`_ Dataset.
 
-    This class is taken from the code of Accelerated Stochastic Gradient-free and Projection-free Methods
-    https://github.com/TLMichael/Acc-SZOFW/blob/main/app/datasets.py"""
+    def __init__(self, train=True, iid: str ="iid"):
+        root = get_project_root()
+        bool_iid = True if iid == "iid" else False
 
-    def __init__(self, path, train=True):
-        self.path = path
-        X_train, y_train = load_svmlight_file("../dataset/a9a/a9a.txt")
-        X_test, y_test = load_svmlight_file("../dataset/a9a/a9a_test.txt")
-        X_train = X_train.todense()
-        X_test = X_test.todense()
-        X_test = np.c_[X_test, np.zeros((len(y_test), X_train.shape[1] - np.size(X_test[0, :])))]
+        create_folder_if_not_existing("{0}/pickle/quantum-{1}-N20".format(root, iid))
+        X_train, y_train, dim_notebook = prepare_a9a(20, data_path="{0}/pickle/".format(root),
+                                             pickle_path="{0}/pickle/a9a-{1}-N20".format(root, iid),
+                                             iid=bool_iid, test=False)
 
-        X_train = np.array(X_train, dtype=np.float64)
-        X_test = np.array(X_test, dtype=np.float64)
-        y_train = (y_train + 1) / 2
-        y_test = (y_test + 1) / 2
-        y_train = np.array(y_train, dtype=np.float64)
-        y_test = np.array(y_test, dtype=np.float64)
+        X_train = torch.cat([x for x in X_train])
+        y_train = torch.cat([y for y in y_train])
+
+        for i in range(len(y_train)):
+            if y_train[i] == -1:
+                y_train[i] = 0
+
+        X_test, y_test, dim_notebook = prepare_a9a(20, data_path="{0}/pickle/".format(root),
+                                                     pickle_path="{0}/pickle/a9a-{1}-N20".format(root, iid),
+                                                     iid=bool_iid, test=True)
+
+        X_test = torch.cat([x for x in X_test])
+        y_test = torch.cat([y for y in y_test])
+
+        for i in range(len(y_test)):
+            if y_test[i] == -1:
+                y_test[i] = 0
 
         if train:
+            print('Total number of point:', len(X_train))
             self.data = X_train
             self.targets = y_train
         else:
@@ -184,20 +197,8 @@ class A9ADataset(Dataset):
     def __len__(self):
         return len(self.targets)
 
-    def __getitem__(self, idx):
-        x = self.data[idx]
-        y = self.targets[idx]
-        x = torch.tensor(x)#, device=DEVICE)
-        y = torch.tensor(y)#, device=DEVICE)
-        return x.float(), y.type(torch.LongTensor)
-
-    def __repr__(self):
-        head = self.__class__.__name__ + ' ' + self.split
-        body = ["Number of datapoints: {}".format(self.__len__())]
-        if self.path is not None:
-            body.append("File location: {}".format(self.path))
-        lines = [head] + [" " * 4 + line for line in body]
-        return '\n'.join(lines)
+    def __getitem__(self, index: int):
+        return torch.tensor(self.data[index]).float(), torch.tensor(self.targets[index]).type(torch.LongTensor)
 
 
 if __name__ == '__main__':

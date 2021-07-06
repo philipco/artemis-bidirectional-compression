@@ -33,7 +33,7 @@ criterion = {"cifar10": nn.CrossEntropyLoss, "mnist": nn.CrossEntropyLoss, "fash
               "femnist": nn.CrossEntropyLoss, "a9a":nn.CrossEntropyLoss, "phishing": nn.CrossEntropyLoss,
               "quantum": nn.CrossEntropyLoss}
 
-def run_experiments_in_deeplearning(dataset: str, plot_only: bool = True):
+def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
     log_file = "log_" + dataset + ".txt"
     with open(log_file, 'a') as f:
@@ -70,7 +70,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = True):
                                      up_compression_model=SQuantization(0, norm=norm_quantization[dataset]),
                                      down_compression_model=SQuantization(0, norm=norm_quantization[dataset]))
 
-        params = cast_to_DL(params, dataset, models[dataset], optimal_steps_size[dataset], weight_decay[dataset])
+        params = cast_to_DL(params, dataset, models[dataset], optimal_steps_size[dataset], weight_decay[dataset], iid)
         params.log_file = log_file
         params.momentum = momentums[dataset]
 
@@ -92,7 +92,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = True):
                                         up_compression_model=default_up_compression,
                                         down_compression_model=default_down_compression)
 
-            params = cast_to_DL(params, dataset, models[dataset], optimal_steps_size[dataset], weight_decay[dataset])
+            params = cast_to_DL(params, dataset, models[dataset], optimal_steps_size[dataset], weight_decay[dataset], iid)
             params.log_file = log_file
             params.momentum = momentums[dataset]
             params.print()

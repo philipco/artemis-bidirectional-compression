@@ -53,14 +53,14 @@ class FullyConnected_Network(nn.Module):
 class A9A_Linear(nn.Module):
 
     def __init__(self):
-        input_size = 123
+        input_size = 124
         output_size = 2
         super(A9A_Linear, self).__init__()
-        self.l1 = nn.Linear(input_size, output_size, bias=True)
+        self.l1 = nn.Linear(input_size, output_size, bias=False)
 
     def forward(self, x):
         x = self.l1(x)
-        return F.sigmoid(x)
+        return x
 
 class A9A_FullyConnected(FullyConnected_Network):
 
@@ -71,10 +71,10 @@ class A9A_FullyConnected(FullyConnected_Network):
 class Quantum_Linear(nn.Module):
 
     def __init__(self):
-        input_size = 65
+        input_size = 66
         output_size = 2
         super(Quantum_Linear, self).__init__()
-        self.l1 = nn.Linear(input_size, output_size, bias=True)
+        self.l1 = nn.Linear(input_size, output_size, bias=False)
 
     def forward(self, x):
         x = self.l1(x)

@@ -133,9 +133,6 @@ def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     X_data = raw_data.loc[:, raw_data.columns != "state"]
     Y_data = raw_data.loc[:, raw_data.columns == "state"]  # We do not scale labels (+/-1).
 
-    if for_dl:
-        return X_data.to_numpy(dtype=np.float64), np.concatenate(Y_data.to_numpy()), dim
-
     logging.debug("Scaling data.")
     scaled_data = scale(raw_data.loc[:, raw_data.columns != "state"])
 
@@ -208,15 +205,22 @@ def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: boo
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
-def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False, test: bool = False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a.txt".format(get_project_root()))
+    if not test:
+        raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a.txt".format(get_project_root()))
+        raw_X = raw_X.todense()
+    else:
+        raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a_test.txt".format(get_project_root()))
+        raw_X = raw_X.todense()
+        raw_X = np.c_[raw_X, np.zeros((len(raw_Y)))]
+
 
     for i in range(len(raw_Y)):
         if raw_Y[i] == 0:
             raw_Y[i] = -1
 
-    scaled_X = scale(np.array(raw_X.todense(), dtype=np.float64))
+    scaled_X = scale(np.array(raw_X, dtype=np.float64))
     scaled_data = pd.DataFrame(data=scaled_X)
     scaled_data["target"] = raw_Y
     dim = len(scaled_data.columns) - 1

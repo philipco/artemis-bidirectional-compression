@@ -41,12 +41,12 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
 
     b = 0
     for ind in split:
-        # train_loader_workers[b] = Subset(train_data, ind)
-        if parameters.stochastic is False:
-            train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=size_dataset_worker,
-                                                 shuffle=True)
-        else:
-            train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=parameters.batch_size, shuffle=True)
+        train_loader_workers[b] = Subset(train_data, ind)
+        # if parameters.stochastic is False:
+        #     train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=size_dataset_worker,
+        #                                          shuffle=True)
+        # else:
+        #     train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=parameters.batch_size, shuffle=True)
         b = b + 1
 
     test_loader = DataLoader(test_data, batch_size=parameters.batch_size, shuffle=False)
@@ -112,9 +112,9 @@ def load_data(parameters: DLParameters):
 
     elif parameters.dataset == "a9a":
 
-        train_data = A9ADataset('../dataset/', train=True)
+        train_data = A9ADataset(train=True, iid=parameters.iid)
 
-        test_data = A9ADataset('../dataset/', train=False)
+        test_data = A9ADataset(train=False, iid=parameters.iid)
 
     elif parameters.dataset == "phishing":
 
@@ -123,8 +123,8 @@ def load_data(parameters: DLParameters):
         test_data = PhishingDataset( train=False)
 
     elif parameters.dataset == "quantum":
-        train_data = QuantumDataset(train=True)
+        train_data = QuantumDataset(train=True, iid=parameters.iid)
 
-        test_data = QuantumDataset(train=False)
+        test_data = QuantumDataset(train=False, iid=parameters.iid)
 
     return train_data, test_data
