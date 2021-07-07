@@ -1,19 +1,15 @@
 """
 Created by Philippenko, 13rd May 2021.
 """
-import itertools
 import os
+import random
 
-import numpy as np
 import torch
 from PIL import Image
-from sklearn.datasets import load_svmlight_file
-from sklearn.preprocessing import scale
 from torch.utils.data import Dataset
 from torchvision.datasets import MNIST
 from torchvision.datasets.utils import download_and_extract_archive
 
-from src.deeplearning.DLParameters import DLParameters
 from src.utils.Utilities import get_project_root, create_folder_if_not_existing
 from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_a9a, prepare_phishing
 
@@ -95,31 +91,32 @@ class QuantumDataset(Dataset):
         root = get_project_root()
         bool_iid = True if iid == "iid" else False
         create_folder_if_not_existing("{0}/pickle/quantum-{1}-N20".format(root, iid))
-        X, Y, dim_notebook = prepare_quantum(20, data_path="{0}/pickle/".format(root),
-                                             pickle_path="{0}/pickle/quantum-{1}-N20".format(root, iid),
-                                             iid=bool_iid, for_dl=True)
+        X_train, Y_train, dim_notebook = prepare_quantum(20, data_path="{0}/pickle/".format(root),
+                                             pickle_path="{0}/pickle/quantum-{1}-N20".format(root, iid), iid=bool_iid)
 
-        X = torch.cat([x for x in X])
-        Y = torch.cat([y for y in Y])
+        X_train = torch.cat([x for x in X_train])
+        Y_train = torch.cat([y for y in Y_train])
 
-        for i in range(len(Y)):
-            if Y[i] == -1:
-                Y[i] = 0
+        for i in range(len(Y_train)):
+            if Y_train[i] == -1:
+                Y_train[i] = 0
 
-        n = int(len(X) * 10 / 100)
+        n = int(len(X_train) * 10 / 100)
 
-        test_data = X[:n]
-        test_labels = Y[:n]
-        X, Y = X[n:], Y[n:]
+        test_idx = random.sample(range(len(X_train)), n)
+        train_idx = [e for e in list(range(len(X_train))) if e not in test_idx]
 
+        X_test, Y_test = X_train[test_idx], Y_train[test_idx]
+        # X_train, Y_train = X_train[train_idx], Y_train[train_idx]
+        
         self.train = train
         if self.train:
-            print('Total number of point:', len(X))
-            self.data = X
-            self.labels = Y
+            print('Total number of point:', len(X_train))
+            self.data = X_train
+            self.labels = Y_train
         else:
-            self.data = test_data
-            self.labels = test_labels
+            self.data = X_test
+            self.labels = Y_test
 
     def __len__(self):
         return len(self.labels)
