@@ -15,7 +15,7 @@ from torchvision.datasets.utils import download_and_extract_archive
 
 from src.deeplearning.DLParameters import DLParameters
 from src.utils.Utilities import get_project_root, create_folder_if_not_existing
-from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_a9a
+from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_a9a, prepare_phishing
 
 
 class FEMNISTDataset(MNIST):
@@ -129,13 +129,20 @@ class QuantumDataset(Dataset):
 
 class PhishingDataset(Dataset):
 
-    def __init__(self, train=True):
+    def __init__(self, train=True, iid: str = "iid"):
         root = get_project_root()
-        create_folder_if_not_existing("{0}/pickle/quantum-non-iid-N20".format(root))
-        X, Y = load_svmlight_file("../dataset/phishing/phishing.txt")
+        bool_iid = True if iid == "iid" else False
+        create_folder_if_not_existing("{0}/pickle/quantum-{1}-N20".format(root, iid))
+        X, Y, dim_notebook = prepare_phishing(20, data_path="{0}/pickle/".format(root),
+                                             pickle_path="{0}/pickle/quantum-{1}-N20".format(root, iid),
+                                             iid=bool_iid)
 
-        X = scale(np.array(X.todense(), dtype=np.float64))
-        Y = np.array(Y, dtype=np.float64)
+        X = torch.cat([x for x in X])
+        Y = torch.cat([y for y in Y])
+
+        for i in range(len(Y)):
+            if Y[i] == -1:
+                Y[i] = 0
 
         n = int(len(X) * 10 / 100)
 

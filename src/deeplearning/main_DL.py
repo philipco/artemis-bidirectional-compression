@@ -24,7 +24,7 @@ models = {"cifar10": ResNet18, "mnist": MNIST_Linear, "fashion_mnist": MNIST_Lin
           "a9a": A9A_Linear, "phishing": Phishing_Linear, "quantum": Quantum_Linear}
 momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a": 0, "phishing": 0, "quantum": 0}
 optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a":0.2593, "phishing": 0.2141,
-                      "quantum": 0.12}#0.12}
+                      "quantum": 0.2863}#0.12}
 quantization_levels= {"cifar10": 4, "mnist": 8, "fashion_mnist": 1, "femnist": 1, "a9a":1, "phishing": 1, "quantum": 1}
 norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": np.inf, "femnist": np.inf, "a9a": 2, "phishing": 2,
                      "quantum": 2}
@@ -63,7 +63,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
         params = VanillaSGD().define(cost_models=None,
                                      n_dimensions=None,
                                      stochastic=False,
-                                     nb_epoch=500,
+                                     nb_epoch=1000,
                                      nb_devices=nb_devices,
                                      batch_size=batch_size,
                                      fraction_sampled_workers=1,
@@ -74,13 +74,13 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
         params.log_file = log_file
         params.momentum = momentums[dataset]
 
-        obj_min =  min(run_tuned_exp(params).train_losses)
+        obj_min = run_tuned_exp(params).train_losses[-1]
         pickle_saver(obj_min, "{0}/obj_min_dl".format(pickle_path))
 
     if not plot_only:
         all_descent = {}
         # res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
-        for type_params in [VanillaSGD(), MCM()]:
+        for type_params in [VanillaSGD(), Diana(), Artemis(), MCM()]:
             print(type_params)
             torch.cuda.empty_cache()
             params = type_params.define(cost_models=None,
@@ -119,7 +119,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
     res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
 
-    # obj_min = min(res.get_loss(np.array(0), in_log=False)[0])
+    # obj_min = 0#min(res.get_loss(np.array(0), in_log=False)[0])
 
     # print("Obj min in convex:", obj_min_cvx)
     print("Obj min in dl:", obj_min)
