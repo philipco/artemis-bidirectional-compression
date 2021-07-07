@@ -84,10 +84,10 @@ class Quantum_Linear(nn.Module):
 class Phishing_Linear(nn.Module):
 
     def __init__(self):
-        input_size = 68
+        input_size = 69
         output_size = 2
         super(Phishing_Linear, self).__init__()
-        self.l1 = nn.Linear(input_size, output_size, bias=True)
+        self.l1 = nn.Linear(input_size, output_size, bias=False)
 
     def forward(self, x):
         x = self.l1(x)

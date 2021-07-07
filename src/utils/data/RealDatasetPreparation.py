@@ -93,8 +93,9 @@ def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid:
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
-def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False, for_dl=False):
-    raw_data = pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_project_root()), sep="\t", header=None)
+def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+
+    raw_data= pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_project_root()), sep="\t", header=None)
 
     # Looking for missing values.
     columns_with_missing_values = []

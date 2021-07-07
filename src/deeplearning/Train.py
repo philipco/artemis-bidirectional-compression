@@ -48,6 +48,8 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
         train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
         iter_steps = len(train_loader_workers[0])
 
+        # print("Number of point of local device:", train_loader_workers[0].indices.size)
+        # print("Batch size:", parameters.batch_size)
         # iter_steps = int(train_loader_workers[0].indices.size / parameters.batch_size)
         for _ in range(iter_steps):
 
