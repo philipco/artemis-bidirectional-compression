@@ -6,17 +6,22 @@ import sys
 import logging
 
 from src.deeplearning.DLParameters import cast_to_DL
+from src.deeplearning.NnDataPreparation import create_loaders
 from src.deeplearning.NnModels import *
-from src.deeplearning.Train import tune_step_size, run_tuned_exp
+from src.deeplearning.Train import run_tuned_exp
 from src.machinery.PredefinedParameters import *
 from src.utils.ErrorPlotter import plot_error_dist
 from src.utils.Utilities import pickle_loader, pickle_saver, get_project_root, file_exist, seed_everything
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
-
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
+
 from src.utils.runner.RunnerUtilities import choose_algo, create_path_and_folders, NB_RUN
 
 logging.basicConfig(level=logging.INFO)
+
+
+def logistic_loss(output, labels):
+    return -torch.sum(torch.log(torch.sigmoid(labels * output.flatten()))) / len(output)
 
 batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 128,
           "a9a": 50, "phishing": 50, "quantum": 400}
@@ -31,7 +36,7 @@ norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": np.inf, "fe
 weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a":0, "phishing": 0, "quantum": 0}
 criterion = {"cifar10": nn.CrossEntropyLoss, "mnist": nn.CrossEntropyLoss, "fashion_mnist": nn.CrossEntropyLoss,
               "femnist": nn.CrossEntropyLoss, "a9a":nn.CrossEntropyLoss, "phishing": nn.CrossEntropyLoss,
-              "quantum": nn.CrossEntropyLoss}
+              "quantum": logistic_loss}
 
 def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
@@ -44,6 +49,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     nb_devices = 20
     algos = "mcm-vs-existing"
     iid = "iid"
+    stochastic = False
 
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos,
                                                                                       fraction_sampled_workers)
@@ -56,6 +62,9 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
                                                                  default_up_compression.level,
                                                                  default_down_compression.level, batch_size,
                                                                  weight_decay[dataset])
+
+    if not stochastic:
+        exp_name += "-full"
 
     if not file_exist("{0}/obj_min_dl.pkl".format(pickle_path)):
         with open(log_file, 'a') as f:
@@ -73,8 +82,9 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
         params = cast_to_DL(params, dataset, models[dataset], optimal_steps_size[dataset], weight_decay[dataset], iid)
         params.log_file = log_file
         params.momentum = momentums[dataset]
+        params.criterion = criterion[dataset]
 
-        obj_min = run_tuned_exp(params).train_losses[-1]
+        obj_min = run_tuned_exp(params, create_loaders(params)).train_losses[-1]
         pickle_saver(obj_min, "{0}/obj_min_dl".format(pickle_path))
 
     if not plot_only:
@@ -87,6 +97,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
                                         n_dimensions=None,
                                         nb_epoch=200,
                                         nb_devices=nb_devices,
+                                        stochastic=stochastic,
                                         batch_size=batch_size,
                                         fraction_sampled_workers=1,
                                         up_compression_model=default_up_compression,
@@ -95,7 +106,10 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
             params = cast_to_DL(params, dataset, models[dataset], optimal_steps_size[dataset], weight_decay[dataset], iid)
             params.log_file = log_file
             params.momentum = momentums[dataset]
+            params.criterion = criterion[dataset]
             params.print()
+
+            loaders = create_loaders(params)
 
             with open(params.log_file, 'a') as f:
                 print(type_params, file=f)
@@ -106,12 +120,12 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
             for i in range(NB_RUN):
                 print('Run {:3d}/{:3d}:'.format(i + 1, NB_RUN))
                 fixed_params = copy.deepcopy(params)
-                multiple_descent.append_from_DL(run_tuned_exp(fixed_params))
+                multiple_descent.append_from_DL(run_tuned_exp(fixed_params, loaders))
 
             all_descent[type_params.name()] = multiple_descent
-
             res = ResultsOfSeveralDescents(all_descent, nb_devices)
             # res.add_descent(multiple_descent, type_params.name())
+
             pickle_saver(res, "{0}/{1}".format(algos_pickle_path, exp_name))
 
     # obj_min_cvx = pickle_loader("{0}/obj_min".format(pickle_path))
@@ -119,7 +133,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
     res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
 
-    # obj_min = 0#min(res.get_loss(np.array(0), in_log=False)[0])
+    # obj_min = min(res.get_loss(np.array(0), in_log=False)[0])
 
     # print("Obj min in convex:", obj_min_cvx)
     print("Obj min in dl:", obj_min)

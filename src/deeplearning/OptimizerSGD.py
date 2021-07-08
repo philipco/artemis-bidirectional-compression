@@ -13,14 +13,14 @@ class SGDGen(Optimizer):
         Based on torch.optim.SGD implementation
     """
 
-    def __init__(self, nn_model_params, parameters: DLParameters, step_size, dampening=0,
+    def __init__(self, nn_model_params, parameters: DLParameters, dampening=0,
                  weight_decay=0, nesterov=False):
-        if step_size < 0.0:
-            raise ValueError("Invalid learning rate: {}".format(step_size))
+        if parameters.optimal_step_size < 0.0:
+            raise ValueError("Invalid learning rate: {}".format(parameters.optimal_step_size))
         if weight_decay < 0.0:
             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
 
-        defaults = dict(lr=step_size, dampening=dampening,
+        defaults = dict(lr=parameters.optimal_step_size, dampening=dampening,
                         weight_decay=weight_decay, nesterov=nesterov)
         super(SGDGen, self).__init__(nn_model_params, defaults)
 
@@ -111,7 +111,7 @@ class SGDGen(Optimizer):
                     if down_error_feedback_name in param_state:
                         full_grad += param_state[down_error_feedback_name]
 
-                    if self.parameters.down_compression_model is not None and not self.parameters.non_degraded:
+                    if not self.parameters.non_degraded:
                         grad = self.parameters.down_compression_model.compress(full_grad)
                     else:
                         grad = full_grad

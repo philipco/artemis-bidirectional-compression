@@ -72,9 +72,9 @@ class Quantum_Linear(nn.Module):
 
     def __init__(self):
         input_size = 66
-        output_size = 2
+        self.output_size = 1
         super(Quantum_Linear, self).__init__()
-        self.l1 = nn.Linear(input_size, output_size, bias=False)
+        self.l1 = nn.Linear(input_size, self.output_size, bias=False)
 
     def forward(self, x):
         x = self.l1(x)

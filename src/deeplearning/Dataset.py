@@ -97,9 +97,9 @@ class QuantumDataset(Dataset):
         X_train = torch.cat([x for x in X_train])
         Y_train = torch.cat([y for y in Y_train])
 
-        for i in range(len(Y_train)):
-            if Y_train[i] == -1:
-                Y_train[i] = 0
+        # for i in range(len(Y_train)):
+        #     if Y_train[i] == -1:
+        #         Y_train[i] = 0
 
         n = int(len(X_train) * 10 / 100)
 
@@ -122,7 +122,7 @@ class QuantumDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, index: int):
-        return torch.tensor(self.data[index]).float(), torch.tensor(self.labels[index]).type(torch.LongTensor)
+        return self.data[index].float(),  self.labels[index].float()
 
 class PhishingDataset(Dataset):
 

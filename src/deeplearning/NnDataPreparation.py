@@ -23,10 +23,7 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
     indices = np.arange(size_dataset)
     # np.random.shuffle(indices)
 
-    if parameters.dataset == "qu2antum":
-        n_val = train_data.ind_val
-    else:
-        n_val = np.int(np.floor(0.1 * size_dataset))
+    n_val = np.int(np.floor(0.1 * size_dataset))
     val_data = Subset(train_data, indices=indices[:n_val])
 
     # indices = indices[n_val:]
@@ -34,10 +31,7 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
     size_dataset_worker = np.int(np.floor(size_dataset / parameters.nb_devices))
     top_ind = size_dataset_worker * parameters.nb_devices
     seq = range(size_dataset_worker, top_ind, size_dataset_worker)
-    if False:#parameters.dataset == "quantum":
-        split = train_data.split
-    else:
-        split = np.split(indices[:top_ind], seq)
+    split = np.split(indices[:top_ind], seq)
 
     b = 0
     for ind in split:

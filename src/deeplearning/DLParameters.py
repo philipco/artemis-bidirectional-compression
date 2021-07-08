@@ -16,6 +16,7 @@ class DLParameters(Parameters):
         self.model = model
         self.weight_decay = weight_decay
         self.iid = iid
+        self.criterion = None
 
     def print(self):
         print("== Settings ==")
@@ -32,6 +33,8 @@ class DLParameters(Parameters):
             print("UP compression model: {0}".format(self.up_compression_model.__class__.__name__))
         if self.down_compression_model is not None:
             print("DOWN compression model: {0}".format(self.down_compression_model.__class__.__name__))
+        if self.criterion is not None:
+            print("Criterion: {0}".format(self.criterion.__class__.__name__))
 
 
 def cast_to_DL(parameters: Parameters, dataset: str, model, optimal_step_size: int, weight_decay: int, iid: str) -> DLParameters:

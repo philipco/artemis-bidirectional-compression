@@ -82,6 +82,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
                             if down_learning_rate_name not in param_state:
                                 param_state[down_learning_rate_name] = 1 / (
                                         2 * (parameters.down_compression_model.__compute_omega_c__(zipped_omega) + 1))
+                                print("Down learning rate: ", param_state[down_learning_rate_name])
                             dezipped_omega = zipped_omega + param_state[down_memory_name]
                             param_state[down_memory_name] += zipped_omega.mul(param_state[down_learning_rate_name]).detach()
                             zipped_omega.copy_(dezipped_omega)
@@ -148,7 +149,10 @@ def accuracy_and_loss(model, loader, criterion, device):
         loss = criterion(output, labels)
         total_loss += loss.item()
 
-        pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+        if model.output_size == 1:
+            pred = torch.sign(output)
+        else:
+            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(labels.view_as(pred)).sum().item()
 
     accuracy = 100. * correct / len(loader.dataset)
@@ -167,7 +171,7 @@ def tune_step_size(parameters: DLParameters):
     for lr in np.array([0.5, 0.1, 0.05, 0.01]):
         print('Learning rate {:2.4f}:'.format(lr))
         try:
-            val_loss, run = run_workers(lr, parameters, hpo=hpo)
+            val_loss, run = run_workers(lr, parameters)
         except RuntimeError as err:
             with open(parameters.log_file, 'a') as f:
                 print("Fail with step size:", lr, file=f)
@@ -180,7 +184,7 @@ def tune_step_size(parameters: DLParameters):
     return parameters
 
 
-def run_workers(step_size, parameters: DLParameters, hpo=False):
+def run_workers(parameters: DLParameters, loaders):
     """
     Run the training over all the workers.
     """
@@ -195,33 +199,26 @@ def run_workers(step_size, parameters: DLParameters, hpo=False):
     # for p in model.parameters():
     #     p.data.fill_(0)
 
-    train_loader_workers, val_loader, test_loader = create_loaders(parameters)
+    train_loader_workers, val_loader, test_loader = loaders
 
-    optimizer = SGDGen(model.parameters(), parameters=parameters, step_size=step_size, weight_decay=0)
+    optimizer = SGDGen(model.parameters(), parameters=parameters, weight_decay=0)
 
-    criterion = nn.CrossEntropyLoss() #torch.nn.BCELoss(size_average=True) #nn.CrossEntropyLoss()
+    criterion = parameters.criterion #nn.CrossEntropyLoss()
     val_loss, run = train_workers(model, optimizer, criterion, parameters.nb_epoch, train_loader_workers,
                              val_loader, test_loader, parameters.nb_devices, parameters=parameters)
 
     return val_loss, run
 
 
-def run_tuned_exp(parameters: DLParameters, runs=NB_RUN, suffix=None):
+def run_tuned_exp(parameters: DLParameters, loaders):
 
     if parameters.optimal_step_size is None:
         raise ValueError("Tune step size first")
     else:
         print("Optimal step size is ", parameters.optimal_step_size)
 
-    # seed_everything(seed=25)
-
-    # multiple_descent = AverageOfSeveralIdenticalRun()
-    # for i in range(runs):
-
     torch.cuda.empty_cache()
-    # print('Run {:3d}/{:3d}:'.format(i+1, runs))
-    val_loss, run = run_workers(parameters.optimal_step_size, parameters)
-    # multiple_descent.append_from_DL(run)
+    val_loss, run = run_workers(parameters, loaders)
 
     return run
 
