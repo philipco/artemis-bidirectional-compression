@@ -35,12 +35,13 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
 
     b = 0
     for ind in split:
-        # train_loader_workers[b] = Subset(train_data, ind)
         if parameters.stochastic is False:
             train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=size_dataset_worker,
                                                  shuffle=True)
         else:
-            train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=parameters.batch_size, shuffle=True)
+            rand_sampler = RandomSampler(Subset(train_data, ind), replacement=True)
+            train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=parameters.batch_size,
+                                                 sampler=rand_sampler)
         b = b + 1
 
     test_loader = DataLoader(test_data, batch_size=parameters.batch_size, shuffle=False)

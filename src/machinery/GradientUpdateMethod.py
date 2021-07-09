@@ -389,7 +389,7 @@ class DownCompressModelUpdate(AbstractFLUpdate):
                 worker.local_update.send_global_informations_and_update_local_param(models_to_send, self.step)
             # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
             if self.parameters.use_down_memory and self.parameters.randomized and not self.parameters.use_unique_down_memory:
-                self.H[worker.ID] = self.H[worker.ID] + self.parameters.down_learning_rate * self.omega[worker.ID]
+                self.H[worker.ID] += self.parameters.down_learning_rate * self.omega[worker.ID]
             elif self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_down_memory:
                 update_H_i += self.parameters.down_learning_rate * self.omega[worker.ID] / self.parameters.nb_devices
         if self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_down_memory:

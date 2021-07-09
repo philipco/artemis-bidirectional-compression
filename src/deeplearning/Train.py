@@ -2,34 +2,29 @@
 Created by Philippenko, 26th April 2021.
 """
 import copy
-import random
-import time
 
 import torch
 import numpy as np
-from torch import nn
-from torch.utils.data import DataLoader
 import torch.backends.cudnn as cudnn
 
 from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.DeepLearningRun import DeepLearningRun
-from src.deeplearning.NnDataPreparation import create_loaders
 from src.deeplearning.OptimizerSGD import SGDGen
 from src.utils.Utilities import seed_everything
-from src.utils.runner.RunnerUtilities import NB_RUN
 
 
 def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
                   val_loader, test_loader, n_workers, parameters: DLParameters):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     model = model.to(device)
+    preserved_model = copy.deepcopy(model)
+
     if device == 'cuda':
         model = torch.nn.DataParallel(model)
         cudnn.benchmark = True
 
     run = DeepLearningRun(parameters)
-
-    train_loss = np.inf
 
     best_val_loss = np.inf
     test_loss_val = np.inf
@@ -40,39 +35,28 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
 
     for e in range(epochs):
 
-        elapsed_time = 0
-
         model.train()
         running_loss = 0
-
         train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
         iter_steps = len(train_loader_workers[0])
 
-        # print("Number of point of local device:", train_loader_workers[0].indices.size)
-        # print("Batch size:", parameters.batch_size)
-        # iter_steps = int(train_loader_workers[0].indices.size / parameters.batch_size)
         for _ in range(iter_steps):
 
             # Saving the data for this iteration
             all_data, all_labels = {}, {}
             for w_id in range(n_workers):
-                # start = time.time()
-                # train_loader = [DataLoader(train_loader_workers[w], batch_size=parameters.batch_size, shuffle=True) for
-                #                 w in range(n_workers)]
-                # train_loader_iter = [iter(train_loader[w]) for w in range(n_workers)]
                 all_data[w_id], all_labels[w_id] = next(train_loader_iter[w_id])
-                # elapsed_time += time.time() - start
+
             # Down-compression step
             if parameters.non_degraded:
-                preserved_model = copy.deepcopy(model)
                 with torch.no_grad():
                     # Compressing the model ...
-                    for p in model.parameters():
+                    for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
                         if down_memory_name not in param_state:
                             param_state[down_memory_name] = torch.zeros_like(p)
                         if parameters.down_compression_model is not None:
-                            value_to_compress = p - param_state[down_memory_name]
+                            value_to_compress = preserved_p - param_state[down_memory_name]
                             omega = parameters.down_compression_model.compress(value_to_compress)
                             p.copy_(omega)
                     # Dezipping memory if required.
@@ -107,11 +91,11 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
                         preserved_loss = criterion(preserved_output, labels)
                         running_loss += preserved_loss.item()
                     # Updating the model
-                    for preserved_p, p in zip(preserved_model.parameters(), model.parameters()):
+                    for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
                         # Warning: the final grad has already been multiplied with the step size !
-                        update_model = preserved_p - param_state['final_grad']
-                        p.copy_(update_model)
+                        update_model = preserved_p - param_state['final_grad'].mul(parameters.optimal_step_size)
+                        preserved_p.copy_(update_model)
 
         train_loss = running_loss/(iter_steps*n_workers)
 

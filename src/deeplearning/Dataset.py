@@ -104,7 +104,7 @@ class QuantumDataset(Dataset):
         n = int(len(X_train) * 10 / 100)
 
         test_idx = random.sample(range(len(X_train)), n)
-        train_idx = [e for e in list(range(len(X_train))) if e not in test_idx]
+        # train_idx = [e for e in list(range(len(X_train))) if e not in test_idx]
 
         X_test, Y_test = X_train[test_idx], Y_train[test_idx]
         # X_train, Y_train = X_train[train_idx], Y_train[train_idx]
@@ -122,7 +122,7 @@ class QuantumDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, index: int):
-        return self.data[index].float(),  self.labels[index].float()
+        return self.data[index].float(),  self.labels[index].type(torch.LongTensor)
 
 class PhishingDataset(Dataset):
 
