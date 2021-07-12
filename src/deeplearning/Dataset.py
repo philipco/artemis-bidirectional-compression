@@ -137,15 +137,15 @@ class PhishingDataset(Dataset):
         X = torch.cat([x for x in X])
         Y = torch.cat([y for y in Y])
 
-        for i in range(len(Y)):
-            if Y[i] == -1:
-                Y[i] = 0
+        # for i in range(len(Y)):
+        #     if Y[i] == -1:
+        #         Y[i] = 0
 
         n = int(len(X) * 10 / 100)
 
         test_data = X[:n]
         test_labels = Y[:n]
-        X, Y = X[n:], Y[n:]
+        # X, Y = X[n:], Y[n:]
 
         self.train = train
         if self.train:
@@ -159,7 +159,7 @@ class PhishingDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, index: int):
-        return torch.tensor(self.data[index]).float(), torch.tensor(self.labels[index]).type(torch.LongTensor)
+        return self.data[index].float(), self.labels[index].type(torch.LongTensor)
 
 class A9ADataset(Dataset):
 
@@ -175,9 +175,9 @@ class A9ADataset(Dataset):
         X_train = torch.cat([x for x in X_train])
         y_train = torch.cat([y for y in y_train])
 
-        for i in range(len(y_train)):
-            if y_train[i] == -1:
-                y_train[i] = 0
+        # for i in range(len(y_train)):
+        #     if y_train[i] == -1:
+        #         y_train[i] = 0
 
         X_test, y_test, dim_notebook = prepare_a9a(20, data_path="{0}/pickle/".format(root),
                                                      pickle_path="{0}/pickle/a9a-{1}-N20".format(root, iid),
@@ -186,9 +186,9 @@ class A9ADataset(Dataset):
         X_test = torch.cat([x for x in X_test])
         y_test = torch.cat([y for y in y_test])
 
-        for i in range(len(y_test)):
-            if y_test[i] == -1:
-                y_test[i] = 0
+        # for i in range(len(y_test)):
+        #     if y_test[i] == -1:
+        #         y_test[i] = 0
 
         if train:
             print('Total number of point:', len(X_train))
@@ -202,7 +202,7 @@ class A9ADataset(Dataset):
         return len(self.targets)
 
     def __getitem__(self, index: int):
-        return torch.tensor(self.data[index]).float(), torch.tensor(self.targets[index]).type(torch.LongTensor)
+        return self.data[index].float(), self.targets[index].type(torch.LongTensor)
 
 
 if __name__ == '__main__':

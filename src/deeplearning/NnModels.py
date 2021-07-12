@@ -4,6 +4,15 @@ Created by Philippenko, 26th April 2021.
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.nn.modules.loss import _WeightedLoss
+
+
+class LogisticLoss(_WeightedLoss):
+    def __init__(self):
+        super(LogisticLoss, self).__init__()
+
+    def forward(self, input, target):
+        return -torch.sum(torch.log(torch.sigmoid(target * input.flatten()))) / len(input)
 
 class FullyConnected_Network(nn.Module):
     """
@@ -54,9 +63,9 @@ class A9A_Linear(nn.Module):
 
     def __init__(self):
         input_size = 124
-        output_size = 2
+        self.output_size = 1
         super(A9A_Linear, self).__init__()
-        self.l1 = nn.Linear(input_size, output_size, bias=False)
+        self.l1 = nn.Linear(input_size, self.output_size, bias=False)
 
     def forward(self, x):
         x = self.l1(x)
@@ -85,9 +94,9 @@ class Phishing_Linear(nn.Module):
 
     def __init__(self):
         input_size = 69
-        output_size = 2
+        self.output_size = 1
         super(Phishing_Linear, self).__init__()
-        self.l1 = nn.Linear(input_size, output_size, bias=False)
+        self.l1 = nn.Linear(input_size, self.output_size, bias=False)
 
     def forward(self, x):
         x = self.l1(x)

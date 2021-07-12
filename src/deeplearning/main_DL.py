@@ -20,8 +20,8 @@ from src.utils.runner.RunnerUtilities import choose_algo, create_path_and_folder
 logging.basicConfig(level=logging.INFO)
 
 
-def logistic_loss(output, labels):
-    return -torch.sum(torch.log(torch.sigmoid(labels * output.flatten()))) / len(output)
+# def logistic_loss(output, labels):
+#     return -torch.sum(torch.log(torch.sigmoid(labels * output.flatten()))) / len(output)
 
 batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 128,
           "a9a": 50, "phishing": 50, "quantum": 400}
@@ -35,8 +35,8 @@ norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": np.inf, "fe
                      "quantum": 2}
 weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a":0, "phishing": 0, "quantum": 0}
 criterion = {"cifar10": nn.CrossEntropyLoss, "mnist": nn.CrossEntropyLoss, "fashion_mnist": nn.CrossEntropyLoss,
-              "femnist": nn.CrossEntropyLoss, "a9a":nn.CrossEntropyLoss, "phishing": nn.CrossEntropyLoss,
-              "quantum": logistic_loss}
+              "femnist": nn.CrossEntropyLoss, "a9a":LogisticLoss, "phishing": LogisticLoss,
+              "quantum": LogisticLoss}
 
 def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
@@ -72,7 +72,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
         params = VanillaSGD().define(cost_models=None,
                                      n_dimensions=None,
                                      stochastic=False,
-                                     nb_epoch=1000,
+                                     nb_epoch=10000,
                                      nb_devices=nb_devices,
                                      batch_size=batch_size,
                                      fraction_sampled_workers=1,

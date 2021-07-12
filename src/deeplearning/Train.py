@@ -187,7 +187,7 @@ def run_workers(parameters: DLParameters, loaders):
 
     optimizer = SGDGen(model.parameters(), parameters=parameters, weight_decay=0)
 
-    criterion = parameters.criterion #nn.CrossEntropyLoss()
+    criterion = parameters.criterion()
     val_loss, run = train_workers(model, optimizer, criterion, parameters.nb_epoch, train_loader_workers,
                              val_loader, test_loader, parameters.nb_devices, parameters=parameters)
 
