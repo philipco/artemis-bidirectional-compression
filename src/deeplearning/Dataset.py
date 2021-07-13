@@ -95,7 +95,7 @@ class QuantumDataset(Dataset):
                                              pickle_path="{0}/pickle/quantum-{1}-N20".format(root, iid), iid=bool_iid)
 
         X_train = torch.cat([x for x in X_train])
-        Y_train = torch.cat([y for y in Y_train])
+        Y_train = torch.cat([y for y in Y_train]) #torch.cat([y.reshape(len(Y_train[0]), 1) for y in Y_train])
 
         # for i in range(len(Y_train)):
         #     if Y_train[i] == -1:

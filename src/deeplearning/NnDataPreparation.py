@@ -12,16 +12,16 @@ from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset,
 
 
 def create_loaders(parameters: DLParameters, seed: int = 42):
-
     train_data, test_data = load_data(parameters)
 
     train_loader_workers = dict()
+    train_loader_workers_full = dict()
+
     size_dataset = len(train_data)
 
     # preparing iterators for workers and validation set
     np.random.seed(seed)
     indices = np.arange(size_dataset)
-    # np.random.shuffle(indices)
 
     n_val = np.int(np.floor(0.1 * size_dataset))
     val_data = Subset(train_data, indices=indices[:n_val])
@@ -33,25 +33,25 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
     seq = range(size_dataset_worker, top_ind, size_dataset_worker)
     split = np.split(indices[:top_ind], seq)
 
-    b = 0
-    for ind in split:
-        if parameters.stochastic is False:
-            train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=size_dataset_worker,
-                                                 shuffle=True)
-        else:
-            rand_sampler = RandomSampler(Subset(train_data, ind), replacement=True)
-            train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=parameters.batch_size,
-                                                 sampler=rand_sampler)
-        b = b + 1
-
     test_loader = DataLoader(test_data, batch_size=parameters.batch_size, shuffle=False)
     val_loader = DataLoader(val_data, batch_size=parameters.batch_size, shuffle=False)
 
-    return train_loader_workers, val_loader, test_loader
+    b = 0
+    for ind in split:
+        train_loader_workers_full[b] = DataLoader(Subset(train_data, ind), batch_size=size_dataset_worker,
+                                                  shuffle=True)
+        rand_sampler = RandomSampler(Subset(train_data, ind), replacement=True)
+        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=parameters.batch_size,
+                                             sampler=rand_sampler)
+        b = b + 1
+
+    if parameters.stochastic:
+        return train_loader_workers, train_loader_workers_full, val_loader, test_loader
+    else:
+        return train_loader_workers_full, train_loader_workers_full, val_loader, test_loader
 
 
 def load_data(parameters: DLParameters):
-
     if parameters.dataset == "fake":
 
         transform = transforms.ToTensor()
@@ -81,7 +81,7 @@ def load_data(parameters: DLParameters):
     elif parameters.dataset == 'mnist':
 
         # Normalization see : https://stackoverflow.com/a/67233938
-        transform = transforms.Compose([ transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
 
         train_data = datasets.MNIST(root='../dataset/', train=True, download=True, transform=transform)
 
@@ -89,7 +89,7 @@ def load_data(parameters: DLParameters):
 
     elif parameters.dataset == "fashion_mnist":
 
-        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)),])
+        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)), ])
 
         # Download and load the training data
         train_data = datasets.FashionMNIST('../dataset/', download=True, train=True, transform=transform)
@@ -115,7 +115,7 @@ def load_data(parameters: DLParameters):
 
         train_data = PhishingDataset(train=True, iid=parameters.iid)
 
-        test_data = PhishingDataset( train=False, iid=parameters.iid)
+        test_data = PhishingDataset(train=False, iid=parameters.iid)
 
     elif parameters.dataset == "quantum":
         train_data = QuantumDataset(train=True, iid=parameters.iid)

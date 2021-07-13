@@ -13,12 +13,12 @@ from src.deeplearning.OptimizerSGD import SGDGen
 from src.utils.Utilities import seed_everything
 
 
-def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
+def train_workers(model, optimizer, criterion, epochs, train_loader_workers, train_loader_workers_full,
                   val_loader, test_loader, n_workers, parameters: DLParameters):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = model.to(device)
-    preserved_model = copy.deepcopy(model)
+    preserved_model = copy.deepcopy(model).to(device)
 
     if device == 'cuda':
         model = torch.nn.DataParallel(model)
@@ -36,7 +36,6 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
     for e in range(epochs):
 
         model.train()
-        running_loss = 0
         train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
         iter_steps = len(train_loader_workers[0])
 
@@ -73,23 +72,15 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
 
             # Computing and propagating gradients.
             for w_id in range(n_workers):
-                data, labels = all_data[w_id].to(device), all_labels[w_id].to(device)
+                data, target = all_data[w_id].to(device), all_labels[w_id].to(device)
                 output = model(data)
-                loss = criterion(output, labels)
+                loss = criterion(output, target)
                 loss.backward()
-                if not parameters.non_degraded:
-                    running_loss += loss.item()
                 optimizer.step_local_global(w_id)
                 optimizer.zero_grad()
 
             if parameters.non_degraded:
                 with torch.no_grad():
-                    # Computing loss with the preserved new model before update.
-                    for w_id in range(n_workers):
-                        data, labels = all_data[w_id].to(device), all_labels[w_id].to(device)
-                        preserved_output = preserved_model(data)
-                        preserved_loss = criterion(preserved_output, labels)
-                        running_loss += preserved_loss.item()
                     # Updating the model
                     for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
@@ -97,7 +88,20 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers,
                         update_model = preserved_p - param_state['final_grad'].mul(parameters.optimal_step_size)
                         preserved_p.copy_(update_model)
 
-        train_loss = running_loss/(iter_steps*n_workers)
+        train_loader_iter = [iter(train_loader_workers_full[w]) for w in range(n_workers)]
+        running_loss = 0
+        for w_id in range(n_workers):
+            preserved_model.eval()
+            model.eval()
+            for data, target in train_loader_iter[w_id]:
+                data, target = data.to(device), target.to(device)
+                if parameters.non_degraded:
+                    output = preserved_model(data)
+                else:
+                    output = model(data)
+                loss = criterion(output, target)
+                running_loss += loss.item()
+        train_loss = running_loss/n_workers
 
         if parameters.non_degraded:
             val_loss, _ = accuracy_and_loss(preserved_model, val_loader, criterion, device)
@@ -183,13 +187,14 @@ def run_workers(parameters: DLParameters, loaders):
     # for p in model.parameters():
     #     p.data.fill_(0)
 
-    train_loader_workers, val_loader, test_loader = loaders
+    train_loader_workers, train_loader_workers_full, val_loader, test_loader = loaders
 
     optimizer = SGDGen(model.parameters(), parameters=parameters, weight_decay=0)
 
-    criterion = parameters.criterion()
+    criterion = parameters.criterion
     val_loss, run = train_workers(model, optimizer, criterion, parameters.nb_epoch, train_loader_workers,
-                             val_loader, test_loader, parameters.nb_devices, parameters=parameters)
+                                  train_loader_workers_full, val_loader, test_loader, parameters.nb_devices,
+                                  parameters=parameters)
 
     return val_loss, run
 

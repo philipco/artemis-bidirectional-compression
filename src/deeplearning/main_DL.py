@@ -20,9 +20,6 @@ from src.utils.runner.RunnerUtilities import choose_algo, create_path_and_folder
 logging.basicConfig(level=logging.INFO)
 
 
-# def logistic_loss(output, labels):
-#     return -torch.sum(torch.log(torch.sigmoid(labels * output.flatten()))) / len(output)
-
 batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 128,
           "a9a": 50, "phishing": 50, "quantum": 400}
 models = {"cifar10": ResNet18, "mnist": MNIST_Linear, "fashion_mnist": MNIST_Linear, "femnist": MNIST_Linear,
@@ -35,8 +32,8 @@ norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": np.inf, "fe
                      "quantum": 2}
 weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a":0, "phishing": 0, "quantum": 0}
 criterion = {"cifar10": nn.CrossEntropyLoss, "mnist": nn.CrossEntropyLoss, "fashion_mnist": nn.CrossEntropyLoss,
-              "femnist": nn.CrossEntropyLoss, "a9a":LogisticLoss, "phishing": LogisticLoss,
-              "quantum": LogisticLoss}
+              "femnist": nn.CrossEntropyLoss, "a9a": LogisticLoss(), "phishing": LogisticLoss(),
+              "quantum": LogisticLoss()}
 
 def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
@@ -49,7 +46,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     nb_devices = 20
     algos = "mcm-vs-existing"
     iid = "iid"
-    stochastic = False
+    stochastic = True
 
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos,
                                                                                       fraction_sampled_workers)
@@ -139,12 +136,12 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     print("Obj min in dl:", obj_min)
 
     # Plotting without averaging
-    plot_error_dist(res.get_loss(np.array(obj_min), in_log=True), res.names, res.nb_devices, batch_size=batch_size,
-                    all_error=res.get_std(np.array(obj_min), in_log=True), x_legend="Number of passes on data", ylegends="train_loss",
+    plot_error_dist(res.get_loss(np.array(obj_min)), res.names, res.nb_devices, batch_size=batch_size,
+                    all_error=res.get_std(np.array(obj_min)), x_legend="Number of passes on data", ylegends="train_loss",
                     picture_name="{0}/{1}_train_losses".format(picture_path, exp_name))
-    plot_error_dist(res.get_loss(np.array(obj_min), in_log=True), res.names, res.nb_devices,
+    plot_error_dist(res.get_loss(np.array(obj_min)), res.names, res.nb_devices,
                     batch_size=batch_size, x_points=res.X_number_of_bits, ylegends="train_loss",
-                    all_error=res.get_std(np.array(obj_min), in_log=True), x_legend="Communicated bits",
+                    all_error=res.get_std(np.array(obj_min)), x_legend="Communicated bits",
                     picture_name="{0}/{1}_train_losses_bits".format(picture_path, exp_name))
     plot_error_dist(res.get_test_accuracies(), res.names, res.nb_devices, ylegends="accuracy",
                     all_error=res.get_test_accuracies_std(), x_legend="Number of passes on data", batch_size=batch_size,
