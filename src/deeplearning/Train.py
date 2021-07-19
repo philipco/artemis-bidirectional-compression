@@ -37,7 +37,11 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
 
         model.train()
         train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
-        iter_steps = len(train_loader_workers[0])
+
+        # Devices may have different number of points. Thus to reach an equal weight of participation,
+        # we choose that an epoch is constituted of N rounds of communication with the central server,
+        # where N is the minimum size of the dataset hold by the different devices.
+        iter_steps = min([len(train_loader) for train_loader in train_loader_iter])
 
         for _ in range(iter_steps):
 

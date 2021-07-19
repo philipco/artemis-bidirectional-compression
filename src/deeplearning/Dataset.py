@@ -4,6 +4,7 @@ Created by Philippenko, 13rd May 2021.
 import os
 import random
 
+import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
@@ -136,9 +137,13 @@ class PhishingDataset(Dataset):
         X_train, Y_train, dim_notebook = prepare_phishing(20, data_path="{0}/pickle/".format(root),
                                              pickle_path="{0}/pickle/phishing-{1}-N20".format(root, iid),
                                              iid=bool_iid)
+        split = []
+        last_idx = 0
+        for y in Y_train:
+            split.append(np.array(range(last_idx, last_idx + len(y))))
 
         X_train = torch.cat([x for x in X_train])
-        Y_train = torch.cat([y.reshape(len(Y_train[0]), 1) for y in Y_train])
+        Y_train = torch.cat([y.reshape(len(y), 1) for y in Y_train])
 
         for i in range(len(Y_train)):
             if Y_train[i] == -1:
