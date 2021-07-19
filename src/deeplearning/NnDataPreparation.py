@@ -12,7 +12,6 @@ from torch.utils.data import DataLoader, Subset, RandomSampler
 from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset, PhishingDataset
 
-
 def non_iid_split(train_data, nb_devices):
     unique_values = {}
     targets = train_data.targets
@@ -59,6 +58,7 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
     size_dataset_worker = np.int(np.floor(size_dataset / parameters.nb_devices))
     top_ind = size_dataset_worker * parameters.nb_devices
     seq = range(size_dataset_worker, top_ind, size_dataset_worker)
+
     if parameters.iid == "iid":
         split = np.split(indices[:top_ind], seq)
     else:
