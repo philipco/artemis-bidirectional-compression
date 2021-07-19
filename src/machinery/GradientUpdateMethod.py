@@ -247,7 +247,10 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             # This may happened if it is considered that during one epoch each devices should run through all its data
             # exactly once, and if there is different numbers of points on each device.
             if compressed_delta_i is not None:
-                self.all_delta_i.append(compressed_delta_i + [self.h[worker.ID], 0][self.parameters.use_unique_up_memory])
+                if self.parameters.use_unique_up_memory:
+                    self.all_delta_i.append(compressed_delta_i)
+                else:
+                    self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
                 self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
 
@@ -266,8 +269,8 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
                 assert not isinstance(self.h, torch.FloatTensor) and len(self.h) == self.parameters.nb_devices, \
                     "Up memory should be a list of length equal to the number of devices."
-                assert all([not torch.equal(e, torch.zeros(self.parameters.n_dimensions, dtype=np.float)) for e in self.h]), \
-                    "Up memories are still null."
+                # assert all([not torch.equal(e, torch.zeros(self.parameters.n_dimensions, dtype=np.float)) for e in self.h]), \
+                #     "Up memories are still null."
 
 
 class ArtemisUpdate(AbstractFLUpdate):
@@ -389,7 +392,7 @@ class DownCompressModelUpdate(AbstractFLUpdate):
                 worker.local_update.send_global_informations_and_update_local_param(models_to_send, self.step)
             # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
             if self.parameters.use_down_memory and self.parameters.randomized and not self.parameters.use_unique_down_memory:
-                self.H[worker.ID] = self.H[worker.ID] + self.parameters.down_learning_rate * self.omega[worker.ID]
+                self.H[worker.ID] += self.parameters.down_learning_rate * self.omega[worker.ID]
             elif self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_down_memory:
                 update_H_i += self.parameters.down_learning_rate * self.omega[worker.ID] / self.parameters.nb_devices
         if self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_down_memory:

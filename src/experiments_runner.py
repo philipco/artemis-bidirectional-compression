@@ -7,7 +7,8 @@ from src.models.CostModel import LogisticModel, RMSEModel, build_several_cost_mo
 
 from src.utils.ErrorPlotter import *
 from src.utils.data.DataPreparation import build_data_logistic, build_data_linear
-from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_superconduct
+from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_superconduct, prepare_mushroom, \
+    prepare_phishing, prepare_a9a
 from src.utils.Constants import *
 from src.utils.data.DataClustering import *
 from src.utils.Utilities import pickle_loader, file_exist, create_folder_if_not_existing, get_project_root
@@ -20,11 +21,12 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 0.5, plot_only: bool = True):
+                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
-    assert dataset in ["quantum", "superconduct", 'synth_logistic', 'synth_linear_noised', 'synth_linear_nonoised'], \
+    assert dataset in ["quantum", "superconduct", "mushroom", "phishing", "a9a", 'synth_logistic',
+                       'synth_linear_noised', 'synth_linear_nonoised'], \
         "The available dataset are ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']."
     assert iid in ['iid', 'non-iid'], "The iid option are ['iid', 'non-iid']."
     assert scenario in [None, "compression", "step"], "The possible scenario are [None, 'compression', 'step']."
@@ -38,16 +40,31 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     iid_data = True if iid == 'iid' else False
 
     # Select the correct dataset
+    if dataset == "a9a":
+        X, Y, dim_notebook = prepare_a9a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
+        batch_size = 50
+        model = LogisticModel
+        nb_epoch = 200 if stochastic else 400
+    if dataset == "phishing":
+        X, Y, dim_notebook = prepare_phishing(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
+        batch_size = 50
+        model = LogisticModel
+        nb_epoch = 200 if stochastic else 400
+    if dataset == "mushroom":
+        X, Y, dim_notebook = prepare_mushroom(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
+        batch_size = 4
+        model = LogisticModel
+        nb_epoch = 200 if stochastic else 400
     if dataset == "quantum":
         X, Y, dim_notebook = prepare_quantum(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 400
         model = LogisticModel
-        nb_epoch = 500 if stochastic else 400
+        nb_epoch = 200 if stochastic else 400
     elif dataset == "superconduct":
         X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path= data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50
         model = RMSEModel
-        nb_epoch = 500 if stochastic else 400
+        nb_epoch = 200 if stochastic else 400
     elif dataset == 'synth_logistic':
         dim_notebook = 2
         batch_size = 1
@@ -83,15 +100,15 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         model = RMSEModel
         batch_size = 1
 
-    compression_by_default = SQuantization(1, dim_notebook)
+    compression_by_default = SQuantization(1, dim_notebook, norm=2)
 
-    values_compression = [SQuantization(0, dim_notebook),
-                          SQuantization(16, dim_notebook),
-                          SQuantization(8, dim_notebook),
-                          SQuantization(4, dim_notebook),
-                          SQuantization(3, dim_notebook),
-                          SQuantization(2, dim_notebook),
-                          SQuantization(1, dim_notebook)
+    values_compression = [SQuantization(0, dim_notebook, norm=2),
+                          SQuantization(16, dim_notebook, norm=2),
+                          SQuantization(8, dim_notebook, norm=2),
+                          SQuantization(4, dim_notebook, norm=2),
+                          SQuantization(3, dim_notebook, norm=2),
+                          SQuantization(2, dim_notebook, norm=2),
+                          SQuantization(1, dim_notebook, norm=2)
                           ]
 
     label_compression = ["SGD"] + [str(value.omega_c)[:4] for value in values_compression[1:]]
@@ -112,7 +129,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                                   stochastic=False
                                                   ))
         obj_min_by_N_descent.run(cost_models)
-        obj_min = obj_min_by_N_descent.losses[-1]
+        obj_min = obj_min_by_N_descent.train_losses[-1]
         pickle_saver(obj_min, "{0}/obj_min".format(pickle_path))
 
     # Choice of step size
@@ -229,8 +246,15 @@ if __name__ == '__main__':
     elif sys.argv[1] == "real":
         for sto in [True, False]:
             for iid in ["non-iid", "iid"]:
-                for dataset in ["quantum", "superconduct"]:
+                for dataset in ["quantum", "superconduct", "phishing", "mushroom", "a9a"]:
                     run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=iid, algos=sys.argv[2],
+                                    use_averaging=True)
+
+        for sto in [True, False]:
+            for iid in ["non-iid", "iid"]:
+                for dataset in ["quantum", "superconduct", "phishing", "mushroom", "a9a"]:
+                    run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=iid,
+                                    algos=sys.argv[2],
                                     use_averaging=True)
                     run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
                                     use_averaging=True, scenario="step")

@@ -213,7 +213,7 @@ class LocalSympaUpdate(LocalArtemisUpdate):
         self.model_param = model_param - step * decompressed_value
 
         if not self.parameters.use_down_memory:
-            assert self.l_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
+            assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
         return self.model_param

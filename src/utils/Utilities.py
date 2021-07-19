@@ -21,6 +21,8 @@ from src.machinery.Parameters import Parameters
 
 def number_of_bits_needed_to_communicates_compressed(nb_devices: int, s: int, d: int) -> int:
     """Computing the theoretical number of bits used for a single way when using compression (with Elias encoding)."""
+    if s==0:
+        return nb_devices * d * 32
     frac = 2*(s**2+d) / (s * (s+sqrt(d)))
     return nb_devices * (3 + 3/2) * log(frac) * s * (s + sqrt(d)) + 32
 
@@ -36,14 +38,14 @@ def compute_number_of_bits_by_layer(type_params: Parameters, d: int, nb_epoch: i
     nb_devices = type_params.nb_devices
     for i in range(nb_epoch):
         nb_bits = 0
-        if type_params.use_up_memory != 0:
-            s = type_params.up_compression_model.level
-            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s, d) * fraction
+        s_up = type_params.up_compression_model.level
+        s_dwn = type_params.down_compression_model.level
+        if s_up != 0:
+            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s_up, d) * fraction
         else:
             nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d) * fraction
-        if type_params.use_down_memory != 0:
-            s = type_params.down_compression_model.level
-            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s, d) * [1, fraction][
+        if s_dwn != 0:
+            nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s_dwn, d) * [1, fraction][
                 compress_model]
         else:
             nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d)

@@ -11,12 +11,10 @@ from sklearn.mixture import GaussianMixture
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import scale
 
 from src.utils.data.DataPreparation import add_bias_term
 
 dim_tnse_fig = (12, 9)
-
 
 def palette(nb_cluster: int = 10):
     return sns.color_palette("bright", nb_cluster)
@@ -24,7 +22,7 @@ def palette(nb_cluster: int = 10):
 
 def tsne(data):
     tsne = TSNE()
-    X_embedded = tsne.fit_transform(scale(data))
+    X_embedded = tsne.fit_transform(data)
     fig, ax = plt.subplots(figsize=dim_tnse_fig)
     sns.scatterplot(X_embedded[:, 0], X_embedded[:, 1], ax=ax).set_title("TSNE - 2D representation of data")
     return X_embedded
@@ -106,8 +104,7 @@ def rebalancing_clusters(X_origin, Y_origin):
 
 def check_data_clusterisation(X, Y, nb_devices:int = 10):
     # Rebuilding data : removing columns of 1, merging all states, unsqueezing and finaly, merging features and states.
-    rebuild_data = torch.cat([torch.tensor(scale(torch.cat(Y)), dtype=torch.float64).unsqueeze(1), torch.cat(X)[:, 1:]],
-                             dim=1)
+    rebuild_data = torch.cat([torch.tensor(torch.cat(Y), dtype=torch.float64).unsqueeze(1), torch.cat(X)[:, 1:]], dim=1)
     label = [i for i in range(nb_devices) for j in range(len(X[i]))]
 
     # Running TSNE to find cluster.

@@ -4,66 +4,124 @@ Created by Philippenko, 26th April 2021.
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.nn.modules.loss import _WeightedLoss
 
 
-class Quantum_Linear(nn.Module):
+class LogisticLoss(_WeightedLoss):
+    """This class is used to obtain almost exact results as without neural networks.
+
+    To use it, it requires to remove the sigmoid from the neural network, to replace BCELoss by this one, and to set
+    targets values to +/-1. Futhermore, to compute the accuracy needs to use torch.sign(output) instead of round().
+    Concerning the dataset, targets should be of the form: torch.cat([y for y in Y_train])
+    """
+    def __init__(self):
+        super(LogisticLoss, self).__init__()
+
+    def forward(self, input, target):
+        n_samples = len(input)
+        return -torch.sum(torch.log(torch.sigmoid(target * input.flatten()))) / n_samples
+
+
+class A9A_Linear(nn.Module):
 
     def __init__(self):
-        input_size = 66
-        output_size = 2
-        super(Quantum_Linear, self).__init__()
-        self.l1 = nn.Linear(input_size, output_size, bias=False)
+        input_size = 124
+        self.output_size = 1
+        super(A9A_Linear, self).__init__()
+        self.l1 = nn.Linear(input_size, self.output_size, bias=False)
 
     def forward(self, x):
         x = self.l1(x)
         return torch.sigmoid(x)
 
 
+class Quantum_Linear(nn.Module):
+
+    def __init__(self):
+        input_size = 66
+        self.output_size = 1
+        super(Quantum_Linear, self).__init__()
+        self.l1 = nn.Linear(input_size, self.output_size, bias=False)
+
+    def forward(self, x):
+        x = self.l1(x)
+        return torch.sigmoid(x)
+
+
+class Phishing_Linear(nn.Module):
+
+    def __init__(self):
+        input_size = 69
+        self.output_size = 1
+        super(Phishing_Linear, self).__init__()
+        self.l1 = nn.Linear(input_size, self.output_size, bias=False)
+
+    def forward(self, x):
+        x = self.l1(x)
+        return torch.sigmoid(x)
+
+class Phishing_HiddenLayer(nn.Module):
+
+    def __init__(self):
+        input_size = 68
+        self.output_size = 2
+        hidden_size = 10
+        super(Phishing_HiddenLayer, self).__init__()
+        self.hidden_l = nn.Linear(input_size, hidden_size)
+        self.predictive_l = nn.Linear(hidden_size, self.output_size)
+
+    def forward(self, x):
+        x = F.relu(self.hidden_l(x))
+        x = self.predictive_l(x)
+        return x
+
+
 class MNIST_Linear(nn.Module):
     
     def __init__(self):
         input_size = 784
-        output_size = 10
+        self.output_size = 10
         super(MNIST_Linear, self).__init__()
         self.f1 = nn.Flatten()
-        self.l1 = nn.Linear(input_size, output_size)
+        self.l1 = nn.Linear(input_size, self.output_size)
 
     def forward(self, x):
         x = self.f1(x)
         x = self.l1(x)
-        return F.log_softmax(x)
+        return x
 
 
 class MNIST_FullyConnected(nn.Module):
 
     def __init__(self):
         input_size = 784
-        output_size = 10
+        self.output_size = 10
         hidden_size = 128
         super(MNIST_FullyConnected, self).__init__()
         self.f1 = nn.Flatten()
         self.l1 = nn.Linear(input_size, hidden_size)
         self.relu = nn.ReLU()
         self.tanh = nn.Tanh()
-        self.l3 = nn.Linear(hidden_size, output_size)
+        self.l3 = nn.Linear(hidden_size, self.output_size)
 
     def forward(self, x):
         x = self.f1(x)
         x = self.l1(x)
         x = self.tanh(x)
         x = self.l3(x)
-        return F.log_softmax(x)
+        return x
 
 
 class MNIST_CNN(nn.Module):
     def __init__(self):
         super(MNIST_CNN, self).__init__()
+        self.output_size = 10
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
         self.conv2_drop = nn.Dropout2d()
         self.tanh = nn.Tanh()
         self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
+        self.fc2 = nn.Linear(50, self.output_size)
 
     def forward(self, x):
         x = F.relu(F.max_pool2d(self.conv1(x), 2))
@@ -72,18 +130,84 @@ class MNIST_CNN(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
-        return F.log_softmax(x)
+        return x
+
+
+class FashionMNIST_CNN(nn.Module):
+    """From https://www.kaggle.com/pankajj/fashion-mnist-with-pytorch-93-accuracy"""
+
+    def __init__(self):
+        super(FashionMNIST_CNN, self).__init__()
+        self.output_size = 10
+        self.conv1 = nn.Conv2d(1, 15, kernel_size=3, stride=1)
+        self.conv2 = nn.Conv2d(15, 30, kernel_size=3, stride=2)
+        self.fc1 = nn.Linear(1080, 100)
+        self.fc2 = nn.Linear(100, self.output_size)
+
+    def forward(self, x):
+        # conv1(kernel=3, filters=15) 28x28x1 -> 26x26x15
+        x = F.relu(self.conv1(x))
+
+        # conv2(kernel=3, filters=20) 26x26x15 -> 13x13x30
+        # max_pool(kernel=2) 13x13x30 -> 6x6x30
+        x = F.relu(F.max_pool2d(self.conv2(x), 2, stride=2))
+
+        # flatten 6x6x30 = 1080
+        x = x.view(-1, 1080)
+
+        # 1080 -> 100
+        x = F.relu(self.fc1(x))
+
+        # 100 -> 10
+        x = self.fc2(x)
+
+        # transform to logits
+        return x
+
+
+class FEMNIST_CNN(nn.Module):
+    """Model for FEMNIST
+
+    This class is taken from the code of paper Federated Learning on Non-IID Data Silos: An Experimental Study.
+    https://github.com/Xtra-Computing/NIID-Bench
+    """
+
+    def __init__(self):
+        super(FEMNIST_CNN, self).__init__()
+        input_dim = (16 * 4 * 4)
+        hidden_dims = [120, 84]
+        self.output_size = 10
+        self.conv1 = nn.Conv2d(1, 6, 5)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+
+        # for now, we hard coded this network
+        # i.e. we fix the number of hidden layers i.e. 2 layers
+        self.fc1 = nn.Linear(input_dim, hidden_dims[0])
+        self.fc2 = nn.Linear(hidden_dims[0], hidden_dims[1])
+        self.fc3 = nn.Linear(hidden_dims[1], self.output_size)
+
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = x.view(-1, 16 * 4 * 4)
+
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
 
 
 class LeNet(nn.Module):
     """From https://github.com/kuangliu/pytorch-cifar/blob/master/models/lenet.py."""
     def __init__(self):
         super(LeNet, self).__init__()
+        self.output_size = 10
         self.conv1 = nn.Conv2d(3, 6, 5)
         self.conv2 = nn.Conv2d(6, 16, 5)
         self.fc1   = nn.Linear(16*5*5, 120)
         self.fc2   = nn.Linear(120, 84)
-        self.fc3   = nn.Linear(84, 10)
+        self.fc3   = nn.Linear(84, self.output_size)
         self.tanh = nn.Tanh()
 
     def forward(self, x):
@@ -162,6 +286,8 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.in_planes = 64
 
+        self.output_size = num_classes
+
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3,
                                stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
@@ -169,7 +295,7 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.linear = nn.Linear(512*block.expansion, num_classes)
+        self.linear = nn.Linear(512*block.expansion, self.output_size)
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)

@@ -15,7 +15,7 @@ from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-nb_run = 5  # Number of gradient descent before averaging.
+NB_RUN = 5  # Number of gradient descent before averaging.
 
 
 def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1):
@@ -102,7 +102,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
     Returns:
     """
     multiple_descent = AverageOfSeveralIdenticalRun()
-    for i in range(nb_run):
+    for i in range(NB_RUN):
         start_time = time.time()
         params = predefined_parameters.define(n_dimensions=cost_models[0].X.shape[1],
                                               nb_devices=len(cost_models),
