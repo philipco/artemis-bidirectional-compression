@@ -44,8 +44,8 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     fraction_sampled_workers = 1
     batch_size = batch_sizes[dataset]
     nb_devices = 20
-    algos = "mcm-vs-existing"
-    iid = "non-iid"
+    algos = sys.argv[2]
+    iid = sys.argv[3]
     stochastic = True
 
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos,

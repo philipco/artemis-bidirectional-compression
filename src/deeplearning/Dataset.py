@@ -95,8 +95,13 @@ class QuantumDataset(Dataset):
         X_train, Y_train, dim_notebook = prepare_quantum(20, data_path="{0}/pickle/".format(root),
                                              pickle_path="{0}/pickle/quantum-{1}-N20".format(root, iid), iid=bool_iid)
 
+        split = []
+        last_idx = 0
+        for y in Y_train:
+            split.append(np.array(range(last_idx, last_idx + len(y))))
+
         X_train = torch.cat([x for x in X_train])
-        Y_train = torch.cat([y.reshape(len(Y_train[0]), 1) for y in Y_train])#torch.cat([y for y in Y_train]) #torch.cat([y.reshape(len(Y_train[0]), 1) for y in Y_train])
+        Y_train = torch.cat([y.reshape(len(y), 1) for y in Y_train])
 
         for i in range(len(Y_train)):
             if Y_train[i] == -1:
@@ -181,8 +186,13 @@ class A9ADataset(Dataset):
                                              pickle_path="{0}/pickle/a9a-{1}-N20".format(root, iid),
                                              iid=bool_iid, test=False)
 
+        split = []
+        last_idx = 0
+        for y in Y_train:
+            split.append(np.array(range(last_idx, last_idx + len(y))))
+
         X_train = torch.cat([x for x in X_train])
-        Y_train = torch.cat([y.reshape(len(Y_train[0]), 1) for y in Y_train])
+        Y_train = torch.cat([y.reshape(len(y), 1) for y in Y_train])
 
         for i in range(len(Y_train)):
             if Y_train[i] == -1:
@@ -190,7 +200,7 @@ class A9ADataset(Dataset):
 
         X_test, Y_test, dim_notebook = prepare_a9a(20, data_path="{0}/pickle/".format(root),
                                                      pickle_path="{0}/pickle/a9a-{1}-N20".format(root, iid),
-                                                     iid=bool_iid, test=True)
+                                                     iid=True, test=True)
 
         X_test = torch.cat([x for x in X_test])
         Y_test = torch.cat([y.reshape(len(Y_test[0]), 1) for y in Y_test])

@@ -1,21 +1,42 @@
 """
 Created by Philippenko, 26th April 2021.
 """
+from math import floor
 
 import numpy as np
+import torch
 from torchvision import datasets
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, Subset, SubsetRandomSampler, RandomSampler
+from torch.utils.data import DataLoader, Subset, RandomSampler
 
 from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset, PhishingDataset
 
 
-def non_iid_split(train_data):
+def non_iid_split(train_data, nb_devices):
+    unique_values = {}
     targets = train_data.targets
     n = len(targets)
-    return None
+    if not torch.is_tensor(targets):
+        targets = torch.Tensor(targets)
+    for i in range(n):
+        if targets[i].item() in unique_values:
+            unique_values[targets[i].item()] = np.append(unique_values[targets[i].item()], [i])
+        else:
+            unique_values[targets[i].item()] = np.array([i])
 
+    ordered_indices = sorted(unique_values.values(), key=len)
+    if len(ordered_indices) < nb_devices:
+        while len(ordered_indices) != nb_devices:
+            ordered_indices = sorted(ordered_indices[:-1] + [ordered_indices[-1][:floor(len(ordered_indices[-1])/2)]] \
+                              + [ordered_indices[-1][floor(len(ordered_indices[-1]) / 2):]], key=len)
+    if len(ordered_indices) > nb_devices:
+        while len(ordered_indices) != nb_devices:
+            ordered_indices = sorted([np.append(ordered_indices[0], ordered_indices[1])] + ordered_indices[2:], key=len)
+
+    return ordered_indices
+
+    return None
 
 
 def create_loaders(parameters: DLParameters, seed: int = 42):
@@ -38,16 +59,21 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
     size_dataset_worker = np.int(np.floor(size_dataset / parameters.nb_devices))
     top_ind = size_dataset_worker * parameters.nb_devices
     seq = range(size_dataset_worker, top_ind, size_dataset_worker)
-    if parameters.iid:
+    if parameters.iid == "iid":
         split = np.split(indices[:top_ind], seq)
     else:
-        split = train_data.split
+        # If the dataset contains a split attribute, no need to compute a new one based on unique values.
+        if hasattr(train_data, 'split'):
+            split = train_data.split
+        else:
+            split = non_iid_split(train_data, parameters.nb_devices)
 
     test_loader = DataLoader(test_data, batch_size=parameters.batch_size, shuffle=False)
     val_loader = DataLoader(val_data, batch_size=parameters.batch_size, shuffle=False)
 
     b = 0
     for ind in split:
+        print("Number of points on this device: ", len(ind))
         train_loader_workers_full[b] = DataLoader(Subset(train_data, ind), batch_size=size_dataset_worker,
                                                   shuffle=True)
         rand_sampler = RandomSampler(Subset(train_data, ind), replacement=True)

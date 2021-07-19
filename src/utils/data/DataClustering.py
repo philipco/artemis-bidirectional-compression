@@ -16,11 +16,13 @@ from src.utils.data.DataPreparation import add_bias_term
 
 dim_tnse_fig = (12, 9)
 
+
 def palette(nb_cluster: int = 10):
     return sns.color_palette("bright", nb_cluster)
 
 
 def tsne(data):
+    np.random.seed(25)
     tsne = TSNE()
     X_embedded = tsne.fit_transform(data)
     fig, ax = plt.subplots(figsize=dim_tnse_fig)
@@ -29,6 +31,7 @@ def tsne(data):
 
 
 def find_cluster(embedded_data, nb_cluster: int = 10):
+    np.random.seed(25)
     clustering = GaussianMixture(n_components=nb_cluster, random_state=0, tol=1e-6, n_init=4, max_iter=2000)\
         .fit(embedded_data)
     predicted_cluster = clustering.predict(embedded_data)
@@ -75,6 +78,7 @@ def clustering_data(data, predicted_cluster, column_name: str, nb_cluster: int =
     # Adding a columns of "1" to take into account a potential bias.
     X = add_bias_term(X)
     return X, Y
+
 
 def rebalancing_clusters(X_origin, Y_origin):
     X, Y = deepcopy(X_origin), deepcopy(Y_origin)

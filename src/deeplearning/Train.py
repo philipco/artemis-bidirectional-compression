@@ -57,7 +57,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                     for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
                         if down_memory_name not in param_state:
-                            param_state[down_memory_name] = torch.zeros_like(p)
+                            param_state[down_memory_name] = torch.zeros_like(p).to(device)
                         if parameters.down_compression_model is not None:
                             value_to_compress = preserved_p - param_state[down_memory_name]
                             omega = parameters.down_compression_model.compress(value_to_compress)
