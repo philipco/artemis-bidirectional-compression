@@ -11,11 +11,11 @@ from src.deeplearning.NnModels import *
 from src.deeplearning.Train import run_tuned_exp
 from src.machinery.PredefinedParameters import *
 from src.utils.ErrorPlotter import plot_error_dist
-from src.utils.Utilities import pickle_loader, pickle_saver, get_project_root, file_exist, seed_everything
+from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, seed_everything
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-from src.utils.runner.RunnerUtilities import choose_algo, create_path_and_folders, NB_RUN
+from src.utils.runner.RunnerUtilities import create_path_and_folders, NB_RUN
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,15 +25,15 @@ batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 12
 models = {"cifar10": ResNet18, "mnist": MNIST_Linear, "fashion_mnist": MNIST_Linear, "femnist": MNIST_Linear,
           "a9a": A9A_Linear, "phishing": Phishing_Linear, "quantum": Quantum_Linear}
 momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a": 0, "phishing": 0, "quantum": 0}
-optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a":0.2593, "phishing": 0.2141,
-                      "quantum": 0.2863}#0.12}
+optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a":0.2593,
+                      "phishing": 0.2141, "quantum": 0.2863}
 quantization_levels= {"cifar10": 4, "mnist": 8, "fashion_mnist": 1, "femnist": 1, "a9a":1, "phishing": 1, "quantum": 1}
 norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": np.inf, "femnist": np.inf, "a9a": 2, "phishing": 2,
                      "quantum": 2}
 weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a":0, "phishing": 0, "quantum": 0}
-criterion = {"cifar10": nn.CrossEntropyLoss, "mnist": nn.CrossEntropyLoss, "fashion_mnist": nn.CrossEntropyLoss,
-              "femnist": nn.CrossEntropyLoss, "a9a": LogisticLoss(), "phishing": LogisticLoss(),
-              "quantum": LogisticLoss()}
+criterion = {"cifar10": nn.CrossEntropyLoss(), "mnist": nn.CrossEntropyLoss(), "fashion_mnist": nn.CrossEntropyLoss(),
+             "femnist": nn.CrossEntropyLoss(), "a9a":  torch.nn.BCELoss(reduction='mean'),
+             "phishing":  torch.nn.BCELoss(reduction='mean'), "quantum": torch.nn.BCELoss(reduction='mean')}
 
 def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 

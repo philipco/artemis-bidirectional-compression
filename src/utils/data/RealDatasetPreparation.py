@@ -202,7 +202,7 @@ def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: boo
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/mushroom", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/phishing", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 

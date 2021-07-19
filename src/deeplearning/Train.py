@@ -117,7 +117,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
 
         run.update_run(train_loss, test_loss_val, test_acc_val)
 
-        if e+1 in [1, epochs]:
+        if e+1 in [1, np.floor(epochs/4), np.floor(epochs/2), np.floor(3*epochs/4), epochs]:
             print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
                   .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val))
 
@@ -138,7 +138,7 @@ def accuracy_and_loss(model, loader, criterion, device):
         total_loss += loss.item()
 
         if model.output_size == 1:
-            pred = torch.sign(output)
+            pred = output.round()
         else:
             pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(labels.view_as(pred)).sum().item()

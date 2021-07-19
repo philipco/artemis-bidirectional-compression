@@ -247,7 +247,10 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             # This may happened if it is considered that during one epoch each devices should run through all its data
             # exactly once, and if there is different numbers of points on each device.
             if compressed_delta_i is not None:
-                self.all_delta_i.append(compressed_delta_i + [self.h[worker.ID], 0][self.parameters.use_unique_up_memory])
+                if self.parameters.use_unique_up_memory:
+                    self.all_delta_i.append(compressed_delta_i)
+                else:
+                    self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
                 self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
 
@@ -266,8 +269,8 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
                 assert not isinstance(self.h, torch.FloatTensor) and len(self.h) == self.parameters.nb_devices, \
                     "Up memory should be a list of length equal to the number of devices."
-                assert all([not torch.equal(e, torch.zeros(self.parameters.n_dimensions, dtype=np.float)) for e in self.h]), \
-                    "Up memories are still null."
+                # assert all([not torch.equal(e, torch.zeros(self.parameters.n_dimensions, dtype=np.float)) for e in self.h]), \
+                #     "Up memories are still null."
 
 
 class ArtemisUpdate(AbstractFLUpdate):

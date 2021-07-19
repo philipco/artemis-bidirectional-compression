@@ -95,13 +95,16 @@ class QuantumDataset(Dataset):
                                              pickle_path="{0}/pickle/quantum-{1}-N20".format(root, iid), iid=bool_iid)
 
         X_train = torch.cat([x for x in X_train])
-        Y_train = torch.cat([y for y in Y_train]) #torch.cat([y.reshape(len(Y_train[0]), 1) for y in Y_train])
+        Y_train = torch.cat([y.reshape(len(Y_train[0]), 1) for y in Y_train])#torch.cat([y for y in Y_train]) #torch.cat([y.reshape(len(Y_train[0]), 1) for y in Y_train])
 
-        # for i in range(len(Y_train)):
-        #     if Y_train[i] == -1:
-        #         Y_train[i] = 0
+        for i in range(len(Y_train)):
+            if Y_train[i] == -1:
+                Y_train[i] = 0
 
         n = int(len(X_train) * 10 / 100)
+
+        # Warning: Here the goal is to obtain the same result as without Neural Network.
+        # Thus, the train set contains the whole dataset. The test set is included into the train set.
 
         test_idx = random.sample(range(len(X_train)), n)
         # train_idx = [e for e in list(range(len(X_train))) if e not in test_idx]
@@ -122,44 +125,45 @@ class QuantumDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, index: int):
-        return self.data[index].float(),  self.labels[index].type(torch.LongTensor)
+        return self.data[index].float(),  self.labels[index].float()#type(torch.LongTensor)
 
 class PhishingDataset(Dataset):
 
     def __init__(self, train=True, iid: str = "iid"):
         root = get_project_root()
         bool_iid = True if iid == "iid" else False
-        create_folder_if_not_existing("{0}/pickle/quantum-{1}-N20".format(root, iid))
-        X, Y, dim_notebook = prepare_phishing(20, data_path="{0}/pickle/".format(root),
-                                             pickle_path="{0}/pickle/quantum-{1}-N20".format(root, iid),
+        create_folder_if_not_existing("{0}/pickle/phishing-{1}-N20".format(root, iid))
+        X_train, Y_train, dim_notebook = prepare_phishing(20, data_path="{0}/pickle/".format(root),
+                                             pickle_path="{0}/pickle/phishing-{1}-N20".format(root, iid),
                                              iid=bool_iid)
 
-        X = torch.cat([x for x in X])
-        Y = torch.cat([y for y in Y])
+        X_train = torch.cat([x for x in X_train])
+        Y_train = torch.cat([y.reshape(len(Y_train[0]), 1) for y in Y_train])
 
-        # for i in range(len(Y)):
-        #     if Y[i] == -1:
-        #         Y[i] = 0
+        for i in range(len(Y_train)):
+            if Y_train[i] == -1:
+                Y_train[i] = 0
 
-        n = int(len(X) * 10 / 100)
+        n = int(len(X_train) * 10 / 100)
 
-        test_data = X[:n]
-        test_labels = Y[:n]
+        test_data = X_train[:n]
+        test_labels = Y_train[:n]
         # X, Y = X[n:], Y[n:]
 
         self.train = train
         if self.train:
-            self.data = X
-            self.labels = Y
+            print('Total number of point:', len(X_train))
+            self.data = X_train
+            self.targets = Y_train
         else:
             self.data = test_data
-            self.labels = test_labels
+            self.targets = test_labels
 
     def __len__(self):
-        return len(self.labels)
+        return len(self.targets)
 
     def __getitem__(self, index: int):
-        return self.data[index].float(), self.labels[index].type(torch.LongTensor)
+        return self.data[index].float(), self.targets[index].float()
 
 class A9ADataset(Dataset):
 
@@ -167,42 +171,43 @@ class A9ADataset(Dataset):
         root = get_project_root()
         bool_iid = True if iid == "iid" else False
 
-        create_folder_if_not_existing("{0}/pickle/quantum-{1}-N20".format(root, iid))
-        X_train, y_train, dim_notebook = prepare_a9a(20, data_path="{0}/pickle/".format(root),
+        create_folder_if_not_existing("{0}/pickle/a9a-{1}-N20".format(root, iid))
+        X_train, Y_train, dim_notebook = prepare_a9a(20, data_path="{0}/pickle/".format(root),
                                              pickle_path="{0}/pickle/a9a-{1}-N20".format(root, iid),
                                              iid=bool_iid, test=False)
 
         X_train = torch.cat([x for x in X_train])
-        y_train = torch.cat([y for y in y_train])
+        Y_train = torch.cat([y.reshape(len(Y_train[0]), 1) for y in Y_train])
 
-        # for i in range(len(y_train)):
-        #     if y_train[i] == -1:
-        #         y_train[i] = 0
+        for i in range(len(Y_train)):
+            if Y_train[i] == -1:
+                Y_train[i] = 0
 
-        X_test, y_test, dim_notebook = prepare_a9a(20, data_path="{0}/pickle/".format(root),
+        X_test, Y_test, dim_notebook = prepare_a9a(20, data_path="{0}/pickle/".format(root),
                                                      pickle_path="{0}/pickle/a9a-{1}-N20".format(root, iid),
                                                      iid=bool_iid, test=True)
 
         X_test = torch.cat([x for x in X_test])
-        y_test = torch.cat([y for y in y_test])
+        Y_test = torch.cat([y.reshape(len(Y_test[0]), 1) for y in Y_test])
 
-        # for i in range(len(y_test)):
-        #     if y_test[i] == -1:
-        #         y_test[i] = 0
+        for i in range(len(Y_test)):
+            if Y_test[i] == -1:
+                Y_test[i] = 0
 
-        if train:
+        self.train = train
+        if self.train:
             print('Total number of point:', len(X_train))
             self.data = X_train
-            self.targets = y_train
+            self.targets = Y_train
         else:
             self.data = X_test
-            self.targets = y_test
+            self.targets = Y_test
 
     def __len__(self):
         return len(self.targets)
 
     def __getitem__(self, index: int):
-        return self.data[index].float(), self.targets[index].type(torch.LongTensor)
+        return self.data[index].float(), self.targets[index].float()#type(torch.LongTensor)
 
 
 if __name__ == '__main__':
