@@ -21,6 +21,7 @@ def palette(nb_cluster: int = 10):
 
 
 def tsne(data):
+    np.random.seed(25)
     tsne = TSNE()
     X_embedded = tsne.fit_transform(data)
     fig, ax = plt.subplots(figsize=dim_tnse_fig)
@@ -29,6 +30,7 @@ def tsne(data):
 
 
 def find_cluster(embedded_data, nb_cluster: int = 10):
+    np.random.seed(25)
     clustering = GaussianMixture(n_components=nb_cluster, random_state=0, tol=1e-6, n_init=4, max_iter=2000)\
         .fit(embedded_data)
     predicted_cluster = clustering.predict(embedded_data)

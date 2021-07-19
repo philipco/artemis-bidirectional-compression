@@ -15,7 +15,7 @@ from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, seed_ev
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-from src.utils.runner.RunnerUtilities import create_path_and_folders, NB_RUN
+from src.utils.runner.RunnerUtilities import create_path_and_folders, NB_RUN, choose_algo
 
 logging.basicConfig(level=logging.INFO)
 
@@ -45,7 +45,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     batch_size = batch_sizes[dataset]
     nb_devices = 20
     algos = "mcm-vs-existing"
-    iid = "iid"
+    iid = "non-iid"
     stochastic = True
 
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos,
@@ -63,7 +63,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     if not stochastic:
         exp_name += "-full"
 
-    if not file_exist("{0}/obj_min_dl.pkl".format(pickle_path)):
+    if False: #not file_exist("{0}/obj_min_dl.pkl".format(pickle_path)):
         with open(log_file, 'a') as f:
             print("==> Computing objective loss.", file=f)
         params = VanillaSGD().define(cost_models=None,
@@ -84,10 +84,12 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
         obj_min = run_tuned_exp(params, create_loaders(params)).train_losses[-1]
         pickle_saver(obj_min, "{0}/obj_min_dl".format(pickle_path))
 
+    list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
+
     if not plot_only:
         all_descent = {}
         # res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
-        for type_params in [VanillaSGD(), Diana(), Artemis(), MCM()]:
+        for type_params in list_algos:#[VanillaSGD(), Diana(), Artemis(), MCM()]:
             print(type_params)
             torch.cuda.empty_cache()
             params = type_params.define(cost_models=None,

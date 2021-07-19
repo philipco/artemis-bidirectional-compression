@@ -33,7 +33,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos, fraction_sampled_workers)
 
-    list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
+    list_algos = [Artemis()]#choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
     nb_epoch = 100 if stochastic else 400
 
@@ -42,17 +42,17 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     # Select the correct dataset
     if dataset == "a9a":
         X, Y, dim_notebook = prepare_a9a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 50
+        batch_size = 64
         model = LogisticModel
         nb_epoch = 200 if stochastic else 400
     if dataset == "phishing":
         X, Y, dim_notebook = prepare_phishing(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 50
+        batch_size = 8
         model = LogisticModel
         nb_epoch = 200 if stochastic else 400
     if dataset == "mushroom":
         X, Y, dim_notebook = prepare_mushroom(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 4
+        batch_size = 32
         model = LogisticModel
         nb_epoch = 200 if stochastic else 400
     if dataset == "quantum":
@@ -99,6 +99,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             X, Y = pickle_loader(pickle_path + "/data")
         model = RMSEModel
         batch_size = 1
+
+    # nb_epoch = 100
 
     compression_by_default = SQuantization(1, dim_notebook, norm=2)
 
@@ -245,19 +247,14 @@ if __name__ == '__main__':
 
     elif sys.argv[1] == "real":
         for sto in [True, False]:
-            for iid in ["non-iid", "iid"]:
-                for dataset in ["quantum", "superconduct", "phishing", "mushroom", "a9a"]:
-                    run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=iid, algos=sys.argv[2],
-                                    use_averaging=True)
+            for dataset in ["phishing", "mushroom", "a9a", "quantum", "superconduct"]:
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[3], algos=sys.argv[2],
+                                use_averaging=True)
 
         for sto in [True, False]:
-            for iid in ["non-iid", "iid"]:
-                for dataset in ["quantum", "superconduct", "phishing", "mushroom", "a9a"]:
-                    run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=iid,
-                                    algos=sys.argv[2],
-                                    use_averaging=True)
-                    run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
-                                    use_averaging=True, scenario="step")
-                    run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
-                                      use_averaging=True, scenario="compression")
+            for dataset in ["phishing", "mushroom", "a9a", "quantum", "superconduct"]:
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
+                                use_averaging=True, scenario="step")
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
+                                  use_averaging=True, scenario="compression")
 
