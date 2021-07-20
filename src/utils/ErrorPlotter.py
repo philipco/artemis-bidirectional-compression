@@ -67,8 +67,8 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None
         if all_error is not None:
             if one_on_two_points:
                 # if we plot error bar we don't take all elements
-                objectives_dist = [error_distance[0]] + list(error_distance[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [
-                    error_distance[-1]]
+                objectives_dist = [error_distance[0]] + list(error_distance[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) \
+                                  + [error_distance[-1]]
                 abscisse = [abscisse[0]] + list(abscisse[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [abscisse[-1]]
 
                 error_to_plot = [all_error[i][0]] + list(all_error[i][i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [

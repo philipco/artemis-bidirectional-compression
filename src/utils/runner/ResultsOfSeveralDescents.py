@@ -33,7 +33,7 @@ class ResultsOfSeveralDescents:
             for key, value in self.all_descent.items():
                 compress_model = True if 'MCM' in key else False
                 params = value.multiple_descent[-1].parameters
-                X_number_of_bits.append(compute_number_of_bits(params, params.nb_epoch, compress_model))
+                X_number_of_bits.append(compute_number_of_bits(params, params.nb_epoch + 1, compress_model))
             self.X_number_of_bits = X_number_of_bits
         self.nb_devices = nb_devices_for_the_run
         self.update()
