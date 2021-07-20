@@ -95,10 +95,10 @@ class QuantumDataset(Dataset):
         X_train, Y_train, dim_notebook = prepare_quantum(20, data_path="{0}/pickle/".format(root),
                                              pickle_path="{0}/pickle/quantum-{1}-N20".format(root, iid), iid=bool_iid)
 
-        split = []
+        self.split = []
         last_idx = 0
         for y in Y_train:
-            split.append(np.array(range(last_idx, last_idx + len(y))))
+            self.split.append(np.array(range(last_idx, last_idx + len(y))))
 
         X_train = torch.cat([x for x in X_train])
         Y_train = torch.cat([y.reshape(len(y), 1) for y in Y_train])
@@ -142,10 +142,10 @@ class PhishingDataset(Dataset):
         X_train, Y_train, dim_notebook = prepare_phishing(20, data_path="{0}/pickle/".format(root),
                                              pickle_path="{0}/pickle/phishing-{1}-N20".format(root, iid),
                                              iid=bool_iid)
-        split = []
+        self.split = []
         last_idx = 0
         for y in Y_train:
-            split.append(np.array(range(last_idx, last_idx + len(y))))
+            self.split.append(np.array(range(last_idx, last_idx + len(y))))
 
         X_train = torch.cat([x for x in X_train])
         Y_train = torch.cat([y.reshape(len(y), 1) for y in Y_train])
@@ -186,10 +186,10 @@ class A9ADataset(Dataset):
                                              pickle_path="{0}/pickle/a9a-{1}-N20".format(root, iid),
                                              iid=bool_iid, test=False)
 
-        split = []
+        self.split = []
         last_idx = 0
         for y in Y_train:
-            split.append(np.array(range(last_idx, last_idx + len(y))))
+            self.split.append(np.array(range(last_idx, last_idx + len(y))))
 
         X_train = torch.cat([x for x in X_train])
         Y_train = torch.cat([y.reshape(len(y), 1) for y in Y_train])

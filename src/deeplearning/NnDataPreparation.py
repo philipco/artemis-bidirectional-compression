@@ -73,7 +73,6 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
 
     b = 0
     for ind in split:
-        print("Number of points on this device: ", len(ind))
         train_loader_workers_full[b] = DataLoader(Subset(train_data, ind), batch_size=size_dataset_worker,
                                                   shuffle=True)
         rand_sampler = RandomSampler(Subset(train_data, ind), replacement=True)
