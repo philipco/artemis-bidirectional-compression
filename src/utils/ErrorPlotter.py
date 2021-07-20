@@ -32,7 +32,7 @@ nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 
 def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None, all_error=None,
-                    x_points=None, x_legend=None, one_on_two_points=False, xlabels=None,
+                    x_points=None, x_legend=None, one_on_two_points=True, xlabels=None,
                     ylegends="loss", ylim=False, omega_c = None, picture_name=None):
 
     assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
@@ -67,9 +67,9 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None
         if all_error is not None:
             if one_on_two_points:
                 # if we plot error bar we don't take all elements
-                objectives_dist = [error_distance[0]] + list(error_distance[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [
-                    error_distance[-1]]
-                abscisse = [abscisse[0]] + abscisse[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)] + [abscisse[-1]]
+                objectives_dist = [error_distance[0]] + list(error_distance[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) \
+                                  + [error_distance[-1]]
+                abscisse = [abscisse[0]] + list(abscisse[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [abscisse[-1]]
 
                 error_to_plot = [all_error[i][0]] + list(all_error[i][i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [
                     all_error[i][-1]]
@@ -164,7 +164,10 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
         plt.xticks(fontsize=xticks_fontsize)
     ax.set_xlabel(xlegends, fontsize=fontsize)
     ax.set_ylabel(Y_LEGENDS[ylegends], fontsize=fontsize)
-    ax.legend(loc='upper right', fontsize=fontsize_legend)
+    if ylegends == "accuracy":
+        ax.legend(loc='lower right', fontsize=fontsize_legend)
+    else:
+        ax.legend(loc='upper right', fontsize=fontsize_legend)
     fig.tight_layout()
     if picture_name:
         plt.savefig('{0}.eps'.format(picture_name), format='eps')

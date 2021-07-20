@@ -27,8 +27,12 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
     run = DeepLearningRun(parameters)
 
     best_val_loss = np.inf
-    test_loss_val = np.inf
-    test_acc_val = 0
+    test_loss_val, test_acc_val = np.inf, 0
+    train_loss = compute_loss(parameters, preserved_model, model, train_loader_workers_full, criterion, device)
+    test_loss_val, test_acc_val, best_val_loss = val_and_test_loss(best_val_loss, test_loss_val, test_acc_val,
+                                                                   parameters, preserved_model, model, val_loader,
+                                                                   test_loader, criterion, device)
+    run.update_run(train_loss, test_loss_val, test_acc_val)
 
     down_memory_name = 'down_memory'
     down_learning_rate_name = 'down_learning_rate'
@@ -92,33 +96,10 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                         update_model = preserved_p - param_state['final_grad'].mul(parameters.optimal_step_size)
                         preserved_p.copy_(update_model)
 
-        train_loader_iter = [iter(train_loader_workers_full[w]) for w in range(n_workers)]
-        running_loss = 0
-        for w_id in range(n_workers):
-            preserved_model.eval()
-            model.eval()
-            for data, target in train_loader_iter[w_id]:
-                data, target = data.to(device), target.to(device)
-                if parameters.non_degraded:
-                    output = preserved_model(data)
-                else:
-                    output = model(data)
-                loss = criterion(output, target)
-                running_loss += loss.item()
-        train_loss = running_loss/n_workers
-
-        if parameters.non_degraded:
-            val_loss, _ = accuracy_and_loss(preserved_model, val_loader, criterion, device)
-        else:
-            val_loss, _ = accuracy_and_loss(model, val_loader, criterion, device)
-
-        if val_loss < best_val_loss:
-            if parameters.non_degraded:
-                test_loss_val, test_acc_val = accuracy_and_loss(preserved_model, test_loader, criterion, device)
-            else:
-                test_loss_val, test_acc_val = accuracy_and_loss(model, test_loader, criterion, device)
-            best_val_loss = val_loss
-
+        train_loss = compute_loss(parameters, preserved_model, model, train_loader_workers_full, criterion, device)
+        test_loss_val, test_acc_val, best_val_loss = val_and_test_loss(best_val_loss, test_loss_val, test_acc_val,
+                                                                       parameters, preserved_model, model, val_loader,
+                                                                       test_loader, criterion, device)
         run.update_run(train_loss, test_loss_val, test_acc_val)
 
         if e+1 in [1, np.floor(epochs/4), np.floor(epochs/2), np.floor(3*epochs/4), epochs]:
@@ -128,6 +109,38 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
         # print("Time for computation :", elapsed_time)
 
     return best_val_loss, run
+
+def compute_loss(parameters, preserved_model, model, train_loader_workers_full, criterion, device):
+    train_loader_iter = [iter(train_loader_workers_full[w]) for w in range(parameters.nb_devices)]
+    running_loss = 0
+    for w_id in range(parameters.nb_devices):
+        preserved_model.eval()
+        model.eval()
+        for data, target in train_loader_iter[w_id]:
+            data, target = data.to(device), target.to(device)
+            if parameters.non_degraded:
+                output = preserved_model(data)
+            else:
+                output = model(data)
+            loss = criterion(output, target)
+            running_loss += loss.item()
+    train_loss = running_loss / parameters.nb_devices
+    return train_loss
+
+def val_and_test_loss(best_val_loss, test_loss_val, test_acc_val, parameters, preserved_model, model, val_loader,
+                      test_loader, criterion, device):
+    if parameters.non_degraded:
+        val_loss, _ = accuracy_and_loss(preserved_model, val_loader, criterion, device)
+    else:
+        val_loss, _ = accuracy_and_loss(model, val_loader, criterion, device)
+
+    if val_loss < best_val_loss:
+        if parameters.non_degraded:
+            test_loss_val, test_acc_val = accuracy_and_loss(preserved_model, test_loader, criterion, device)
+        else:
+            test_loss_val, test_acc_val = accuracy_and_loss(model, test_loader, criterion, device)
+        best_val_loss = val_loss
+    return test_loss_val, test_acc_val, best_val_loss
 
 
 def accuracy_and_loss(model, loader, criterion, device):
