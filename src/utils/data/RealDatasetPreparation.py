@@ -12,7 +12,8 @@ from sklearn.datasets import load_svmlight_file
 from sklearn.preprocessing import scale, LabelEncoder
 
 from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, get_project_root
-from src.utils.data.DataClustering import find_cluster, clustering_data, tsne, check_data_clusterisation
+from src.utils.data.DataClustering import find_cluster, clustering_data, tsne, check_data_clusterisation, \
+    rebalancing_clusters
 from src.utils.data.DataPreparation import add_bias_term
 
 def prepare_dataset_by_device(X_merged, Y_merged, nb_devices: int):
@@ -64,7 +65,10 @@ def prepare_noniid_dataset(data, pivot_label: str, data_path: str, pickle_path: 
         # Checking that splitting data by cluster is valid.
         check_data_clusterisation(X, Y, nb_cluster)
 
-    return X, Y
+    # Rebalancing cluster: the biggest one must not be more than 10times bigger than the smallest one.
+    X_rebalanced, Y_rebalanced = rebalancing_clusters(X, Y)
+
+    return X_rebalanced, Y_rebalanced
 
 def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool = False):
     raw_data = pd.read_csv('{0}/dataset/superconduct/train.csv'.format(get_project_root()), sep=",")

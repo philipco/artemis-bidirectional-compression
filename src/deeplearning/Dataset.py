@@ -99,6 +99,7 @@ class QuantumDataset(Dataset):
         last_idx = 0
         for y in Y_train:
             self.split.append(np.array(range(last_idx, last_idx + len(y))))
+            last_idx += len(y)
 
         X_train = torch.cat([x for x in X_train])
         Y_train = torch.cat([y.reshape(len(y), 1) for y in Y_train])

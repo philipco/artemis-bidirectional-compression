@@ -110,6 +110,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
 
     return best_val_loss, run
 
+
 def compute_loss(parameters, preserved_model, model, train_loader_workers_full, criterion, device):
     train_loader_iter = [iter(train_loader_workers_full[w]) for w in range(parameters.nb_devices)]
     running_loss = 0
@@ -126,6 +127,7 @@ def compute_loss(parameters, preserved_model, model, train_loader_workers_full, 
             running_loss += loss.item()
     train_loss = running_loss / parameters.nb_devices
     return train_loss
+
 
 def val_and_test_loss(best_val_loss, test_loss_val, test_acc_val, parameters, preserved_model, model, val_loader,
                       test_loader, criterion, device):
@@ -187,6 +189,18 @@ def tune_step_size(parameters: DLParameters):
             best_val_loss = val_loss
     parameters.optimal_step_size = best_lr
     return parameters
+
+
+def compute_L(train_loader_workers):
+    n_workers = len(train_loader_workers)
+    train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
+    L = 0
+    for w_id in range(n_workers):
+        all_data, all_labels = next(train_loader_iter[w_id])
+        n_sample = all_data.shape[0]
+        L += (torch.norm(all_data.T.mm(all_data), p=2) / (4 * n_sample)).item()
+    print(L/n_workers)
+    return L / n_workers
 
 
 def run_workers(parameters: DLParameters, loaders):

@@ -140,7 +140,6 @@ class LogisticModel(ACostModel):
         else:
             s = torch.sigmoid(self.Y * self.X.mv(w))
             grad = self.X.T.mv((s - 1) * self.Y) / n_sample
-        del s
         return grad
 
     def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor):

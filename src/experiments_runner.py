@@ -33,7 +33,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos, fraction_sampled_workers)
 
-    list_algos = [Artemis()]#choose_algo(algos, stochastic, fraction_sampled_workers)
+    list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
     nb_epoch = 100 if stochastic else 400
 
@@ -42,29 +42,30 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     # Select the correct dataset
     if dataset == "a9a":
         X, Y, dim_notebook = prepare_a9a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 64
+        batch_size = 200 if iid == "non-iid" else 50
         model = LogisticModel
-        nb_epoch = 200 if stochastic else 400
+        nb_epoch = 500 if stochastic else 400
     if dataset == "phishing":
         X, Y, dim_notebook = prepare_phishing(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 8
+        batch_size = 50 if iid == "non-iid" else 50
         model = LogisticModel
-        nb_epoch = 200 if stochastic else 400
+        nb_epoch = 500 if stochastic else 400
     if dataset == "mushroom":
         X, Y, dim_notebook = prepare_mushroom(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 32
+        batch_size = 16 if iid == "non-idd" else 4
         model = LogisticModel
-        nb_epoch = 200 if stochastic else 400
+        nb_epoch = 500 if stochastic else 400
     if dataset == "quantum":
         X, Y, dim_notebook = prepare_quantum(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 400
         model = LogisticModel
-        nb_epoch = 200 if stochastic else 400
+        nb_epoch = 500 if stochastic else 400
     elif dataset == "superconduct":
-        X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path= data_path, pickle_path=pickle_path, iid=iid_data)
+        X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path=data_path, pickle_path=pickle_path,
+                                                  iid=iid_data)
         batch_size = 50
         model = RMSEModel
-        nb_epoch = 200 if stochastic else 400
+        nb_epoch = 500 if stochastic else 400
     elif dataset == 'synth_logistic':
         dim_notebook = 2
         batch_size = 1
@@ -100,8 +101,6 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         model = RMSEModel
         batch_size = 1
 
-    # nb_epoch = 100
-
     compression_by_default = SQuantization(1, dim_notebook, norm=2)
 
     values_compression = [SQuantization(0, dim_notebook, norm=2),
@@ -115,11 +114,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     label_compression = ["SGD"] + [str(value.omega_c)[:4] for value in values_compression[1:]]
 
-    # Rebalancing cluster: the biggest one must not be more than 10times bigger than the smallest one.
-    X_r, Y_r = rebalancing_clusters(X, Y)
-
     # Creating cost models which will be used to computed cost/loss, gradients, L ...
-    cost_models = build_several_cost_model(model, X_r, Y_r, nb_devices)
+    cost_models = build_several_cost_model(model, X, Y, nb_devices)
 
     if not file_exist("{0}/obj_min.pkl".format(pickle_path)):
         obj_min_by_N_descent = SGD_Descent(Parameters(n_dimensions=dim_notebook,
@@ -160,6 +156,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                              fraction_sampled_workers=fraction_sampled_workers)
 
     obj_min = pickle_loader("{0}/obj_min".format(pickle_path))
+    print("Obj min:", obj_min)
 
     if stochastic:
         experiments_settings = "{0}-b{1}".format(stochasticity, batch_size)
@@ -247,14 +244,14 @@ if __name__ == '__main__':
 
     elif sys.argv[1] == "real":
         for sto in [True, False]:
-            for dataset in ["phishing", "mushroom", "a9a", "quantum", "superconduct"]:
+            for dataset in ["quantum", "superconduct", "phishing", "mushroom", "a9a"]:
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[3], algos=sys.argv[2],
                                 use_averaging=True)
 
-        for sto in [True, False]:
-            for dataset in ["phishing", "mushroom", "a9a", "quantum", "superconduct"]:
-                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
-                                use_averaging=True, scenario="step")
-                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
-                                  use_averaging=True, scenario="compression")
+        # for sto in [True, False]:
+        #     for dataset in ["phishing", "mushroom", "a9a", "quantum", "superconduct"]:
+        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
+        #                         use_averaging=True, scenario="step")
+        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
+        #                           use_averaging=True, scenario="compression")
 

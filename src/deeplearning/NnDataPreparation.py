@@ -9,7 +9,6 @@ from torchvision import datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Subset, RandomSampler
 
-from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset, PhishingDataset
 
 def non_iid_split(train_data, nb_devices):
@@ -38,8 +37,8 @@ def non_iid_split(train_data, nb_devices):
     return None
 
 
-def create_loaders(parameters: DLParameters, seed: int = 42):
-    train_data, test_data = load_data(parameters)
+def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, stochastic: bool, seed: int = 42):
+    train_data, test_data = load_data(dataset, iid)
 
     train_loader_workers = dict()
     train_loader_workers_full = dict()
@@ -55,39 +54,39 @@ def create_loaders(parameters: DLParameters, seed: int = 42):
 
     # indices = indices[n_val:]
     size_dataset = len(indices)
-    size_dataset_worker = np.int(np.floor(size_dataset / parameters.nb_devices))
-    top_ind = size_dataset_worker * parameters.nb_devices
-    seq = range(size_dataset_worker, top_ind, size_dataset_worker)
+    size_dataset_worker = np.int(np.floor(size_dataset / nb_devices))
 
-    if parameters.iid == "iid":
+    if iid == "iid":
+        top_ind = size_dataset_worker * nb_devices
+        seq = range(size_dataset_worker, top_ind, size_dataset_worker)
         split = np.split(indices[:top_ind], seq)
     else:
         # If the dataset contains a split attribute, no need to compute a new one based on unique values.
         if hasattr(train_data, 'split'):
             split = train_data.split
         else:
-            split = non_iid_split(train_data, parameters.nb_devices)
+            split = non_iid_split(train_data, nb_devices)
 
-    test_loader = DataLoader(test_data, batch_size=parameters.batch_size, shuffle=False)
-    val_loader = DataLoader(val_data, batch_size=parameters.batch_size, shuffle=False)
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
 
     b = 0
     for ind in split:
-        train_loader_workers_full[b] = DataLoader(Subset(train_data, ind), batch_size=size_dataset_worker,
-                                                  shuffle=True)
+        train_loader_workers_full[b] = DataLoader(Subset(train_data, ind), batch_size=len(ind),
+                                                  shuffle=False)
         rand_sampler = RandomSampler(Subset(train_data, ind), replacement=True)
-        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=parameters.batch_size,
+        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=batch_size,
                                              sampler=rand_sampler)
         b = b + 1
 
-    if parameters.stochastic:
+    if stochastic:
         return train_loader_workers, train_loader_workers_full, val_loader, test_loader
     else:
         return train_loader_workers_full, train_loader_workers_full, val_loader, test_loader
 
 
-def load_data(parameters: DLParameters):
-    if parameters.dataset == "fake":
+def load_data(dataset: str, iid: str):
+    if dataset == "fake":
 
         transform = transforms.ToTensor()
 
@@ -95,7 +94,7 @@ def load_data(parameters: DLParameters):
 
         test_data = datasets.FakeData(size=200, transform=transform)
 
-    elif parameters.dataset == 'cifar10':
+    elif dataset == 'cifar10':
 
         transform_train = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
@@ -113,7 +112,7 @@ def load_data(parameters: DLParameters):
 
         test_data = datasets.CIFAR10(root='../dataset/', train=False, download=True, transform=transform_test)
 
-    elif parameters.dataset == 'mnist':
+    elif dataset == 'mnist':
 
         # Normalization see : https://stackoverflow.com/a/67233938
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
@@ -122,7 +121,7 @@ def load_data(parameters: DLParameters):
 
         test_data = datasets.MNIST(root='../dataset/', train=False, download=True, transform=transform)
 
-    elif parameters.dataset == "fashion_mnist":
+    elif dataset == "fashion_mnist":
 
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)), ])
 
@@ -132,7 +131,7 @@ def load_data(parameters: DLParameters):
         # Download and load the test data
         test_data = datasets.FashionMNIST('../dataset/', download=True, train=False, transform=transform)
 
-    elif parameters.dataset == "femnist":
+    elif dataset == "femnist":
 
         transform = transforms.Compose([transforms.ToTensor()])
 
@@ -140,21 +139,21 @@ def load_data(parameters: DLParameters):
 
         test_data = FEMNISTDataset('../dataset/', download=True, train=False, transform=transform)
 
-    elif parameters.dataset == "a9a":
+    elif dataset == "a9a":
 
-        train_data = A9ADataset(train=True, iid=parameters.iid)
+        train_data = A9ADataset(train=True, iid=iid)
 
-        test_data = A9ADataset(train=False, iid=parameters.iid)
+        test_data = A9ADataset(train=False, iid=iid)
 
-    elif parameters.dataset == "phishing":
+    elif dataset == "phishing":
 
-        train_data = PhishingDataset(train=True, iid=parameters.iid)
+        train_data = PhishingDataset(train=True, iid=iid)
 
-        test_data = PhishingDataset(train=False, iid=parameters.iid)
+        test_data = PhishingDataset(train=False, iid=iid)
 
-    elif parameters.dataset == "quantum":
-        train_data = QuantumDataset(train=True, iid=parameters.iid)
+    elif dataset == "quantum":
+        train_data = QuantumDataset(train=True, iid=iid)
 
-        test_data = QuantumDataset(train=False, iid=parameters.iid)
+        test_data = QuantumDataset(train=False, iid=iid)
 
     return train_data, test_data
