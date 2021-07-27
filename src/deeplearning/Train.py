@@ -27,8 +27,12 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
     run = DeepLearningRun(parameters)
 
     best_val_loss = np.inf
-    test_loss_val = np.inf
-    test_acc_val = 0
+    test_loss_val, test_acc_val = np.inf, 0
+    train_loss = compute_loss(parameters, preserved_model, model, train_loader_workers_full, criterion, device)
+    test_loss_val, test_acc_val, best_val_loss = val_and_test_loss(best_val_loss, test_loss_val, test_acc_val,
+                                                                   parameters, preserved_model, model, val_loader,
+                                                                   test_loader, criterion, device)
+    run.update_run(train_loss, test_loss_val, test_acc_val)
 
     down_memory_name = 'down_memory'
     down_learning_rate_name = 'down_learning_rate'
@@ -37,7 +41,11 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
 
         model.train()
         train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
-        iter_steps = len(train_loader_workers[0])
+
+        # Devices may have different number of points. Thus to reach an equal weight of participation,
+        # we choose that an epoch is constituted of N rounds of communication with the central server,
+        # where N is the minimum size of the dataset hold by the different devices.
+        iter_steps = min([len(train_loader) for train_loader in train_loader_iter])
 
         for _ in range(iter_steps):
 
@@ -49,16 +57,16 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
             # Down-compression step
             if parameters.non_degraded:
                 with torch.no_grad():
-                    # Compressing the model ...
+                    # Compressing the model (on central server side).
                     for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
                         if down_memory_name not in param_state:
-                            param_state[down_memory_name] = torch.zeros_like(p)
+                            param_state[down_memory_name] = torch.zeros_like(p).to(device)
                         if parameters.down_compression_model is not None:
                             value_to_compress = preserved_p - param_state[down_memory_name]
                             omega = parameters.down_compression_model.compress(value_to_compress)
                             p.copy_(omega)
-                    # Dezipping memory if required.
+                    # Dezipping memory if required (on remote servers side).
                     if parameters.use_down_memory:
                         for zipped_omega in model.parameters():
                             param_state = optimizer.state[zipped_omega]
@@ -79,6 +87,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                 optimizer.step_local_global(w_id)
                 optimizer.zero_grad()
 
+            # Updating now the model if we use a non-degraded version (on central server side)
             if parameters.non_degraded:
                 with torch.no_grad():
                     # Updating the model
@@ -88,33 +97,10 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                         update_model = preserved_p - param_state['final_grad'].mul(parameters.optimal_step_size)
                         preserved_p.copy_(update_model)
 
-        train_loader_iter = [iter(train_loader_workers_full[w]) for w in range(n_workers)]
-        running_loss = 0
-        for w_id in range(n_workers):
-            preserved_model.eval()
-            model.eval()
-            for data, target in train_loader_iter[w_id]:
-                data, target = data.to(device), target.to(device)
-                if parameters.non_degraded:
-                    output = preserved_model(data)
-                else:
-                    output = model(data)
-                loss = criterion(output, target)
-                running_loss += loss.item()
-        train_loss = running_loss/n_workers
-
-        if parameters.non_degraded:
-            val_loss, _ = accuracy_and_loss(preserved_model, val_loader, criterion, device)
-        else:
-            val_loss, _ = accuracy_and_loss(model, val_loader, criterion, device)
-
-        if val_loss < best_val_loss:
-            if parameters.non_degraded:
-                test_loss_val, test_acc_val = accuracy_and_loss(preserved_model, test_loader, criterion, device)
-            else:
-                test_loss_val, test_acc_val = accuracy_and_loss(model, test_loader, criterion, device)
-            best_val_loss = val_loss
-
+        train_loss = compute_loss(parameters, preserved_model, model, train_loader_workers_full, criterion, device)
+        test_loss_val, test_acc_val, best_val_loss = val_and_test_loss(best_val_loss, test_loss_val, test_acc_val,
+                                                                       parameters, preserved_model, model, val_loader,
+                                                                       test_loader, criterion, device)
         run.update_run(train_loss, test_loss_val, test_acc_val)
 
         if e+1 in [1, np.floor(epochs/4), np.floor(epochs/2), np.floor(3*epochs/4), epochs]:
@@ -124,6 +110,40 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
         # print("Time for computation :", elapsed_time)
 
     return best_val_loss, run
+
+
+def compute_loss(parameters, preserved_model, model, train_loader_workers_full, criterion, device):
+    train_loader_iter = [iter(train_loader_workers_full[w]) for w in range(parameters.nb_devices)]
+    running_loss = 0
+    for w_id in range(parameters.nb_devices):
+        preserved_model.eval()
+        model.eval()
+        for data, target in train_loader_iter[w_id]:
+            data, target = data.to(device), target.to(device)
+            if parameters.non_degraded:
+                output = preserved_model(data)
+            else:
+                output = model(data)
+            loss = criterion(output, target)
+            running_loss += loss.item()
+    train_loss = running_loss / parameters.nb_devices
+    return train_loss
+
+
+def val_and_test_loss(best_val_loss, test_loss_val, test_acc_val, parameters, preserved_model, model, val_loader,
+                      test_loader, criterion, device):
+    if parameters.non_degraded:
+        val_loss, _ = accuracy_and_loss(preserved_model, val_loader, criterion, device)
+    else:
+        val_loss, _ = accuracy_and_loss(model, val_loader, criterion, device)
+
+    if val_loss < best_val_loss:
+        if parameters.non_degraded:
+            test_loss_val, test_acc_val = accuracy_and_loss(preserved_model, test_loader, criterion, device)
+        else:
+            test_loss_val, test_acc_val = accuracy_and_loss(model, test_loader, criterion, device)
+        best_val_loss = val_loss
+    return test_loss_val, test_acc_val, best_val_loss
 
 
 def accuracy_and_loss(model, loader, criterion, device):
@@ -170,6 +190,18 @@ def tune_step_size(parameters: DLParameters):
             best_val_loss = val_loss
     parameters.optimal_step_size = best_lr
     return parameters
+
+
+def compute_L(train_loader_workers):
+    n_workers = len(train_loader_workers)
+    train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
+    L = 0
+    for w_id in range(n_workers):
+        all_data, all_labels = next(train_loader_iter[w_id])
+        n_sample = all_data.shape[0]
+        L += (torch.norm(all_data.T.mm(all_data), p=2) / (4 * n_sample)).item()
+    print(L/n_workers)
+    return L / n_workers
 
 
 def run_workers(parameters: DLParameters, loaders):

@@ -4,6 +4,14 @@ Created by Philippenko, 6th March 2020.
 This python file provide facilities to plot the results of a (multiple) gradient descent run.
 """
 import matplotlib
+matplotlib.use("pgf")
+matplotlib.rcParams.update({
+    "pgf.texsystem": "pdflatex",
+    'font.family': 'serif',
+    'text.usetex': True,
+    'pgf.rcfonts': False,
+})
+
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 
@@ -13,14 +21,14 @@ from src.utils.Utilities import drop_nan_values, keep_until_found_nan
 markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
 markersize = 1
 curve_size=4
-fontsize=30
-fontsize_legend=14
+fontsize=35
+fontsize_legend=25
 # figsize=(15,7)
 figsize=(8,7)
 fourfigsize=(13, 8)
 sixfigsize=(13, 11)
 
-Y_LEGENDS = {"loss": r"$\log_{10}(F(w^k) - F(w^*))$",
+Y_LEGENDS = {"loss": r"$\log_{10}(F(w_k) - F(w_*))$",
              "ef": r"$\log_{10}(\| \| EF_k \| \|)$",
              "rand_dist": r"$\log_{10}(\mathbb{E} \| \| w_k - w_k^i \| \|^2)$",
              "rand_var": r"$\log_{10}( \| \| \mathbb{V}~[w_k^i] \| \| )$",
@@ -32,7 +40,7 @@ nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 
 def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None, all_error=None,
-                    x_points=None, x_legend=None, one_on_two_points=False, xlabels=None,
+                    x_points=None, x_legend=None, one_on_two_points=True, xlabels=None,
                     ylegends="loss", ylim=False, omega_c = None, picture_name=None):
 
     assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
@@ -50,7 +58,7 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None
     # if xlog:
     #     axins = zoomed_inset_axes(ax, zoom=2.5, loc=3)
     # else:
-    #     axins = zoomed_inset_axes(ax, zoom=3, loc=2)
+    #     axins = zoomed_inset_axes(ax, zoom=5, loc="lower left")
     it = 0
 
     nb_curves = min(len(all_losses), len(markers))
@@ -67,9 +75,9 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None
         if all_error is not None:
             if one_on_two_points:
                 # if we plot error bar we don't take all elements
-                objectives_dist = [error_distance[0]] + list(error_distance[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [
-                    error_distance[-1]]
-                abscisse = [abscisse[0]] + abscisse[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)] + [abscisse[-1]]
+                objectives_dist = [error_distance[0]] + list(error_distance[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) \
+                                  + [error_distance[-1]]
+                abscisse = [abscisse[0]] + list(abscisse[i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [abscisse[-1]]
 
                 error_to_plot = [all_error[i][0]] + list(all_error[i][i + 1:N_it - 1:nb_bars * (len(all_losses)-1)]) + [
                     all_error[i][-1]]
@@ -88,15 +96,15 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None
             # setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw)
         it += 1
 
-    title_precision = "\n(N=" + str(nb_devices)
-    if nb_dim is not None:
-        title_precision += ", d=" + str(nb_dim)
-    if batch_size is not None:
-        title_precision += ", b=" + str(batch_size)
-    title_precision += ")"
+    # title_precision = "\n(N=" + str(nb_devices)
+    # if nb_dim is not None:
+    #     title_precision += ", d=" + str(nb_dim)
+    # if batch_size is not None:
+    #     title_precision += ", b=" + str(batch_size)
+    # title_precision += ")"
 
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
-    setup_plot(x_legend + title_precision, ylegends=ylegends, xlog=xlog, xlabels=xlabels,
+    setup_plot(x_legend, ylegends=ylegends, xlog=xlog, xlabels=xlabels,
                ylim=ylim, picture_name=picture_name, ax=ax, fig=fig)
 
 
@@ -164,7 +172,10 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
         plt.xticks(fontsize=xticks_fontsize)
     ax.set_xlabel(xlegends, fontsize=fontsize)
     ax.set_ylabel(Y_LEGENDS[ylegends], fontsize=fontsize)
-    ax.legend(loc='upper right', fontsize=fontsize_legend)
+    if ylegends == "accuracy":
+        ax.legend(loc='lower right', fontsize=fontsize_legend)
+    else:
+        ax.legend(loc='best', fontsize=fontsize_legend)
     fig.tight_layout()
     if picture_name:
         plt.savefig('{0}.eps'.format(picture_name), format='eps')

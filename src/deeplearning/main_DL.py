@@ -8,27 +8,27 @@ import logging
 from src.deeplearning.DLParameters import cast_to_DL
 from src.deeplearning.NnDataPreparation import create_loaders
 from src.deeplearning.NnModels import *
-from src.deeplearning.Train import run_tuned_exp
+from src.deeplearning.Train import run_tuned_exp, compute_L
 from src.machinery.PredefinedParameters import *
 from src.utils.ErrorPlotter import plot_error_dist
 from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, seed_everything
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-from src.utils.runner.RunnerUtilities import create_path_and_folders, NB_RUN
+from src.utils.runner.RunnerUtilities import create_path_and_folders, NB_RUN, choose_algo
 
 logging.basicConfig(level=logging.INFO)
 
 
 batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 128,
           "a9a": 50, "phishing": 50, "quantum": 400}
-models = {"cifar10": ResNet18, "mnist": MNIST_Linear, "fashion_mnist": MNIST_Linear, "femnist": MNIST_Linear,
+models = {"cifar10": LeNet, "mnist": MNIST_Linear, "fashion_mnist": MNIST_Linear, "femnist": MNIST_Linear,
           "a9a": A9A_Linear, "phishing": Phishing_Linear, "quantum": Quantum_Linear}
 momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a": 0, "phishing": 0, "quantum": 0}
-optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a":0.2593,
-                      "phishing": 0.2141, "quantum": 0.2863}
-quantization_levels= {"cifar10": 4, "mnist": 8, "fashion_mnist": 1, "femnist": 1, "a9a":1, "phishing": 1, "quantum": 1}
-norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": np.inf, "femnist": np.inf, "a9a": 2, "phishing": 2,
+optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a":None,
+                      "phishing": None, "quantum": None} #0.2863
+quantization_levels= {"cifar10": 4, "mnist": 8, "fashion_mnist": 8, "femnist": 4, "a9a":1, "phishing": 1, "quantum": 1}
+norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "a9a": 2, "phishing": 2,
                      "quantum": 2}
 weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a":0, "phishing": 0, "quantum": 0}
 criterion = {"cifar10": nn.CrossEntropyLoss(), "mnist": nn.CrossEntropyLoss(), "fashion_mnist": nn.CrossEntropyLoss(),
@@ -44,8 +44,8 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     fraction_sampled_workers = 1
     batch_size = batch_sizes[dataset]
     nb_devices = 20
-    algos = "mcm-vs-existing"
-    iid = "iid"
+    algos = sys.argv[2]
+    iid = sys.argv[3]
     stochastic = True
 
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos,
@@ -54,8 +54,15 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     default_up_compression = SQuantization(quantization_levels[dataset], norm=norm_quantization[dataset])
     default_down_compression = SQuantization(quantization_levels[dataset], norm=norm_quantization[dataset])
 
+    loaders = create_loaders(dataset, iid, nb_devices, batch_size, stochastic)
+    _, train_loader_workers_full, _, _ = loaders
+    if optimal_steps_size[dataset] is None:
+        L = compute_L(train_loader_workers_full)
+        optimal_steps_size[dataset] = 1/L
+        print("Step size:", optimal_steps_size[dataset])
+
     exp_name = "{0}_m{1}_lr{2}_sup{3}_sdwn{4}_b{5}_wd{6}".format(models[dataset].__name__, momentums[dataset],
-                                                                 optimal_steps_size[dataset],
+                                                                 round(optimal_steps_size[dataset], 4),
                                                                  default_up_compression.level,
                                                                  default_down_compression.level, batch_size,
                                                                  weight_decay[dataset])
@@ -63,7 +70,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     if not stochastic:
         exp_name += "-full"
 
-    if not file_exist("{0}/obj_min_dl.pkl".format(pickle_path)):
+    if False:#not file_exist("{0}/obj_min.pkl".format(pickle_path)):
         with open(log_file, 'a') as f:
             print("==> Computing objective loss.", file=f)
         params = VanillaSGD().define(cost_models=None,
@@ -81,13 +88,15 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
         params.momentum = momentums[dataset]
         params.criterion = criterion[dataset]
 
-        obj_min = run_tuned_exp(params, create_loaders(params)).train_losses[-1]
+        obj_min = run_tuned_exp(params, loaders).train_losses[-1]
         pickle_saver(obj_min, "{0}/obj_min_dl".format(pickle_path))
+
+    list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
 
     if not plot_only:
         all_descent = {}
         # res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
-        for type_params in [VanillaSGD(), Diana(), Artemis(), MCM()]:
+        for type_params in list_algos:#[VanillaSGD(), Diana(), Artemis(), MCM()]:
             print(type_params)
             torch.cuda.empty_cache()
             params = type_params.define(cost_models=None,
@@ -105,8 +114,6 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
             params.momentum = momentums[dataset]
             params.criterion = criterion[dataset]
             params.print()
-
-            loaders = create_loaders(params)
 
             with open(params.log_file, 'a') as f:
                 print(type_params, file=f)
@@ -129,13 +136,14 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     obj_min = pickle_loader("{0}/obj_min_dl".format(pickle_path))
 
     res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
+    # res.recompute_nb_bits()
 
     # obj_min = min(res.get_loss(np.array(0), in_log=False)[0])
 
     # print("Obj min in convex:", obj_min_cvx)
     print("Obj min in dl:", obj_min)
 
-    # Plotting without averaging
+    # Plotting
     plot_error_dist(res.get_loss(np.array(obj_min)), res.names, res.nb_devices, batch_size=batch_size,
                     all_error=res.get_std(np.array(obj_min)), x_legend="Number of passes on data", ylegends="train_loss",
                     picture_name="{0}/{1}_train_losses".format(picture_path, exp_name))

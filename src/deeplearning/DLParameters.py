@@ -20,7 +20,8 @@ class DLParameters(Parameters):
 
     def print(self):
         print("== Settings ==")
-        print("Step size: {0}".format(self.optimal_step_size))
+        if self.optimal_step_size is not None:
+            print("Step size: {0}".format(self.optimal_step_size))
         if self.use_up_memory:
             print("Use UP memory.")
         if self.use_down_memory:
