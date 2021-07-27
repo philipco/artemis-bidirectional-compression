@@ -26,7 +26,7 @@ models = {"cifar10": LeNet, "mnist": MNIST_Linear, "fashion_mnist": MNIST_Linear
           "a9a": A9A_Linear, "phishing": Phishing_Linear, "quantum": Quantum_Linear}
 momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a": 0, "phishing": 0, "quantum": 0}
 optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a":None,
-                      "phishing": None, "quantum": None}
+                      "phishing": None, "quantum": None} #0.2863
 quantization_levels= {"cifar10": 4, "mnist": 8, "fashion_mnist": 8, "femnist": 4, "a9a":1, "phishing": 1, "quantum": 1}
 norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "a9a": 2, "phishing": 2,
                      "quantum": 2}
@@ -88,7 +88,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
         params.momentum = momentums[dataset]
         params.criterion = criterion[dataset]
 
-        obj_min = run_tuned_exp(params, create_loaders(params)).train_losses[-1]
+        obj_min = run_tuned_exp(params, loaders).train_losses[-1]
         pickle_saver(obj_min, "{0}/obj_min_dl".format(pickle_path))
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
@@ -133,9 +133,10 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
             pickle_saver(res, "{0}/{1}".format(algos_pickle_path, exp_name))
 
     # obj_min_cvx = pickle_loader("{0}/obj_min".format(pickle_path))
-    obj_min = 0#pickle_loader("{0}/obj_min".format(pickle_path))
+    obj_min = pickle_loader("{0}/obj_min_dl".format(pickle_path))
 
     res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
+    # res.recompute_nb_bits()
 
     # obj_min = min(res.get_loss(np.array(0), in_log=False)[0])
 

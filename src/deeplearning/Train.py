@@ -57,7 +57,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
             # Down-compression step
             if parameters.non_degraded:
                 with torch.no_grad():
-                    # Compressing the model ...
+                    # Compressing the model (on central server side).
                     for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
                         if down_memory_name not in param_state:
@@ -66,7 +66,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                             value_to_compress = preserved_p - param_state[down_memory_name]
                             omega = parameters.down_compression_model.compress(value_to_compress)
                             p.copy_(omega)
-                    # Dezipping memory if required.
+                    # Dezipping memory if required (on remote servers side).
                     if parameters.use_down_memory:
                         for zipped_omega in model.parameters():
                             param_state = optimizer.state[zipped_omega]
@@ -87,6 +87,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                 optimizer.step_local_global(w_id)
                 optimizer.zero_grad()
 
+            # Updating now the model if we use a non-degraded version (on central server side)
             if parameters.non_degraded:
                 with torch.no_grad():
                     # Updating the model

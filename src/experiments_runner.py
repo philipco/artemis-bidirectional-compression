@@ -168,10 +168,10 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
         # Plotting without averaging
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook,
-                        all_error=res.get_std(obj_min), x_legend="Number of passes on data\n({0})".format(iid),
+                        all_error=res.get_std(obj_min), x_legend="Number of passes on data",
                         picture_name="{0}/it-noavg-{1}".format(picture_path, experiments_settings))
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook,
-                        x_points=res.X_number_of_bits, x_legend="Communicated bits ({0})".format(iid),
+                        x_points=res.X_number_of_bits, x_legend="Communicated bits",
                         all_error=res.get_std(obj_min), picture_name="{0}/bits-noavg-{1}"
                         .format(picture_path, experiments_settings))
 
@@ -179,12 +179,12 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         if use_averaging:
             plot_error_dist(res.get_loss(obj_min, averaged=True), res.names, res.nb_devices,
                             dim_notebook, all_error=res.get_std(obj_min, averaged=True),
-                            x_legend="Number of passes on data\n(Avg, {0})".format(iid),
+                            x_legend="Number of passes on data (Avg)",
                             picture_name="{0}/it-avg-{1}"
                             .format(picture_path, experiments_settings))
             plot_error_dist(res.get_loss(obj_min, averaged=True), res.names, res.nb_devices, dim_notebook,
                             x_points=res.X_number_of_bits, all_error=res.get_std(obj_min, averaged=True),
-                            x_legend="Communicated bits (Avg, {0})".format(iid),
+                            x_legend="Communicated bits (Avg)",
                             picture_name="{0}/bits-avg-{1}"
                             .format(picture_path, experiments_settings))
 
@@ -206,7 +206,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                         picture_name="{0}/{1}-optimal-it-{2}".format(picture_path, scenario, experiments_settings))
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook,
                         x_points=res.X_number_of_bits, batch_size=batch_size,
-                        x_legend="Communicated bits\n(non-iid)", all_error=res.get_std(obj_min), ylim=True,
+                        x_legend="Communicated bits", all_error=res.get_std(obj_min), ylim=True,
                         picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
 
     if scenario == "compression":
@@ -224,7 +224,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                         picture_name="{0}/{1}-optimal-it-{2}".format(picture_path, scenario, experiments_settings))
         plot_error_dist(res.get_loss(obj_min), res.names, res.nb_devices, dim_notebook,
                         x_points=res.X_number_of_bits, batch_size=batch_size,
-                        x_legend="Communicated bits\n(non-iid)", all_error=res.get_std(obj_min), ylim=True,
+                        x_legend="Communicated bits", all_error=res.get_std(obj_min), ylim=True,
                         picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
 
 
