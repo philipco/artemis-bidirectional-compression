@@ -52,7 +52,7 @@ def prepare_noniid_dataset(data, pivot_label: str, data_path: str, pickle_path: 
         logging.debug("Finding non-iid clusters in the TNSE represesentation: {0}.pkl".format(tsne_file))
         embedded_data = pickle_loader("{0}".format(tsne_file))
         logging.debug("Saving found clusters : {0}.pkl".format(tsne_cluster_file))
-        predicted_cluster = find_cluster(embedded_data, nb_cluster)
+        predicted_cluster = find_cluster(embedded_data, tsne_cluster_file, nb_cluster)
         pickle_saver(predicted_cluster, "{0}".format(tsne_cluster_file))
 
     predicted_cluster = pickle_loader("{0}".format(tsne_cluster_file))
@@ -238,4 +238,75 @@ def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
         X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/a9a", pickle_path, nb_devices, double_check)
+    return X, Y, dim + 1 # Because we added one column for the bias
+
+
+def prepare_abalone(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+    raw_data = pd.read_csv('{0}/dataset/abalone/abalone.csv'.format(get_project_root()), sep=",", header = None)
+
+    raw_data = raw_data.rename(columns={ 0: "gender", 1: "Length", 2: "Diameter", 3: "Height", 8: "rings"})
+    labelencoder = LabelEncoder()
+    raw_data["gender"] = labelencoder.fit_transform(raw_data["gender"])
+
+    Y_data = raw_data.loc[:, raw_data.columns == "rings"]
+
+    scaled_data = scale(raw_data.loc[:, raw_data.columns != "rings"])
+    scaled_X = pd.DataFrame(data=scaled_data, columns=raw_data.loc[:, raw_data.columns != "rings"].columns)
+
+    # Merging dataset in one :
+    scaled_data = pd.concat([scaled_X, Y_data], axis=1, sort=False)
+    dim = len(scaled_X.columns)
+
+    if iid:
+        X_merged = torch.tensor(scaled_X.to_numpy(), dtype=torch.float64)
+        Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
+    else:
+        X, Y = prepare_noniid_dataset(scaled_data, "rings", data_path + "/abalone", pickle_path, nb_devices, double_check)
+    return X, Y, dim + 1 # Because we added one column for the bias
+
+
+def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+
+    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_project_root()))
+    raw_X = raw_X.todense()
+
+    for i in range(len(raw_Y)):
+        if raw_Y[i] == 2:
+            raw_Y[i] = -1
+
+    scaled_X = scale(np.array(raw_X, dtype=np.float64))
+    scaled_data = pd.DataFrame(data=scaled_X)
+    scaled_data["target"] = raw_Y
+    dim = len(scaled_data.columns) - 1
+
+    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+
+    if iid:
+        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
+    else:
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/covtype", pickle_path, nb_devices, double_check)
+    return X, Y, dim + 1 # Because we added one column for the bias
+
+
+def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+
+    raw_data = pd.read_csv('{0}/dataset/madelon/madelon_train.data'.format(get_project_root()), sep=" ", header=None)
+    raw_data.drop(raw_data.columns[len(raw_data.columns) - 1], axis=1, inplace=True)
+    scaled_X = scale(np.array(raw_data, dtype=np.float64))
+    scaled_data = pd.DataFrame(data=scaled_X)
+    dim = len(scaled_data.columns)
+
+    Y_data = pd.read_csv('{0}/dataset/madelon/madelon_train.labels'.format(get_project_root()), header=None)
+
+    scaled_data["target"] = Y_data.values
+
+    if iid:
+        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
+    else:
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/madelon", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias

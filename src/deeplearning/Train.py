@@ -82,6 +82,13 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
             for w_id in range(n_workers):
                 data, target = all_data[w_id].to(device), all_labels[w_id].to(device)
                 output = model(data)
+                if torch.isnan(output).any():
+                    print("There is NaN in output values, stopping.")
+                    # Completing values to reach the given number of epoch.
+                    run.train_losses = run.train_losses + [run.train_losses[-1] for i in range(epochs - len(run.train_losses))]
+                    run.test_losses = run.test_losses + [run.test_losses[-1] for i in range(epochs - len(run.test_losses))]
+                    run.test_accuracies = run.test_accuracies + [run.test_accuracies[-1] for i in range(epochs - len(run.test_accuracies))]
+                    return best_val_loss, run
                 loss = criterion(output, target)
                 loss.backward()
                 optimizer.step_local_global(w_id)
@@ -124,6 +131,8 @@ def compute_loss(parameters, preserved_model, model, train_loader_workers_full, 
                 output = preserved_model(data)
             else:
                 output = model(data)
+            if torch.isnan(output).any():
+                raise ValueError("There is NaN in output values, stopping.")
             loss = criterion(output, target)
             running_loss += loss.item()
     train_loss = running_loss / parameters.nb_devices

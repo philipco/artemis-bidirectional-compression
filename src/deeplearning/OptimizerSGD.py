@@ -66,13 +66,10 @@ class SGDGen(Optimizer):
                 down_error_feedback_name = 'down_error_feedback_' + str(w_id)
                 up_local_memory_name = 'up_memory_' + str(w_id)
                 up_learning_rate_name = 'up_learning_rate_' + str(w_id)
-                # up_global_memory = 'up_memory'
                 loc_grad = d_p
 
                 if up_local_memory_name not in param_state:
                     param_state[up_local_memory_name] = torch.zeros_like(loc_grad)
-                # if up_global_memory not in param_state:
-                #     param_state[up_global_memory] = torch.zeros_like(loc_grad)
                 if up_learning_rate_name not in param_state:
                     param_state[up_learning_rate_name] = 1 / (
                                 2 * (self.parameters.up_compression_model.__compute_omega_c__(loc_grad) + 1))

@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 
 batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 128,
           "a9a": 50, "phishing": 50, "quantum": 400}
-models = {"cifar10": LeNet, "mnist": MNIST_Linear, "fashion_mnist": MNIST_Linear, "femnist": MNIST_Linear,
+models = {"cifar10": LeNet, "mnist": MNIST_CNN, "fashion_mnist": MNIST_CNN, "femnist": MNIST_CNN,
           "a9a": A9A_Linear, "phishing": Phishing_Linear, "quantum": Quantum_Linear}
 momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a": 0, "phishing": 0, "quantum": 0}
 optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a":None,
@@ -96,7 +96,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     if not plot_only:
         all_descent = {}
         # res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
-        for type_params in list_algos:#[VanillaSGD(), Diana(), Artemis(), MCM()]:
+        for type_params in [Dore(), VanillaSGD(), MCM()]:
             print(type_params)
             torch.cuda.empty_cache()
             params = type_params.define(cost_models=None,
@@ -124,7 +124,11 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
             for i in range(NB_RUN):
                 print('Run {:3d}/{:3d}:'.format(i + 1, NB_RUN))
                 fixed_params = copy.deepcopy(params)
-                multiple_descent.append_from_DL(run_tuned_exp(fixed_params, loaders))
+                try:
+                    multiple_descent.append_from_DL(run_tuned_exp(fixed_params, loaders))
+                except ValueError as err:
+                    print(err)
+                    continue
 
             all_descent[type_params.name()] = multiple_descent
             res = ResultsOfSeveralDescents(all_descent, nb_devices)
