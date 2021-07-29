@@ -68,6 +68,9 @@ def prepare_noniid_dataset(data, pivot_label: str, data_path: str, pickle_path: 
     # Rebalancing cluster: the biggest one must not be more than 10times bigger than the smallest one.
     X_rebalanced, Y_rebalanced = rebalancing_clusters(X, Y)
 
+    for y in Y_rebalanced:
+        print("Nb of points:", len(y))
+
     return X_rebalanced, Y_rebalanced
 
 def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool = False):
@@ -309,4 +312,76 @@ def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
         X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/madelon", pickle_path, nb_devices, double_check)
+    return X, Y, dim + 1 # Because we added one column for the bias
+
+
+def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+
+    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_project_root()))
+    raw_X = raw_X.todense()
+
+    for i in range(len(raw_Y)):
+        if raw_Y[i] == 2:
+            raw_Y[i] = -1
+
+    scaled_X = scale(np.array(raw_X, dtype=np.float64))
+    scaled_data = pd.DataFrame(data=scaled_X)
+    scaled_data["target"] = raw_Y
+    dim = len(scaled_data.columns) - 1
+
+    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+
+    if iid:
+        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
+    else:
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/covtype", pickle_path, nb_devices, double_check)
+    return X, Y, dim + 1 # Because we added one column for the bias
+
+
+def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+
+    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_project_root()))
+    raw_X = raw_X.todense()
+
+    scaled_X = scale(np.array(raw_X, dtype=np.float64))
+    scaled_data = pd.DataFrame(data=scaled_X)
+    scaled_data["target"] = raw_Y
+    dim = len(scaled_data.columns) - 1
+
+    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+
+    if iid:
+        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
+    else:
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/gisette", pickle_path, nb_devices,
+                                      double_check)
+    return X, Y, dim + 1  # Because we added one column for the bias
+
+def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False, test: bool = False):
+
+    if not test:
+        raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a".format(get_project_root()))
+        raw_X = raw_X.todense()
+    else:
+        raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a.t".format(get_project_root()))
+        raw_X = raw_X.todense()
+        raw_X = np.c_[raw_X, np.zeros((len(raw_Y)))]
+
+    scaled_X = scale(np.array(raw_X, dtype=np.float64))
+    scaled_data = pd.DataFrame(data=scaled_X)
+    scaled_data["target"] = raw_Y
+    dim = len(scaled_data.columns) - 1
+
+    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+
+    if iid:
+        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
+    else:
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/w8a", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias

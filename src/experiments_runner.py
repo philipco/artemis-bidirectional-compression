@@ -8,7 +8,7 @@ from src.models.CostModel import LogisticModel, RMSEModel, build_several_cost_mo
 from src.utils.ErrorPlotter import *
 from src.utils.data.DataPreparation import build_data_logistic, build_data_linear
 from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_superconduct, prepare_mushroom, \
-    prepare_phishing, prepare_a9a, prepare_abalone, prepare_covtype, prepare_madelon
+    prepare_phishing, prepare_a9a, prepare_abalone, prepare_covtype, prepare_madelon, prepare_gisette, prepare_w8a
 from src.utils.Constants import *
 from src.utils.data.DataClustering import *
 from src.utils.Utilities import pickle_loader, file_exist
@@ -21,12 +21,12 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = True):
+                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
     assert dataset in ["quantum", "superconduct", "mushroom", "phishing", "a9a", "abalone", "covtype", 'synth_logistic',
-                       'madelon', 'synth_linear_noised', 'synth_linear_nonoised'], \
+                       'madelon', 'gisette', 'w8a', 'synth_linear_noised', 'synth_linear_nonoised'], \
         "The available dataset are ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']."
     assert iid in ['iid', 'non-iid'], "The iid option are ['iid', 'non-iid']."
     assert scenario in [None, "compression", "step"], "The possible scenario are [None, 'compression', 'step']."
@@ -42,17 +42,22 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     # Select the correct dataset
     if dataset == "a9a":
         X, Y, dim_notebook = prepare_a9a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 200 if iid == "non-iid" else 50
+        batch_size = 50 if iid == "non-iid" else 50 # b < 535
         model = LogisticModel
         nb_epoch = 500 if stochastic else 400
     if dataset == "abalone":
         X, Y, dim_notebook = prepare_abalone(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 100 if iid == "non-iid" else 50
+        batch_size = 50 if iid == "non-iid" else 50 # b < 86
         model = RMSEModel
         nb_epoch = 500 if stochastic else 400
     if dataset == "covtype":
         X, Y, dim_notebook = prepare_covtype(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 200 if iid == "non-iid" else 400
+        batch_size = 10000 if iid == "non-iid" else 400 # b < 10413
+        model = RMSEModel
+        nb_epoch = 500 if stochastic else 400
+    if dataset == "gisette":
+        X, Y, dim_notebook = prepare_gisette(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
+        batch_size = 50 if iid == "non-iid" else 50
         model = RMSEModel
         nb_epoch = 500 if stochastic else 400
     if dataset == "madelon":
@@ -80,6 +85,11 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                                   iid=iid_data)
         batch_size = 50
         model = RMSEModel
+        nb_epoch = 500 if stochastic else 400
+    if dataset == "w8a":
+        X, Y, dim_notebook = prepare_w8a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
+        batch_size = 400 if iid == "non-iid" else 400
+        model = LogisticModel
         nb_epoch = 500 if stochastic else 400
     elif dataset == 'synth_logistic':
         dim_notebook = 2

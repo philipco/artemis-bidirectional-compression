@@ -4,7 +4,6 @@ Created by Philippenko, 6th March 2020.
 This python file provide facilities to plot the results of a (multiple) gradient descent run.
 """
 import matplotlib
-matplotlib.use("pgf")
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
     'font.family': 'serif',
