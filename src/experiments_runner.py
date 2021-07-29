@@ -256,27 +256,27 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 if __name__ == '__main__':
 
     if sys.argv[1] == "synth":
-        run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[2],
+        run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
                         use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[2],
+        run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
                         use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[2],
+        run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
                         use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[2],
+        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
                         use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid', algos=sys.argv[2],
+        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid', algos=sys.argv[3],
                         use_averaging=True)
 
     elif sys.argv[1] == "real":
         for sto in [True, False]:
-            for dataset in ["quantum", "superconduct", "madelon", "abalone", "phishing", "mushroom", "a9a", "covtype"]:
-                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[3], algos=sys.argv[2],
+            for dataset in [sys.argv[2]]:
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                                 use_averaging=True)
 
         # for sto in [True, False]:
         #     for dataset in ["phishing", "mushroom", "a9a", "quantum", "superconduct"]:
-        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
+        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[3],
         #                         use_averaging=True, scenario="step")
-        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[2],
+        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[3],
         #                           use_averaging=True, scenario="compression")
 
