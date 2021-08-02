@@ -57,38 +57,37 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         nb_epoch = 500 if stochastic else 400
     if dataset == "gisette":
         X, Y, dim_notebook = prepare_gisette(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 50 if iid == "non-iid" else 50
+        batch_size = 50 if iid == "non-iid" else 50 # b < 8222
         model = RMSEModel
         nb_epoch = 500 if stochastic else 400
     if dataset == "madelon":
         X, Y, dim_notebook = prepare_madelon(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 16 if iid == "non-iid" else 16
+        batch_size = 16 if iid == "non-iid" else 16 # b < 16
         model = LogisticModel
         nb_epoch = 500 if stochastic else 400
     if dataset == "mushroom":
         X, Y, dim_notebook = prepare_mushroom(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 1 if iid == "non-iid" else 4
+        batch_size = 50 if iid == "non-iid" else 4 # b < 148
         model = LogisticModel
         nb_epoch = 500 if stochastic else 400
     if dataset == "quantum":
         X, Y, dim_notebook = prepare_quantum(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 400
+        batch_size = 400 # b < 748
         model = LogisticModel
         nb_epoch = 500 if stochastic else 400
     if dataset == "phishing":
         X, Y, dim_notebook = prepare_phishing(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 50 if iid == "non-iid" else 50
+        batch_size = 50 if iid == "non-iid" else 50 # b < 229
         model = LogisticModel
         nb_epoch = 500 if stochastic else 400
     elif dataset == "superconduct":
-        X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path=data_path, pickle_path=pickle_path,
-                                                  iid=iid_data)
-        batch_size = 50
+        X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
+        batch_size = 50 # b < 284
         model = RMSEModel
         nb_epoch = 500 if stochastic else 400
     if dataset == "w8a":
         X, Y, dim_notebook = prepare_w8a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 400 if iid == "non-iid" else 400
+        batch_size = 400 if iid == "non-iid" else 400 # b < 621
         model = LogisticModel
         nb_epoch = 500 if stochastic else 400
     elif dataset == 'synth_logistic':

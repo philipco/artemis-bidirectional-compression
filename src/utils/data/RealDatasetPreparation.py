@@ -11,6 +11,7 @@ import torch
 from sklearn.datasets import load_svmlight_file
 from sklearn.preprocessing import scale, LabelEncoder
 
+from src.utils.PathDataset import get_path_to_datasets
 from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, get_project_root
 from src.utils.data.DataClustering import find_cluster, clustering_data, tsne, check_data_clusterisation, \
     rebalancing_clusters
@@ -74,7 +75,7 @@ def prepare_noniid_dataset(data, pivot_label: str, data_path: str, pickle_path: 
     return X_rebalanced, Y_rebalanced
 
 def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool = False):
-    raw_data = pd.read_csv('{0}/dataset/superconduct/train.csv'.format(get_project_root()), sep=",")
+    raw_data = pd.read_csv('{0}/dataset/superconduct/train.csv'.format(get_path_to_datasets()), sep=",")
     if raw_data.isnull().values.any():
         logging.warning("There is missing value.")
     else:
@@ -102,7 +103,7 @@ def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid:
 
 def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
 
-    raw_data= pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_project_root()), sep="\t", header=None)
+    raw_data= pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_path_to_datasets()), sep="\t", header=None)
 
     # Looking for missing values.
     columns_with_missing_values = []
@@ -160,7 +161,7 @@ def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     return X, Y, dim + 1 # Because we added one column for the bias
 
 def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
-    raw_data = pd.read_csv('{0}/dataset/mushroom/mushrooms.csv'.format(get_project_root()))
+    raw_data = pd.read_csv('{0}/dataset/mushroom/mushrooms.csv'.format(get_path_to_datasets()))
 
     # The data is categorial so I convert it with LabelEncoder to transfer to ordinal.
     labelencoder = LabelEncoder()
@@ -191,7 +192,7 @@ def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: boo
 
 def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/phishing/phishing.txt".format(get_project_root()))
+    raw_X, raw_Y = load_svmlight_file("{0}/dataset/phishing/phishing.txt".format(get_path_to_datasets()))
 
     for i in range(len(raw_Y)):
         if raw_Y[i] == 0:
@@ -216,10 +217,10 @@ def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: boo
 def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False, test: bool = False):
 
     if not test:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a.txt".format(get_project_root()))
+        raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a.txt".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
     else:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a_test.txt".format(get_project_root()))
+        raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a_test.txt".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
         raw_X = np.c_[raw_X, np.zeros((len(raw_Y)))]
 
@@ -245,7 +246,7 @@ def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
 
 
 def prepare_abalone(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
-    raw_data = pd.read_csv('{0}/dataset/abalone/abalone.csv'.format(get_project_root()), sep=",", header = None)
+    raw_data = pd.read_csv('{0}/dataset/abalone/abalone.csv'.format(get_path_to_datasets()), sep=",", header = None)
 
     raw_data = raw_data.rename(columns={ 0: "gender", 1: "Length", 2: "Diameter", 3: "Height", 8: "rings"})
     labelencoder = LabelEncoder()
@@ -271,7 +272,7 @@ def prepare_abalone(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 
 def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_project_root()))
+    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
 
     for i in range(len(raw_Y)):
@@ -296,13 +297,13 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 
 def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
 
-    raw_data = pd.read_csv('{0}/dataset/madelon/madelon_train.data'.format(get_project_root()), sep=" ", header=None)
+    raw_data = pd.read_csv('{0}/dataset/madelon/madelon_train.data'.format(get_path_to_datasets()), sep=" ", header=None)
     raw_data.drop(raw_data.columns[len(raw_data.columns) - 1], axis=1, inplace=True)
     scaled_X = scale(np.array(raw_data, dtype=np.float64))
     scaled_data = pd.DataFrame(data=scaled_X)
     dim = len(scaled_data.columns)
 
-    Y_data = pd.read_csv('{0}/dataset/madelon/madelon_train.labels'.format(get_project_root()), header=None)
+    Y_data = pd.read_csv('{0}/dataset/madelon/madelon_train.labels'.format(get_path_to_datasets()), header=None)
 
     scaled_data["target"] = Y_data.values
 
@@ -317,7 +318,7 @@ def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 
 def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_project_root()))
+    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
 
     for i in range(len(raw_Y)):
@@ -342,7 +343,7 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 
 def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_project_root()))
+    raw_X, raw_Y = load_svmlight_file("{0}/dataset/gisette/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
 
     scaled_X = scale(np.array(raw_X, dtype=np.float64))
@@ -364,10 +365,10 @@ def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False, test: bool = False):
 
     if not test:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a".format(get_project_root()))
+        raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
     else:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a.t".format(get_project_root()))
+        raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a.t".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
         raw_X = np.c_[raw_X, np.zeros((len(raw_Y)))]
 

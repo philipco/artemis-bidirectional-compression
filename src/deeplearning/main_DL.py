@@ -25,9 +25,9 @@ batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 12
 models = {"cifar10": LeNet, "mnist": MNIST_CNN, "fashion_mnist": MNIST_CNN, "femnist": MNIST_CNN,
           "a9a": A9A_Linear, "phishing": Phishing_Linear, "quantum": Quantum_Linear}
 momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a": 0, "phishing": 0, "quantum": 0}
-optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a":None,
+optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a": None,
                       "phishing": None, "quantum": None} #0.2863
-quantization_levels= {"cifar10": 4, "mnist": 8, "fashion_mnist": 8, "femnist": 4, "a9a":1, "phishing": 1, "quantum": 1}
+quantization_levels= {"cifar10": 2, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "a9a":1, "phishing": 1, "quantum": 1}
 norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "a9a": 2, "phishing": 2,
                      "quantum": 2}
 weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a":0, "phishing": 0, "quantum": 0}
@@ -96,7 +96,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     if not plot_only:
         all_descent = {}
         # res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
-        for type_params in [Dore(), VanillaSGD(), MCM()]:
+        for type_params in list_algos:
             print(type_params)
             torch.cuda.empty_cache()
             params = type_params.define(cost_models=None,
@@ -137,10 +137,10 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
             pickle_saver(res, "{0}/{1}".format(algos_pickle_path, exp_name))
 
     # obj_min_cvx = pickle_loader("{0}/obj_min".format(pickle_path))
-    obj_min = pickle_loader("{0}/obj_min_dl".format(pickle_path))
+    obj_min = 0#pickle_loader("{0}/obj_min_dl".format(pickle_path))
 
     res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
-    # res.recompute_nb_bits()
+    res.recompute_nb_bits()
 
     # obj_min = min(res.get_loss(np.array(0), in_log=False)[0])
 
