@@ -20,19 +20,22 @@ from src.utils.runner.RunnerUtilities import create_path_and_folders, NB_RUN, ch
 logging.basicConfig(level=logging.INFO)
 
 
-batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 128,
+batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 128, "emnist": 128,
           "a9a": 50, "phishing": 50, "quantum": 400}
 models = {"cifar10": LeNet, "mnist": MNIST_CNN, "fashion_mnist": MNIST_CNN, "femnist": MNIST_CNN,
-          "a9a": A9A_Linear, "phishing": Phishing_Linear, "quantum": Quantum_Linear}
-momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a": 0, "phishing": 0, "quantum": 0}
-optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a": None,
+          "emnist": EMNIST_FullyConnected, "a9a": A9A_Linear, "phishing": Phishing_Linear, "quantum": Quantum_Linear}
+momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "emnist": 0, "a9a": 0, "phishing": 0,
+             "quantum": 0}
+optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "emnist": 0.1, "a9a": None,
                       "phishing": None, "quantum": None} #0.2863
-quantization_levels= {"cifar10": 2, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "a9a":1, "phishing": 1, "quantum": 1}
-norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "a9a": 2, "phishing": 2,
-                     "quantum": 2}
-weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a":0, "phishing": 0, "quantum": 0}
+quantization_levels= {"cifar10": 2, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "emnist": 0.1, "a9a":1, "phishing": 1,
+                      "quantum": 1}
+norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "emnist": 2, "a9a": 2,
+                     "phishing": 2, "quantum": 2}
+weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "emnist": 0, "a9a":0, "phishing": 0,
+                "quantum": 0}
 criterion = {"cifar10": nn.CrossEntropyLoss(), "mnist": nn.CrossEntropyLoss(), "fashion_mnist": nn.CrossEntropyLoss(),
-             "femnist": nn.CrossEntropyLoss(), "a9a":  torch.nn.BCELoss(reduction='mean'),
+             "femnist": nn.CrossEntropyLoss(), "emnist": nn.CrossEntropyLoss(), "a9a":  torch.nn.BCELoss(reduction='mean'),
              "phishing":  torch.nn.BCELoss(reduction='mean'), "quantum": torch.nn.BCELoss(reduction='mean')}
 
 def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):

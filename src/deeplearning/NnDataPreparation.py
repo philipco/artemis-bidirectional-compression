@@ -123,6 +123,12 @@ def load_data(dataset: str, iid: str):
 
         test_data = datasets.MNIST(root=path_to_dataset, train=False, download=True, transform=transform)
 
+    elif dataset == 'emnist':
+        transform = transforms.Compose([transforms.ToTensor()])
+        train_data = datasets.EMNIST(root=path_to_dataset, split="byclass", train=True, download=True, transform=transform)
+
+        test_data = datasets.EMNIST(root=path_to_dataset, split="byclass", train=False, download=True, transform=transform)
+
     elif dataset == "fashion_mnist":
 
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)), ])

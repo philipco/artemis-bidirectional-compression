@@ -133,6 +133,26 @@ class MNIST_CNN(nn.Module):
         return x
 
 
+class EMNIST_FullyConnected(nn.Module):
+
+    def __init__(self):
+        input_size = 784
+        self.output_size = 62
+        hidden_size = 128
+        super(EMNIST_FullyConnected, self).__init__()
+        self.f1 = nn.Flatten()
+        self.l1 = nn.Linear(input_size, hidden_size)
+        self.relu = nn.ReLU()
+        self.l3 = nn.Linear(hidden_size, self.output_size)
+
+    def forward(self, x):
+        x = self.f1(x)
+        x = self.l1(x)
+        x = self.relu(x)
+        x = self.l3(x)
+        return x
+
+
 class FashionMNIST_CNN(nn.Module):
     """From https://www.kaggle.com/pankajj/fashion-mnist-with-pytorch-93-accuracy"""
 
