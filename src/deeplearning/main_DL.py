@@ -21,22 +21,24 @@ logging.basicConfig(level=logging.INFO)
 
 
 batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 128, "emnist": 128,
-          "a9a": 50, "phishing": 50, "quantum": 400}
+          "a9a": 50, "phishing": 50, "quantum": 400, "mushroom": 4}
 models = {"cifar10": LeNet, "mnist": MNIST_CNN, "fashion_mnist": MNIST_CNN, "femnist": MNIST_CNN,
-          "emnist": EMNIST_FullyConnected, "a9a": A9A_Linear, "phishing": Phishing_Linear, "quantum": Quantum_Linear}
+          "emnist": EMNIST_FullyConnected, "a9a": LogisticReg, "phishing": LogisticReg, "quantum": LogisticReg,
+          "mushroom": LogisticReg}
 momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "emnist": 0, "a9a": 0, "phishing": 0,
-             "quantum": 0}
+             "quantum": 0, "mushroom": 0}
 optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "emnist": 0.1, "a9a": None,
-                      "phishing": None, "quantum": None} #0.2863
+                      "phishing": None, "quantum": None, "mushroom": None} #0.2863
 quantization_levels= {"cifar10": 2, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "emnist": 0.1, "a9a":1, "phishing": 1,
-                      "quantum": 1}
+                      "quantum": 1, "mushroom": 1}
 norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "emnist": 2, "a9a": 2,
-                     "phishing": 2, "quantum": 2}
+                     "phishing": 2, "quantum": 2, "mushroom": 2}
 weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "emnist": 0, "a9a":0, "phishing": 0,
-                "quantum": 0}
+                "quantum": 0, "mushroom": 0}
 criterion = {"cifar10": nn.CrossEntropyLoss(), "mnist": nn.CrossEntropyLoss(), "fashion_mnist": nn.CrossEntropyLoss(),
              "femnist": nn.CrossEntropyLoss(), "emnist": nn.CrossEntropyLoss(), "a9a":  torch.nn.BCELoss(reduction='mean'),
-             "phishing":  torch.nn.BCELoss(reduction='mean'), "quantum": torch.nn.BCELoss(reduction='mean')}
+             "phishing": torch.nn.BCELoss(reduction='mean'), "quantum": torch.nn.BCELoss(reduction='mean'),
+             "mushroom": torch.nn.BCELoss(reduction='mean')}
 
 def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
@@ -59,6 +61,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
     loaders = create_loaders(dataset, iid, nb_devices, batch_size, stochastic)
     _, train_loader_workers_full, _, _ = loaders
+    dim = next(iter(train_loader_workers_full[0]))[0].shape[1]
     if optimal_steps_size[dataset] is None:
         L = compute_L(train_loader_workers_full)
         optimal_steps_size[dataset] = 1/L
@@ -73,11 +76,11 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     if not stochastic:
         exp_name += "-full"
 
-    if False:#not file_exist("{0}/obj_min.pkl".format(pickle_path)):
+    if False:#not file_exist("{0}/obj_min_dl.pkl".format(pickle_path)):
         with open(log_file, 'a') as f:
             print("==> Computing objective loss.", file=f)
         params = VanillaSGD().define(cost_models=None,
-                                     n_dimensions=None,
+                                     n_dimensions=dim,
                                      stochastic=False,
                                      nb_epoch=10000,
                                      nb_devices=nb_devices,
@@ -103,12 +106,12 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
             print(type_params)
             torch.cuda.empty_cache()
             params = type_params.define(cost_models=None,
-                                        n_dimensions=None,
+                                        n_dimensions=dim,
                                         nb_epoch=200,
                                         nb_devices=nb_devices,
                                         stochastic=stochastic,
                                         batch_size=batch_size,
-                                        fraction_sampled_workers=1,
+                                        fraction_sampled_workers=fraction_sampled_workers,
                                         up_compression_model=default_up_compression,
                                         down_compression_model=default_down_compression)
 
@@ -140,7 +143,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
             pickle_saver(res, "{0}/{1}".format(algos_pickle_path, exp_name))
 
     # obj_min_cvx = pickle_loader("{0}/obj_min".format(pickle_path))
-    obj_min = 0#pickle_loader("{0}/obj_min_dl".format(pickle_path))
+    obj_min = 0#pickle_loader("{0}/obj_min".format(pickle_path))
 
     res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
     res.recompute_nb_bits()

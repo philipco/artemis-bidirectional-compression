@@ -49,9 +49,11 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
 
         for _ in range(iter_steps):
 
+            active_worker = get_active_worker(parameters)
+
             # Saving the data for this iteration
             all_data, all_labels = {}, {}
-            for w_id in range(n_workers):
+            for w_id in active_worker:
                 all_data[w_id], all_labels[w_id] = next(train_loader_iter[w_id])
 
             # Down-compression step
@@ -79,15 +81,15 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                             zipped_omega.copy_(dezipped_omega)
 
             # Computing and propagating gradients.
-            for w_id in range(n_workers):
+            for w_id in active_worker:
                 data, target = all_data[w_id].to(device), all_labels[w_id].to(device)
                 output = model(data)
                 if torch.isnan(output).any():
                     print("There is NaN in output values, stopping.")
                     # Completing values to reach the given number of epoch.
-                    run.train_losses = run.train_losses + [run.train_losses[-1] for i in range(epochs - len(run.train_losses))]
-                    run.test_losses = run.test_losses + [run.test_losses[-1] for i in range(epochs - len(run.test_losses))]
-                    run.test_accuracies = run.test_accuracies + [run.test_accuracies[-1] for i in range(epochs - len(run.test_accuracies))]
+                    run.train_losses = run.train_losses + [run.train_losses[-1] for i in range(epochs - len(run.train_losses) + 1)]
+                    run.test_losses = run.test_losses + [run.test_losses[-1] for i in range(epochs - len(run.test_losses) + 1)]
+                    run.test_accuracies = run.test_accuracies + [run.test_accuracies[-1] for i in range(epochs - len(run.test_accuracies) + 1)]
                     return best_val_loss, run
                 loss = criterion(output, target)
                 loss.backward()
@@ -223,7 +225,7 @@ def run_workers(parameters: DLParameters, loaders):
         print("Device :", device, file = f)
 
     net = parameters.model
-    model = net()
+    model = net(input_size=parameters.n_dimensions)
     # Model's weights are initialized to zero.
     # for p in model.parameters():
     #     p.data.fill_(0)
@@ -252,3 +254,13 @@ def run_tuned_exp(parameters: DLParameters, loaders):
 
     return run
 
+
+def get_active_worker(parameters: DLParameters):
+    active_worker = []
+    # Sampling workers until there is at least one in the subset.
+    if parameters.fraction_sampled_workers == 1:
+        active_worker = range(parameters.nb_devices)
+    else:
+        while not active_worker:
+            active_worker = np.random.binomial(1, parameters.fraction_sampled_workers, parameters.nb_devices)
+    return active_worker

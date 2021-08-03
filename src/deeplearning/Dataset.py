@@ -12,7 +12,8 @@ from torchvision.datasets import MNIST
 from torchvision.datasets.utils import download_and_extract_archive
 
 from src.utils.Utilities import get_project_root, create_folder_if_not_existing
-from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_a9a, prepare_phishing
+from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_a9a, prepare_phishing, prepare_abalone, \
+    prepare_mushroom
 
 
 class FEMNISTDataset(MNIST):
@@ -218,6 +219,50 @@ class A9ADataset(Dataset):
         else:
             self.data = X_test
             self.targets = Y_test
+
+    def __len__(self):
+        return len(self.targets)
+
+    def __getitem__(self, index: int):
+        return self.data[index].float(), self.targets[index].float()#type(torch.LongTensor)
+
+
+class MushroomDataset(Dataset):
+
+    def __init__(self, train=True, iid: str ="iid"):
+        root = get_project_root()
+        bool_iid = True if iid == "iid" else False
+
+        create_folder_if_not_existing("{0}/pickle/mushroom-{1}-N20".format(root, iid))
+        X_train, Y_train, dim_notebook = prepare_mushroom(20, data_path="{0}/pickle/".format(root),
+                                             pickle_path="{0}/pickle/mushroom-{1}-N20".format(root, iid),
+                                             iid=bool_iid)
+
+        self.split = []
+        last_idx = 0
+        for y in Y_train:
+            self.split.append(np.array(range(last_idx, last_idx + len(y))))
+
+        X_train = torch.cat([x for x in X_train])
+        Y_train = torch.cat([y.reshape(len(y), 1) for y in Y_train])
+
+        for i in range(len(Y_train)):
+            if Y_train[i] == -1:
+                Y_train[i] = 0
+
+        n = int(len(X_train) * 10 / 100)
+
+        test_data = X_train[:n]
+        test_labels = Y_train[:n]
+
+        self.train = train
+        if self.train:
+            print('Total number of point:', len(X_train))
+            self.data = X_train
+            self.targets = Y_train
+        else:
+            self.data = test_data
+            self.targets = test_labels
 
     def __len__(self):
         return len(self.targets)

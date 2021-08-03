@@ -21,7 +21,7 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False):
+                    scenario: str = None, fraction_sampled_workers: int = 0.5, plot_only: bool = False):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
@@ -35,7 +35,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
-    nb_epoch = 100 if stochastic else 400
+    nb_epoch = 1000 if stochastic else 400
 
     iid_data = True if iid == 'iid' else False
 
@@ -44,53 +44,54 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         X, Y, dim_notebook = prepare_a9a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 535
         model = LogisticModel
-        nb_epoch = 500 if stochastic else 400
+        
     if dataset == "abalone":
         X, Y, dim_notebook = prepare_abalone(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 86
         model = RMSEModel
-        nb_epoch = 500 if stochastic else 400
+        
     if dataset == "covtype":
         X, Y, dim_notebook = prepare_covtype(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 10000 if iid == "non-iid" else 400 # b < 10413
         model = RMSEModel
-        nb_epoch = 500 if stochastic else 400
+        
     if dataset == "gisette":
         X, Y, dim_notebook = prepare_gisette(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 8222
         model = RMSEModel
-        nb_epoch = 500 if stochastic else 400
+        
     if dataset == "madelon":
         X, Y, dim_notebook = prepare_madelon(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 16 if iid == "non-iid" else 16 # b < 16
         model = LogisticModel
-        nb_epoch = 500 if stochastic else 400
+        
     if dataset == "mushroom":
         X, Y, dim_notebook = prepare_mushroom(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 50 if iid == "non-iid" else 4 # b < 148
+        batch_size = 4 if iid == "non-iid" else 4 # b < 148
         model = LogisticModel
-        nb_epoch = 500 if stochastic else 400
+        
     if dataset == "quantum":
         X, Y, dim_notebook = prepare_quantum(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 400 # b < 748
         model = LogisticModel
-        nb_epoch = 500 if stochastic else 400
+        
     if dataset == "phishing":
         X, Y, dim_notebook = prepare_phishing(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 229
         model = LogisticModel
-        nb_epoch = 500 if stochastic else 400
+        
     elif dataset == "superconduct":
         X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 # b < 284
         model = RMSEModel
-        nb_epoch = 500 if stochastic else 400
+        
     if dataset == "w8a":
         X, Y, dim_notebook = prepare_w8a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 400 if iid == "non-iid" else 400 # b < 621
         model = LogisticModel
-        nb_epoch = 500 if stochastic else 400
+
     elif dataset == 'synth_logistic':
+        nb_epoch = 100 if stochastic else 400
         dim_notebook = 2
         batch_size = 1
         model = LogisticModel
@@ -101,6 +102,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         else:
             X, Y = pickle_loader(pickle_path + "/data")
     elif dataset == 'synth_linear_noised':
+        nb_epoch = 100 if stochastic else 400
         dim_notebook = 20
         if not file_exist("{0}/data.pkl".format(pickle_path)):
             w_true = generate_param(dim_notebook-1)
@@ -113,6 +115,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         model = RMSEModel
         batch_size = 1
     elif dataset == 'synth_linear_nonoised':
+        nb_epoch = 100 if stochastic else 400
         dim_notebook = 20
         if not file_exist("{0}/data.pkl".format(pickle_path)):
             w_true = generate_param(dim_notebook-1)
@@ -125,7 +128,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         model = RMSEModel
         batch_size = 1
 
-    compression_by_default = SQuantization(1, dim_notebook, norm=2)
+    default_level_of_quantization = 1 if fraction_sampled_workers == 1 else 2
+    compression_by_default = SQuantization(default_level_of_quantization, dim_notebook, norm=2)
 
     values_compression = [SQuantization(0, dim_notebook, norm=2),
                           SQuantization(16, dim_notebook, norm=2),

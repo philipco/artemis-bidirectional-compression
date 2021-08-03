@@ -75,7 +75,7 @@ class SGDGen(Optimizer):
                                 2 * (self.parameters.up_compression_model.__compute_omega_c__(loc_grad) + 1))
 
                 if up_error_feedback_name in param_state:
-                    loc_grad += param_state[up_error_feedback_name]  # TODO : multiplier par un coef ?
+                    loc_grad += param_state[up_error_feedback_name].mul(self.parameters.optimal_step_size)  # TODO : multiplier par un coef ?
 
                 # Combining with up memory
                 if self.parameters.use_up_memory:
@@ -108,7 +108,7 @@ class SGDGen(Optimizer):
                     full_grad = param_state['full_grad'] / self.parameters.nb_devices
 
                     if down_error_feedback_name in param_state:
-                        full_grad += param_state[down_error_feedback_name]
+                        full_grad += param_state[down_error_feedback_name].mul(self.parameters.optimal_step_size)
 
                     if not self.parameters.non_degraded:
                         grad = self.parameters.down_compression_model.compress(full_grad)

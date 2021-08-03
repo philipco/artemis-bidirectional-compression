@@ -22,38 +22,11 @@ class LogisticLoss(_WeightedLoss):
         return -torch.sum(torch.log(torch.sigmoid(target * input.flatten()))) / n_samples
 
 
-class A9A_Linear(nn.Module):
+class LogisticReg(nn.Module):
 
-    def __init__(self):
-        input_size = 124
+    def __init__(self, input_size):
         self.output_size = 1
-        super(A9A_Linear, self).__init__()
-        self.l1 = nn.Linear(input_size, self.output_size, bias=False)
-
-    def forward(self, x):
-        x = self.l1(x)
-        return torch.sigmoid(x)
-
-
-class Quantum_Linear(nn.Module):
-
-    def __init__(self):
-        input_size = 66
-        self.output_size = 1
-        super(Quantum_Linear, self).__init__()
-        self.l1 = nn.Linear(input_size, self.output_size, bias=False)
-
-    def forward(self, x):
-        x = self.l1(x)
-        return torch.sigmoid(x)
-
-
-class Phishing_Linear(nn.Module):
-
-    def __init__(self):
-        input_size = 69
-        self.output_size = 1
-        super(Phishing_Linear, self).__init__()
+        super(LogisticReg, self).__init__()
         self.l1 = nn.Linear(input_size, self.output_size, bias=False)
 
     def forward(self, x):
@@ -62,8 +35,7 @@ class Phishing_Linear(nn.Module):
 
 class Phishing_HiddenLayer(nn.Module):
 
-    def __init__(self):
-        input_size = 68
+    def __init__(self, input_size: int):
         self.output_size = 2
         hidden_size = 10
         super(Phishing_HiddenLayer, self).__init__()
@@ -78,7 +50,7 @@ class Phishing_HiddenLayer(nn.Module):
 
 class MNIST_Linear(nn.Module):
     
-    def __init__(self):
+    def __init__(self, input_size):
         input_size = 784
         self.output_size = 10
         super(MNIST_Linear, self).__init__()
@@ -93,7 +65,7 @@ class MNIST_Linear(nn.Module):
 
 class MNIST_FullyConnected(nn.Module):
 
-    def __init__(self):
+    def __init__(self, input_size):
         input_size = 784
         self.output_size = 10
         hidden_size = 128
@@ -113,7 +85,7 @@ class MNIST_FullyConnected(nn.Module):
 
 
 class MNIST_CNN(nn.Module):
-    def __init__(self):
+    def __init__(self, input_size):
         super(MNIST_CNN, self).__init__()
         self.output_size = 10
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
@@ -135,9 +107,9 @@ class MNIST_CNN(nn.Module):
 
 class EMNIST_FullyConnected(nn.Module):
 
-    def __init__(self):
-        input_size = 784
+    def __init__(self, input_size):
         self.output_size = 62
+        input_size = 784
         hidden_size = 128
         super(EMNIST_FullyConnected, self).__init__()
         self.f1 = nn.Flatten()
@@ -156,7 +128,7 @@ class EMNIST_FullyConnected(nn.Module):
 class FashionMNIST_CNN(nn.Module):
     """From https://www.kaggle.com/pankajj/fashion-mnist-with-pytorch-93-accuracy"""
 
-    def __init__(self):
+    def __init__(self, input_size):
         super(FashionMNIST_CNN, self).__init__()
         self.output_size = 10
         self.conv1 = nn.Conv2d(1, 15, kernel_size=3, stride=1)
@@ -192,7 +164,7 @@ class FEMNIST_CNN(nn.Module):
     https://github.com/Xtra-Computing/NIID-Bench
     """
 
-    def __init__(self):
+    def __init__(self, input_size):
         super(FEMNIST_CNN, self).__init__()
         input_dim = (16 * 4 * 4)
         hidden_dims = [120, 84]
@@ -220,7 +192,7 @@ class FEMNIST_CNN(nn.Module):
 
 class LeNet(nn.Module):
     """From https://github.com/kuangliu/pytorch-cifar/blob/master/models/lenet.py."""
-    def __init__(self):
+    def __init__(self, input_size):
         super(LeNet, self).__init__()
         self.output_size = 10
         self.conv1 = nn.Conv2d(3, 6, 5)

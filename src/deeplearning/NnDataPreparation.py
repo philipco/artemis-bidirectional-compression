@@ -9,7 +9,7 @@ from torchvision import datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Subset, RandomSampler
 
-from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset, PhishingDataset
+from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset, PhishingDataset, MushroomDataset
 from src.utils.PathDataset import get_path_to_datasets
 
 
@@ -152,6 +152,12 @@ def load_data(dataset: str, iid: str):
         train_data = A9ADataset(train=True, iid=iid)
 
         test_data = A9ADataset(train=False, iid=iid)
+
+    elif dataset == "mushroom":
+
+        train_data = MushroomDataset(train=True, iid=iid)
+
+        test_data = MushroomDataset(train=False, iid=iid)
 
     elif dataset == "phishing":
 
