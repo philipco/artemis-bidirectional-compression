@@ -362,7 +362,7 @@ def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool
                                       double_check)
     return X, Y, dim + 1  # Because we added one column for the bias
 
-def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False, test: bool = False):
+def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool = False, test: bool = False):
 
     if not test:
         raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a".format(get_path_to_datasets()))

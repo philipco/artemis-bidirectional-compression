@@ -36,8 +36,6 @@ def non_iid_split(train_data, nb_devices):
 
     return ordered_indices
 
-    return None
-
 
 def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, stochastic: bool, seed: int = 42):
     train_data, test_data = load_data(dataset, iid)

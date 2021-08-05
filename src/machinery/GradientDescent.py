@@ -24,8 +24,6 @@ from abc import ABC, abstractmethod
 import time
 from copy import copy
 
-import numpy as np
-import torch
 import math
 import os
 import psutil
@@ -75,8 +73,12 @@ class AGradientDescent(ABC):
         elif not self.parameters.use_down_memory or self.parameters.down_compression_model.omega_c == 0:
             self.parameters.down_learning_rate = 0
 
-        if self.parameters.use_up_memory:
-            self.parameters.error_feedback_coef = 1 / (self.parameters.up_compression_model.omega_c + 1)
+        if self.parameters.up_error_feedback or self.parameters.down_error_feedback:
+            # 1 / (2 * (self.parameters.up_compression_model.omega_c + 1))
+            self.parameters.error_feedback_coef =\
+                self.parameters.step_formula(1, self.parameters.cost_models[0].L,
+                                                  self.parameters.up_compression_model.omega_c,
+                                                  self.parameters.nb_devices)
 
         # Creating each worker of the network.
         self.workers = [Worker(i, parameters, self.__local_update__()) for i in range(self.parameters.nb_devices)]

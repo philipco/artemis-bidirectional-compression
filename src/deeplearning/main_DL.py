@@ -4,6 +4,7 @@ Created by Philippenko, 2th April 2021.
 import copy
 import sys
 import logging
+import time
 
 from src.deeplearning.DLParameters import cast_to_DL
 from src.deeplearning.NnDataPreparation import create_loaders
@@ -29,7 +30,7 @@ momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "emni
              "quantum": 0, "mushroom": 0}
 optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "emnist": 0.1, "a9a": None,
                       "phishing": None, "quantum": None, "mushroom": None} #0.2863
-quantization_levels= {"cifar10": 2, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "emnist": 0.1, "a9a":1, "phishing": 1,
+quantization_levels= {"cifar10": 2, "mnist": 4, "fashion_mnist": 4, "femnist": 4, "emnist": 0.1, "a9a":1, "phishing": 1,
                       "quantum": 1, "mushroom": 1}
 norm_quantization = {"cifar10": np.inf, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "emnist": 2, "a9a": 2,
                      "phishing": 2, "quantum": 2, "mushroom": 2}
@@ -97,7 +98,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
         obj_min = run_tuned_exp(params, loaders).train_losses[-1]
         pickle_saver(obj_min, "{0}/obj_min_dl".format(pickle_path))
 
-    list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
+    list_algos = [VanillaSGD(), Diana(), Artemis(), Dore(), MCM()]#choose_algo(algos, stochastic, fraction_sampled_workers)
 
     if not plot_only:
         all_descent = {}
@@ -107,7 +108,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
             torch.cuda.empty_cache()
             params = type_params.define(cost_models=None,
                                         n_dimensions=dim,
-                                        nb_epoch=200,
+                                        nb_epoch=150,
                                         nb_devices=nb_devices,
                                         stochastic=stochastic,
                                         batch_size=batch_size,
@@ -127,6 +128,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
             multiple_descent = AverageOfSeveralIdenticalRun()
             seed_everything(seed=42)
+            start = time.time()
             for i in range(NB_RUN):
                 print('Run {:3d}/{:3d}:'.format(i + 1, NB_RUN))
                 fixed_params = copy.deepcopy(params)
@@ -135,6 +137,8 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
                 except ValueError as err:
                     print(err)
                     continue
+            with open(log_file, 'a') as f:
+                print("Time of the run: {:.2f}s".format(time.time() - start), file=f)
 
             all_descent[type_params.name()] = multiple_descent
             res = ResultsOfSeveralDescents(all_descent, nb_devices)

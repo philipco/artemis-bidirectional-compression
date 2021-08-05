@@ -15,7 +15,7 @@ from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-NB_RUN = 5  # Number of gradient descent before averaging.
+NB_RUN = 1  # Number of gradient descent before averaging.
 
 
 def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1):
