@@ -62,7 +62,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                     # Compressing the model (on central server side).
                     for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
-                        if down_memory_name not in param_state:
+                        if down_memory_name not in param_state and parameters.use_down_memory:
                             param_state[down_memory_name] = copy.deepcopy(p).to(device) #torch.zeros_like(p).to(device)
                         if parameters.down_compression_model is not None:
                             value_to_compress = preserved_p - param_state[down_memory_name]
@@ -112,8 +112,9 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
         run.update_run(train_loss, test_loss_val, test_acc_val)
 
         if e+1 in [1, np.floor(epochs/4), np.floor(epochs/2), np.floor(3*epochs/4), epochs]:
-            print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
-                  .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val))
+            with open(parameters.log_file, 'a') as f:
+                print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
+                    .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val), file=f)
 
         # print("Time for computation :", elapsed_time)
 

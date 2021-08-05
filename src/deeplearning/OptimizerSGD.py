@@ -1,6 +1,7 @@
 """
 Created by Philippenko, 26th April 2021.
 """
+import copy
 
 import torch
 from torch.optim.optimizer import Optimizer
@@ -68,8 +69,9 @@ class SGDGen(Optimizer):
                 up_learning_rate_name = 'up_learning_rate_' + str(w_id)
                 loc_grad = d_p
 
-                if up_local_memory_name not in param_state:
-                    param_state[up_local_memory_name] = torch.zeros_like(loc_grad)
+                if up_local_memory_name not in param_state and self.parameters.use_up_memory:
+                    # We initialize memory with first computed gradient (smart initialization).
+                    param_state[up_local_memory_name] = torch.clone(d_p).detach()
                 if up_learning_rate_name not in param_state:
                     param_state[up_learning_rate_name] = 1 / (
                                 2 * (self.parameters.up_compression_model.__compute_omega_c__(loc_grad) + 1))
@@ -99,7 +101,7 @@ class SGDGen(Optimizer):
                     param_state[up_local_memory_name] += d_p.mul(param_state[up_learning_rate_name]).detach()
 
                 if not self.parameters.use_up_memory:
-                    assert torch.equal(param_state[up_local_memory_name], torch.zeros_like(d_p)), "Up memory should not be in parameters' state."  # torch.equal(param_state['up_global_memory'], torch.zeros_like(param_state['up_global_memory'])), "Global memory must be null."
+                    assert up_local_memory_name not in param_state, "Up memory should not be in parameters' state."  # torch.equal(param_state['up_global_memory'], torch.zeros_like(param_state['up_global_memory'])), "Global memory must be null."
                 if not self.parameters.up_error_feedback:
                     assert up_error_feedback_name not in param_state, "Error feedback should not be in parameters' state."
 
