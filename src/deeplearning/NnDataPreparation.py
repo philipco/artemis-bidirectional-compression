@@ -117,25 +117,26 @@ def load_data(dataset: str, iid: str):
 
         # Normalization see : https://stackoverflow.com/a/67233938
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-        train_data = datasets.MNIST(root=path_to_dataset, train=True, download=True, transform=transform)
+        train_data = datasets.MNIST(root=path_to_dataset, train=True, download=False, transform=transform)
 
-        test_data = datasets.MNIST(root=path_to_dataset, train=False, download=True, transform=transform)
-
-    elif dataset == 'emnist':
-        transform = transforms.Compose([transforms.ToTensor()])
-        train_data = datasets.EMNIST(root=path_to_dataset, split="byclass", train=True, download=True, transform=transform)
-
-        test_data = datasets.EMNIST(root=path_to_dataset, split="byclass", train=False, download=True, transform=transform)
+        test_data = datasets.MNIST(root=path_to_dataset, train=False, download=False, transform=transform)
 
     elif dataset == "fashion_mnist":
 
-        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)), ])
+        train_transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+        val_transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
 
         # Download and load the training data
-        train_data = datasets.FashionMNIST(path_to_dataset, download=True, train=True, transform=transform)
+        train_data = datasets.FashionMNIST(path_to_dataset, download=True, train=True, transform=train_transforms)
 
         # Download and load the test data
-        test_data = datasets.FashionMNIST(path_to_dataset, download=True, train=False, transform=transform)
+        test_data = datasets.FashionMNIST(path_to_dataset, download=True, train=False, transform=val_transforms)
 
     elif dataset == "femnist":
 

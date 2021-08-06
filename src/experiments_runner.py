@@ -21,7 +21,7 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 0.5, plot_only: bool = False):
+                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
@@ -87,7 +87,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         
     if dataset == "w8a":
         X, Y, dim_notebook = prepare_w8a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 400 if iid == "non-iid" else 400 # b < 621
+        batch_size = 12 if iid == "non-iid" else 400 # b < 621
         model = LogisticModel
 
     elif dataset == 'synth_logistic':

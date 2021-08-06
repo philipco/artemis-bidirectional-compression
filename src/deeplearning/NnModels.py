@@ -85,6 +85,8 @@ class MNIST_FullyConnected(nn.Module):
 
 
 class MNIST_CNN(nn.Module):
+    """https://nbviewer.jupyter.org/github/greydanus/baselines/blob/master/mnist-cnn.ipynb ?
+    https://github.com/greydanus/baselines ?"""
     def __init__(self, input_size):
         super(MNIST_CNN, self).__init__()
         self.output_size = 10
@@ -105,23 +107,33 @@ class MNIST_CNN(nn.Module):
         return x
 
 
-class EMNIST_FullyConnected(nn.Module):
+class FashionSimpleNet(nn.Module):
+    """ From https://github.com/kefth/fashion-mnist/blob/master/model.py
+    Baseline for FashionMnist : 0.923"""
 
     def __init__(self, input_size):
-        self.output_size = 62
-        input_size = 784
-        hidden_size = 128
-        super(EMNIST_FullyConnected, self).__init__()
-        self.f1 = nn.Flatten()
-        self.l1 = nn.Linear(input_size, hidden_size)
-        self.relu = nn.ReLU()
-        self.l3 = nn.Linear(hidden_size, self.output_size)
+        super().__init__()
+        self.output_size = 10
+        self.features = nn.Sequential(
+            nn.Conv2d(1,32, kernel_size=3, padding=1), # 28
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2), # 14
+
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2) # 7
+        )
+        self.classifier = nn.Sequential(
+            nn.Dropout(),
+            nn.Linear(64 * 7 * 7, 128),
+            nn.ReLU(inplace=True),
+            nn.Linear(128, self.output_size)
+        )
 
     def forward(self, x):
-        x = self.f1(x)
-        x = self.l1(x)
-        x = self.relu(x)
-        x = self.l3(x)
+        x = self.features(x)
+        x = x.view(x.size(0), 64 * 7 * 7)
+        x = self.classifier(x)
         return x
 
 
@@ -316,3 +328,43 @@ def ResNet18():
 
 def ResNet50():
     return ResNet(Bottleneck, [3, 4, 6, 3])
+
+
+class NetworkToNetwork(nn.Module):
+    """From https://github.com/jiecaoyu/pytorch-nin-cifar10"""
+    def __init__(self, input_size):
+        super(NetworkToNetwork, self).__init__()
+        self.output_size = 10
+        self.classifier = nn.Sequential(
+                nn.Conv2d(3, 192, kernel_size=5, stride=1, padding=2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(192, 160, kernel_size=1, stride=1, padding=0),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(160,  96, kernel_size=1, stride=1, padding=0),
+                nn.ReLU(inplace=True),
+                nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+                nn.Dropout(0.5),
+
+                nn.Conv2d(96, 192, kernel_size=5, stride=1, padding=2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(192, 192, kernel_size=1, stride=1, padding=0),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(192, 192, kernel_size=1, stride=1, padding=0),
+                nn.ReLU(inplace=True),
+                nn.AvgPool2d(kernel_size=3, stride=2, padding=1),
+                nn.Dropout(0.5),
+
+                nn.Conv2d(192, 192, kernel_size=3, stride=1, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(192, 192, kernel_size=1, stride=1, padding=0),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(192,  10, kernel_size=1, stride=1, padding=0),
+                nn.ReLU(inplace=True),
+                nn.AvgPool2d(kernel_size=8, stride=1, padding=0),
+
+                )
+
+    def forward(self, x):
+        x = self.classifier(x)
+        x = x.view(x.size(0), self.output_size)
+        return x
