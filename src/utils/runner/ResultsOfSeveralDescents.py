@@ -23,7 +23,12 @@ class ResultsOfSeveralDescents:
 
     def __init__(self, all_descent, nb_devices_for_the_run):
         self.all_descent = all_descent
-        element = list(self.all_descent.values())[-1].multiple_descent[-1]
+        # If its not an artificial descent:
+        if not self.all_descent[next(iter(self.all_descent))].artificial:
+            # We need "element" only to test to which class it belongs : AGradientDescent or DeepLearningRun.
+            element = list(self.all_descent.values())[-1].multiple_descent[-1]
+        else:
+            element = None
         if not self.all_descent[next(iter(self.all_descent))].artificial and isinstance(element, AGradientDescent):
             self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in self.all_descent.values()]
             self.X_number_of_bits = [desc.theoretical_nb_bits for desc in self.all_descent.values()]

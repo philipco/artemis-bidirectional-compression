@@ -1,6 +1,7 @@
 """
 Created by Philippenko, 26th April 2021.
 """
+import copy
 
 import torch
 from torch.optim.optimizer import Optimizer
@@ -66,19 +67,17 @@ class SGDGen(Optimizer):
                 down_error_feedback_name = 'down_error_feedback_' + str(w_id)
                 up_local_memory_name = 'up_memory_' + str(w_id)
                 up_learning_rate_name = 'up_learning_rate_' + str(w_id)
-                # up_global_memory = 'up_memory'
                 loc_grad = d_p
 
-                if up_local_memory_name not in param_state:
-                    param_state[up_local_memory_name] = torch.zeros_like(loc_grad)
-                # if up_global_memory not in param_state:
-                #     param_state[up_global_memory] = torch.zeros_like(loc_grad)
+                if up_local_memory_name not in param_state and self.parameters.use_up_memory:
+                    # We initialize memory with first computed gradient (smart initialization).
+                    param_state[up_local_memory_name] = torch.clone(d_p).detach()
                 if up_learning_rate_name not in param_state:
                     param_state[up_learning_rate_name] = 1 / (
                                 2 * (self.parameters.up_compression_model.__compute_omega_c__(loc_grad) + 1))
 
                 if up_error_feedback_name in param_state:
-                    loc_grad += param_state[up_error_feedback_name]  # TODO : multiplier par un coef ?
+                    loc_grad += param_state[up_error_feedback_name].mul(self.parameters.optimal_step_size)  # TODO : multiplier par un coef ?
 
                 # Combining with up memory
                 if self.parameters.use_up_memory:
@@ -102,7 +101,7 @@ class SGDGen(Optimizer):
                     param_state[up_local_memory_name] += d_p.mul(param_state[up_learning_rate_name]).detach()
 
                 if not self.parameters.use_up_memory:
-                    assert torch.equal(param_state[up_local_memory_name], torch.zeros_like(d_p)), "Up memory should not be in parameters' state."  # torch.equal(param_state['up_global_memory'], torch.zeros_like(param_state['up_global_memory'])), "Global memory must be null."
+                    assert up_local_memory_name not in param_state, "Up memory should not be in parameters' state."  # torch.equal(param_state['up_global_memory'], torch.zeros_like(param_state['up_global_memory'])), "Global memory must be null."
                 if not self.parameters.up_error_feedback:
                     assert up_error_feedback_name not in param_state, "Error feedback should not be in parameters' state."
 
@@ -111,7 +110,7 @@ class SGDGen(Optimizer):
                     full_grad = param_state['full_grad'] / self.parameters.nb_devices
 
                     if down_error_feedback_name in param_state:
-                        full_grad += param_state[down_error_feedback_name]
+                        full_grad += param_state[down_error_feedback_name].mul(self.parameters.optimal_step_size)
 
                     if not self.parameters.non_degraded:
                         grad = self.parameters.down_compression_model.compress(full_grad)

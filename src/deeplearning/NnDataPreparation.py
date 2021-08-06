@@ -9,7 +9,9 @@ from torchvision import datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Subset, RandomSampler
 
-from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset, PhishingDataset
+from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset, PhishingDataset, MushroomDataset
+from src.utils.PathDataset import get_path_to_datasets
+
 
 def non_iid_split(train_data, nb_devices):
     unique_values = {}
@@ -33,8 +35,6 @@ def non_iid_split(train_data, nb_devices):
             ordered_indices = sorted([np.append(ordered_indices[0], ordered_indices[1])] + ordered_indices[2:], key=len)
 
     return ordered_indices
-
-    return None
 
 
 def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, stochastic: bool, seed: int = 42):
@@ -86,6 +86,7 @@ def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, sto
 
 
 def load_data(dataset: str, iid: str):
+    path_to_dataset = '{0}/dataset/'.format(get_path_to_datasets())
     if dataset == "fake":
 
         transform = transforms.ToTensor()
@@ -108,42 +109,54 @@ def load_data(dataset: str, iid: str):
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ])
 
-        train_data = datasets.CIFAR10(root='../dataset/', train=True, download=True, transform=transform_train)
+        train_data = datasets.CIFAR10(root=path_to_dataset, train=True, download=True, transform=transform_train)
 
-        test_data = datasets.CIFAR10(root='../dataset/', train=False, download=True, transform=transform_test)
+        test_data = datasets.CIFAR10(root=path_to_dataset, train=False, download=True, transform=transform_test)
 
     elif dataset == 'mnist':
 
         # Normalization see : https://stackoverflow.com/a/67233938
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+        train_data = datasets.MNIST(root=path_to_dataset, train=True, download=False, transform=transform)
 
-        train_data = datasets.MNIST(root='../dataset/', train=True, download=True, transform=transform)
-
-        test_data = datasets.MNIST(root='../dataset/', train=False, download=True, transform=transform)
+        test_data = datasets.MNIST(root=path_to_dataset, train=False, download=False, transform=transform)
 
     elif dataset == "fashion_mnist":
 
-        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)), ])
+        train_transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+        val_transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
 
         # Download and load the training data
-        train_data = datasets.FashionMNIST('../dataset/', download=True, train=True, transform=transform)
+        train_data = datasets.FashionMNIST(path_to_dataset, download=True, train=True, transform=train_transforms)
 
         # Download and load the test data
-        test_data = datasets.FashionMNIST('../dataset/', download=True, train=False, transform=transform)
+        test_data = datasets.FashionMNIST(path_to_dataset, download=True, train=False, transform=val_transforms)
 
     elif dataset == "femnist":
 
         transform = transforms.Compose([transforms.ToTensor()])
 
-        train_data = FEMNISTDataset('../dataset/', download=True, train=True, transform=transform)
+        train_data = FEMNISTDataset(path_to_dataset, download=True, train=True, transform=transform)
 
-        test_data = FEMNISTDataset('../dataset/', download=True, train=False, transform=transform)
+        test_data = FEMNISTDataset(path_to_dataset, download=True, train=False, transform=transform)
 
     elif dataset == "a9a":
 
         train_data = A9ADataset(train=True, iid=iid)
 
         test_data = A9ADataset(train=False, iid=iid)
+
+    elif dataset == "mushroom":
+
+        train_data = MushroomDataset(train=True, iid=iid)
+
+        test_data = MushroomDataset(train=False, iid=iid)
 
     elif dataset == "phishing":
 

@@ -30,7 +30,7 @@ def tsne(data):
     return X_embedded
 
 
-def find_cluster(embedded_data, nb_cluster: int = 10):
+def find_cluster(embedded_data, tsne_cluster_file, nb_cluster: int = 10):
     np.random.seed(25)
     clustering = GaussianMixture(n_components=nb_cluster, random_state=0, tol=1e-6, n_init=4, max_iter=2000)\
         .fit(embedded_data)
@@ -43,6 +43,8 @@ def find_cluster(embedded_data, nb_cluster: int = 10):
     plt.xticks(fontsize=20)
     # plt.title("Gaussian Mixture - Finding clusters in the TSNE", fontsize=20)
     ax.get_legend().remove()
+
+    plt.savefig('{0}.eps'.format(tsne_cluster_file), format='eps')
 
     return predicted_cluster
 

@@ -49,9 +49,11 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
 
         for _ in range(iter_steps):
 
+            active_worker = get_active_worker(parameters)
+
             # Saving the data for this iteration
             all_data, all_labels = {}, {}
-            for w_id in range(n_workers):
+            for w_id in active_worker:
                 all_data[w_id], all_labels[w_id] = next(train_loader_iter[w_id])
 
             # Down-compression step
@@ -60,8 +62,8 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                     # Compressing the model (on central server side).
                     for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
-                        if down_memory_name not in param_state:
-                            param_state[down_memory_name] = torch.zeros_like(p).to(device)
+                        if down_memory_name not in param_state and parameters.use_down_memory:
+                            param_state[down_memory_name] = copy.deepcopy(p).to(device) #torch.zeros_like(p).to(device)
                         if parameters.down_compression_model is not None:
                             value_to_compress = preserved_p - param_state[down_memory_name]
                             omega = parameters.down_compression_model.compress(value_to_compress)
@@ -73,15 +75,21 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                             if down_learning_rate_name not in param_state:
                                 param_state[down_learning_rate_name] = 1 / (
                                         2 * (parameters.down_compression_model.__compute_omega_c__(zipped_omega) + 1))
-                                print("Down learning rate: ", param_state[down_learning_rate_name])
                             dezipped_omega = zipped_omega + param_state[down_memory_name]
                             param_state[down_memory_name] += zipped_omega.mul(param_state[down_learning_rate_name]).detach()
                             zipped_omega.copy_(dezipped_omega)
 
             # Computing and propagating gradients.
-            for w_id in range(n_workers):
+            for w_id in active_worker:
                 data, target = all_data[w_id].to(device), all_labels[w_id].to(device)
                 output = model(data)
+                if torch.isnan(output).any():
+                    print("There is NaN in output values, stopping.")
+                    # Completing values to reach the given number of epoch.
+                    run.train_losses = run.train_losses + [run.train_losses[-1] for i in range(epochs - len(run.train_losses) + 1)]
+                    run.test_losses = run.test_losses + [run.test_losses[-1] for i in range(epochs - len(run.test_losses) + 1)]
+                    run.test_accuracies = run.test_accuracies + [run.test_accuracies[-1] for i in range(epochs - len(run.test_accuracies) + 1)]
+                    return best_val_loss, run
                 loss = criterion(output, target)
                 loss.backward()
                 optimizer.step_local_global(w_id)
@@ -104,8 +112,9 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
         run.update_run(train_loss, test_loss_val, test_acc_val)
 
         if e+1 in [1, np.floor(epochs/4), np.floor(epochs/2), np.floor(3*epochs/4), epochs]:
-            print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
-                  .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val))
+            with open(parameters.log_file, 'a') as f:
+                print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
+                    .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val), file=f)
 
         # print("Time for computation :", elapsed_time)
 
@@ -124,6 +133,8 @@ def compute_loss(parameters, preserved_model, model, train_loader_workers_full, 
                 output = preserved_model(data)
             else:
                 output = model(data)
+            if torch.isnan(output).any():
+                raise ValueError("There is NaN in output values, stopping.")
             loss = criterion(output, target)
             running_loss += loss.item()
     train_loss = running_loss / parameters.nb_devices
@@ -214,7 +225,7 @@ def run_workers(parameters: DLParameters, loaders):
         print("Device :", device, file = f)
 
     net = parameters.model
-    model = net()
+    model = net(input_size=parameters.n_dimensions)
     # Model's weights are initialized to zero.
     # for p in model.parameters():
     #     p.data.fill_(0)
@@ -243,3 +254,13 @@ def run_tuned_exp(parameters: DLParameters, loaders):
 
     return run
 
+
+def get_active_worker(parameters: DLParameters):
+    active_worker = []
+    # Sampling workers until there is at least one in the subset.
+    if parameters.fraction_sampled_workers == 1:
+        active_worker = range(parameters.nb_devices)
+    else:
+        while not active_worker:
+            active_worker = np.random.binomial(1, parameters.fraction_sampled_workers, parameters.nb_devices)
+    return active_worker

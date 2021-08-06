@@ -179,7 +179,7 @@ class RMSEModel(ACostModel):
 
     def __init__(self, X, Y, regularization: ARegularizationModel = NoRegularization()) -> None:
         super().__init__(X, Y, regularization)
-        assert len(torch.unique(Y)) > 2, "Y values must have at least 3 different values."
+        # assert len(torch.unique(Y)) > 2, "Y values must have at least 3 different values."
 
     def cost(self, w: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         n_sample = self.X.shape[0]

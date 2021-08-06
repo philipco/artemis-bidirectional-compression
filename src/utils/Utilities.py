@@ -59,7 +59,7 @@ def compute_number_of_bits(type_params: Parameters, nb_epoch: int, compress_mode
     # Initialization, the first element needs to be removed at the end.
     number_of_bits = np.array([0 for i in range(nb_epoch)])
     if isinstance(type_params, DLParameters):
-        model = type_params.model()
+        model = type_params.model(type_params.n_dimensions)
         for p in model.parameters():
             d = p.numel()
             nb_bits = compute_number_of_bits_by_layer(type_params, d, nb_epoch, compress_model)
