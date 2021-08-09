@@ -72,9 +72,14 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                     for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
                         if down_memory_name not in param_state and parameters.use_down_memory:
-                            param_state[down_memory_name] = copy.deepcopy(p).to(device) #torch.zeros_like(p).to(device)
+                            if parameters.down_compression_model.level != 0:
+                                param_state[down_memory_name] = copy.deepcopy(p).to(device) #torch.zeros_like(p).to(device)
+                            else:
+                                param_state[down_memory_name] = torch.zeros_like(p).to(device)
                         if parameters.down_compression_model is not None:
-                            value_to_compress = preserved_p - param_state[down_memory_name]
+                            value_to_compress = preserved_p
+                            if parameters.use_down_memory:
+                                value_to_compress = value_to_compress - param_state[down_memory_name]
                             omega = parameters.down_compression_model.compress(value_to_compress)
                             p.copy_(omega)
                     # Dezipping memory if required (on remote servers side).
@@ -82,8 +87,11 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                         for zipped_omega in model.parameters():
                             param_state = optimizer.state[zipped_omega]
                             if down_learning_rate_name not in param_state:
-                                param_state[down_learning_rate_name] = 1 / (
-                                        2 * (parameters.down_compression_model.__compute_omega_c__(zipped_omega) + 1))
+                                if parameters.down_compression_model.level != 0:
+                                    param_state[down_learning_rate_name] = 1 / (
+                                            2 * (parameters.down_compression_model.__compute_omega_c__(zipped_omega) + 1))
+                                else:
+                                    param_state[down_learning_rate_name] = 0
                             dezipped_omega = zipped_omega + param_state[down_memory_name]
                             param_state[down_memory_name] += zipped_omega.mul(param_state[down_learning_rate_name]).detach()
                             zipped_omega.copy_(dezipped_omega)
@@ -110,7 +118,6 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                     # Updating the model
                     for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
-                        # Warning: the final grad has already been multiplied with the step size !
                         update_model = preserved_p - param_state['final_grad'].mul(parameters.optimal_step_size)
                         preserved_p.copy_(update_model)
 
@@ -120,7 +127,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                                                                        test_loader, criterion, device)
         run.update_run(train_loss, test_loss_val, test_acc_val)
 
-        if e+1 in [1, np.floor(epochs/4), np.floor(epochs/2), np.floor(3*epochs/4), epochs]:
+        if e+1 in [1, 2, 5, 12, np.floor(epochs/4), np.floor(epochs/2), np.floor(3*epochs/4), epochs]:
             with open(parameters.log_file, 'a') as f:
                 print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
                     .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val), file=f)
