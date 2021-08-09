@@ -6,6 +6,7 @@ import copy
 import torch
 import numpy as np
 import torch.backends.cudnn as cudnn
+from torch.optim.lr_scheduler import MultiStepLR
 
 from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.DeepLearningRun import DeepLearningRun
@@ -19,6 +20,8 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
 
     model = model.to(device)
     preserved_model = copy.deepcopy(model).to(device)
+
+    lr_scheduler = MultiStepLR(optimizer, milestones=[50, 100, 150], gamma=0.1)
 
     if device == 'cuda':
         model = torch.nn.DataParallel(model)
@@ -38,6 +41,12 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
     down_learning_rate_name = 'down_learning_rate'
 
     for e in range(epochs):
+
+        lr_scheduler.step()
+
+        # if (e + 1)  % 50 == 0:
+        #     print("Dividing learning rate.")
+        #     optimizer.parameters.optimal_step_size *= 0.1
 
         model.train()
         train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
@@ -230,11 +239,13 @@ def run_workers(parameters: DLParameters, loaders):
     # for p in model.parameters():
     #     p.data.fill_(0)
 
+    cudnn.benchmark = True if torch.cuda.is_available() else False
+
     train_loader_workers, train_loader_workers_full, val_loader, test_loader = loaders
 
-    optimizer = SGDGen(model.parameters(), parameters=parameters, weight_decay=0)
+    optimizer = SGDGen(model.parameters(), parameters=parameters, weight_decay=parameters.weight_decay)
 
-    criterion = parameters.criterion
+    criterion = parameters.criterion.to(device)
     val_loss, run = train_workers(model, optimizer, criterion, parameters.nb_epoch, train_loader_workers,
                                   train_loader_workers_full, val_loader, test_loader, parameters.nb_devices,
                                   parameters=parameters)

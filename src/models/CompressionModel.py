@@ -119,8 +119,8 @@ class SQuantization(CompressionModel):
     def __init__(self, level: int, dim: int = None, norm: int = 2, div_omega: int = 1):
         self.biased = False
         self.div_omega = div_omega
+        self.bucket_size = 128
         super().__init__(level, dim, norm)
-
 
     def compress(self, vector: torch.FloatTensor, dim: str = None) -> torch.FloatTensor:
         """Implement the s-quantization
@@ -137,14 +137,24 @@ class SQuantization(CompressionModel):
             return vector
         vector, dim, flat_dim = prep_grad(vector)
 
+        if len(vector) > self.bucket_size:
+            qtzt = torch.zeros_like(vector)
+            for i in range(len(vector) // self.bucket_size +1):
+                qtzt[self.bucket_size * i: self.bucket_size * (i+1)] = self.__qtzt__(vector[self.bucket_size * i: self.bucket_size * (i+1)])
+        else:
+            qtzt = self.__qtzt__(vector)
+
+        return qtzt.reshape(dim)
+
+    def __qtzt__(self, vector):
         norm_x = torch.norm(vector, p=self.norm)
         if norm_x == 0:
-            return vector.reshape(dim)
+            return vector
 
         all_levels = torch.floor(self.level * torch.abs(vector) / norm_x + torch.rand_like(vector)) / self.level
         signed_level = torch.sign(vector) * all_levels
         qtzt = signed_level * norm_x
-        return qtzt.reshape(dim)
+        return qtzt
 
     def __compute_omega_c__(self, vector: torch.FloatTensor = None, flat_dim: int =None):
         """Return the value of omega_c (involved in variance) of the s-quantization."""
@@ -156,7 +166,11 @@ class SQuantization(CompressionModel):
             _, _, flat_dim = prep_grad(vector)
         if self.level == 0:
             return 0
-        return min(flat_dim / (self.level*self.level*self.div_omega), sqrt(flat_dim) / (self.level*self.div_omega))
+        if flat_dim > self.bucket_size:
+            return min(self.bucket_size / (self.level * self.level * self.div_omega),
+                       sqrt(self.bucket_size) / (self.level * self.div_omega))
+        else:
+            return min(flat_dim / (self.level*self.level*self.div_omega), sqrt(flat_dim) / (self.level*self.div_omega))
 
     def get_name(self) -> str:
         return "Qtzd"
