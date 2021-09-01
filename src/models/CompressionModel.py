@@ -119,7 +119,7 @@ class SQuantization(CompressionModel):
     def __init__(self, level: int, dim: int = None, norm: int = 2, div_omega: int = 1):
         self.biased = False
         self.div_omega = div_omega
-        self.bucket_size = 128
+        self.bucket_size = np.inf
         super().__init__(level, dim, norm)
 
     def compress(self, vector: torch.FloatTensor, dim: str = None) -> torch.FloatTensor:
