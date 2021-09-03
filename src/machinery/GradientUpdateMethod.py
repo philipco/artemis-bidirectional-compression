@@ -43,18 +43,10 @@ class AbstractGradientUpdate(ABC):
     @abstractmethod
     def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
-        """Compute the model's update.
+        """
+        Compute the model's update.
 
-        This  method must update the model's parameter according to the scheme.
-
-        Args:
-            model_param: this is used only for initialization at iteration k=1. Deprecated, should be removed !
-            nb_it: index of epoch (iteration over full local data)
-            j: index of inside iterations
-
-        Returns:
-            the new model.
-
+        :param full_nb_iterations: total number of computed iteration.
         """
         pass
 
@@ -236,12 +228,21 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 assert len(self.omega_k[worker.idx_last_update:]) == 1
             worker.idx_last_update = len(self.omega_k)
             
-    def receive_all_delta(self, cost_models, nb_inside_it: int):
+    def receive_all_delta(self, cost_models, full_nb_iterations: int):
+
         # Warning, if one wants to run the case when subset are updating, but then al devices are updated,
         # the following lines must be changed.
         for worker, cost_model in self.get_set_of_workers(cost_models):
             # We get all the compressed gradient computed on each worker.
-            compressed_delta_i = worker.local_update.compute_locally(cost_model, nb_inside_it)
+            compressed_delta_i = worker.local_update.compute_locally(cost_model, full_nb_iterations)
+
+            # Smart initialisation of the memory (it corresponds to the first computed gradient).
+            if full_nb_iterations == 1 and self.parameters.use_up_memory:
+                if self.parameters.use_unique_up_memory:
+                    # print(len(self.get_set_of_workers(cost_models)))
+                    self.h += worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
+                if not self.parameters.use_unique_up_memory:
+                    self.h[worker.ID] = worker.local_update.h_i
 
             # If nothing is returned by the device, this device does not participate to the learning at this iterations.
             # This may happened if it is considered that during one epoch each devices should run through all its data
@@ -298,7 +299,7 @@ class ArtemisUpdate(AbstractFLUpdate):
 
         self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
-        self.receive_all_delta(cost_models, nb_inside_it)
+        self.receive_all_delta(cost_models, full_nb_iterations)
 
         self.perform_down_compression(self.g, cost_models)
         model_param = self.update_model(model_param)
@@ -418,7 +419,7 @@ class DownCompressModelUpdate(AbstractFLUpdate):
 
         self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
-        self.receive_all_delta(cost_models, nb_inside_it)
+        self.receive_all_delta(cost_models, full_nb_iterations)
 
         model_param = self.update_model(model_param)
         self.perform_down_compression(model_param, cost_models)
@@ -475,7 +476,7 @@ class DianaUpdate(AbstractFLUpdate):
 
         self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
-        self.receive_all_delta(cost_models, nb_inside_it)
+        self.receive_all_delta(cost_models, full_nb_iterations)
 
         model_param = self.update_model(model_param)
 
@@ -492,7 +493,7 @@ class GradientVanillaUpdate(AbstractFLUpdate):
 
         self.initialization(full_nb_iterations, model_param, cost_models[0].L, cost_models)
 
-        self.receive_all_delta(cost_models, nb_inside_it)
+        self.receive_all_delta(cost_models, full_nb_iterations)
 
         model_param = self.update_model(model_param)
 
