@@ -6,6 +6,7 @@ import copy
 import torch
 import numpy as np
 import torch.backends.cudnn as cudnn
+from torch.optim.lr_scheduler import MultiStepLR
 
 from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.DeepLearningRun import DeepLearningRun
@@ -19,6 +20,8 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
 
     model = model.to(device)
     preserved_model = copy.deepcopy(model).to(device)
+
+    lr_scheduler = MultiStepLR(optimizer, milestones=[50, 100, 150], gamma=0.1)
 
     if device == 'cuda':
         model = torch.nn.DataParallel(model)
@@ -38,6 +41,12 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
     down_learning_rate_name = 'down_learning_rate'
 
     for e in range(epochs):
+
+        # lr_scheduler.step()
+
+        # if (e + 1)  % 50 == 0:
+        #     print("Dividing learning rate.")
+        #     optimizer.parameters.optimal_step_size *= 0.1
 
         model.train()
         train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
@@ -63,9 +72,14 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                     for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
                         if down_memory_name not in param_state and parameters.use_down_memory:
-                            param_state[down_memory_name] = copy.deepcopy(p).to(device) #torch.zeros_like(p).to(device)
+                            if parameters.down_compression_model.level != 0:
+                                param_state[down_memory_name] = copy.deepcopy(p).to(device) #torch.zeros_like(p).to(device)
+                            else:
+                                param_state[down_memory_name] = torch.zeros_like(p).to(device)
                         if parameters.down_compression_model is not None:
-                            value_to_compress = preserved_p - param_state[down_memory_name]
+                            value_to_compress = preserved_p
+                            if parameters.use_down_memory:
+                                value_to_compress = value_to_compress - param_state[down_memory_name]
                             omega = parameters.down_compression_model.compress(value_to_compress)
                             p.copy_(omega)
                     # Dezipping memory if required (on remote servers side).
@@ -73,8 +87,11 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                         for zipped_omega in model.parameters():
                             param_state = optimizer.state[zipped_omega]
                             if down_learning_rate_name not in param_state:
-                                param_state[down_learning_rate_name] = 1 / (
-                                        2 * (parameters.down_compression_model.__compute_omega_c__(zipped_omega) + 1))
+                                if parameters.down_compression_model.level != 0:
+                                    param_state[down_learning_rate_name] = 1 / (
+                                            2 * (parameters.down_compression_model.__compute_omega_c__(zipped_omega) + 1))
+                                else:
+                                    param_state[down_learning_rate_name] = 0
                             dezipped_omega = zipped_omega + param_state[down_memory_name]
                             param_state[down_memory_name] += zipped_omega.mul(param_state[down_learning_rate_name]).detach()
                             zipped_omega.copy_(dezipped_omega)
@@ -82,6 +99,8 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
             # Computing and propagating gradients.
             for w_id in active_worker:
                 data, target = all_data[w_id].to(device), all_labels[w_id].to(device)
+                # clear the gradients of all optimized variables
+                optimizer.zero_grad()
                 output = model(data)
                 if torch.isnan(output).any():
                     print("There is NaN in output values, stopping.")
@@ -93,7 +112,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                 loss = criterion(output, target)
                 loss.backward()
                 optimizer.step_local_global(w_id)
-                optimizer.zero_grad()
+                # optimizer.zero_grad()
 
             # Updating now the model if we use a non-degraded version (on central server side)
             if parameters.non_degraded:
@@ -101,7 +120,6 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                     # Updating the model
                     for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
                         param_state = optimizer.state[p]
-                        # Warning: the final grad has already been multiplied with the step size !
                         update_model = preserved_p - param_state['final_grad'].mul(parameters.optimal_step_size)
                         preserved_p.copy_(update_model)
 
@@ -111,7 +129,7 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                                                                        test_loader, criterion, device)
         run.update_run(train_loss, test_loss_val, test_acc_val)
 
-        if e+1 in [1, np.floor(epochs/4), np.floor(epochs/2), np.floor(3*epochs/4), epochs]:
+        if e+1 in [1, 3, 5, 15, np.floor(epochs/4), np.floor(epochs/2), np.floor(3*epochs/4), epochs]:
             with open(parameters.log_file, 'a') as f:
                 print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
                     .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val), file=f)
@@ -211,7 +229,6 @@ def compute_L(train_loader_workers):
         all_data, all_labels = next(train_loader_iter[w_id])
         n_sample = all_data.shape[0]
         L += (torch.norm(all_data.T.mm(all_data), p=2) / (4 * n_sample)).item()
-    print(L/n_workers)
     return L / n_workers
 
 
@@ -230,11 +247,13 @@ def run_workers(parameters: DLParameters, loaders):
     # for p in model.parameters():
     #     p.data.fill_(0)
 
+    cudnn.benchmark = True if torch.cuda.is_available() else False
+
     train_loader_workers, train_loader_workers_full, val_loader, test_loader = loaders
 
-    optimizer = SGDGen(model.parameters(), parameters=parameters, weight_decay=0)
+    optimizer = SGDGen(model.parameters(), parameters=parameters, weight_decay=parameters.weight_decay)
 
-    criterion = parameters.criterion
+    criterion = parameters.criterion.to(device)
     val_loss, run = train_workers(model, optimizer, criterion, parameters.nb_epoch, train_loader_workers,
                                   train_loader_workers_full, val_loader, test_loader, parameters.nb_devices,
                                   parameters=parameters)

@@ -71,10 +71,16 @@ class SGDGen(Optimizer):
 
                 if up_local_memory_name not in param_state and self.parameters.use_up_memory:
                     # We initialize memory with first computed gradient (smart initialization).
-                    param_state[up_local_memory_name] = torch.clone(d_p).detach()
+                    if self.parameters.up_compression_model.level != 0:
+                        param_state[up_local_memory_name] = torch.clone(d_p).detach()
+                    else:
+                        param_state[up_local_memory_name] = torch.zeros_like(p)
                 if up_learning_rate_name not in param_state:
-                    param_state[up_learning_rate_name] = 1 / (
+                    if self.parameters.up_compression_model.level != 0:
+                        param_state[up_learning_rate_name] = 1 / (
                                 2 * (self.parameters.up_compression_model.__compute_omega_c__(loc_grad) + 1))
+                    else:
+                        param_state[up_learning_rate_name] = 0
 
                 if up_error_feedback_name in param_state:
                     loc_grad += param_state[up_error_feedback_name].mul(self.parameters.optimal_step_size)  # TODO : multiplier par un coef ?

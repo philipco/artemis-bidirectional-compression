@@ -45,8 +45,7 @@ class AbstractLocalUpdate(ABC):
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
         pass
 
-    def compute_local_gradient(self, cost_model: ACostModel, j: int):
-        # TODO : there may be issues with this ?
+    def compute_local_gradient(self, cost_model: ACostModel, full_nb_iterations: int):
         if self.parameters.stochastic:
             # If batch size is bigger than number of sample of the device, we only take all its points.
             if self.parameters.batch_size > cost_model.X.shape[0]:
@@ -64,15 +63,24 @@ class AbstractLocalUpdate(ABC):
         else:
             self.g_i = cost_model.grad(self.model_param)
 
+        # Smart initialisation of the memory (it corresponds to the first computed gradient).
+        if full_nb_iterations == 1 and self.parameters.use_up_memory:
+            self.h_i = self.g_i
+
     @abstractmethod
-    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float):
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float):
+        """
+
+        :param full_nb_iterations: total number of computed iteration
+        :return:
+        """
         pass
 
 
 class LocalGradientVanillaUpdate(AbstractLocalUpdate):
 
-    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
-        self.compute_local_gradient(cost_model, j)
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
+        self.compute_local_gradient(cost_model, full_nb_iterations)
 
         self.delta_i = self.g_i - self.h_i
         if self.parameters.use_up_memory:
@@ -92,8 +100,8 @@ class LocalDianaUpdate(AbstractLocalUpdate):
             self.v = deepcopy(self.parameters.momentum * self.v + tensor)
             self.model_param = deepcopy(self.model_param - step * self.v)
 
-    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
-        self.compute_local_gradient(cost_model, j)
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
+        self.compute_local_gradient(cost_model, full_nb_iterations)
         if self.g_i is None:
             return None
 
@@ -131,8 +139,8 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
-    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
-        self.compute_local_gradient(cost_model, j)
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
+        self.compute_local_gradient(cost_model, full_nb_iterations)
         if self.g_i is None:
             return None
 
@@ -149,10 +157,10 @@ class LocalFedAvgUpdate(AbstractLocalUpdate):
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
         self.model_param = copy(tensor_sent)
 
-    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float):
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float):
         original_model_param = copy(self.model_param)
         for local_iteration in range (self.parameters.nb_local_update):
-            self.compute_local_gradient(cost_model, j)
+            self.compute_local_gradient(cost_model, full_nb_iterations)
             self.model_param = copy(self.model_param - step_size * self.g_i)
         return self.parameters.up_compression_model.compress(self.model_param - original_model_param)
 
@@ -162,7 +170,8 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
     def __init__(self, parameters: Parameters) -> None:
         super().__init__(parameters)
 
-        # For bidirectional compression :
+        # Memory for bidirectional compression.
+        # There is no need for smart initialiation as we take w_0 = 0.
         self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float,
@@ -182,8 +191,8 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
             assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
-    def compute_locally(self, cost_model: ACostModel, j: int, step_size: float = None):
-        self.compute_local_gradient(cost_model, j)
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
+        self.compute_local_gradient(cost_model, full_nb_iterations)
         if self.g_i is None:
             return None
 

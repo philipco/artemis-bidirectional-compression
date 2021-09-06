@@ -67,16 +67,18 @@ def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, sto
         else:
             split = non_iid_split(train_data, nb_devices)
 
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
-    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
+    pin_memory = True if torch.cuda.is_available() else False
+
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False, pin_memory = pin_memory)
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False, pin_memory = pin_memory)
 
     b = 0
     for ind in split:
         train_loader_workers_full[b] = DataLoader(Subset(train_data, ind), batch_size=len(ind),
-                                                  shuffle=False)
+                                                  shuffle=False, pin_memory = pin_memory)
         rand_sampler = RandomSampler(Subset(train_data, ind), replacement=True)
         train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=batch_size,
-                                             sampler=rand_sampler)
+                                             sampler=rand_sampler, pin_memory = pin_memory)
         b = b + 1
 
     if stochastic:
@@ -97,17 +99,13 @@ def load_data(dataset: str, iid: str):
 
     elif dataset == 'cifar10':
 
-        transform_train = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-        ])
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
 
-        transform_test = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-        ])
+        transform_train = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomCrop(32, 4),
+                                              transforms.ToTensor(), normalize])
+
+        transform_test = transforms.Compose([transforms.ToTensor(), normalize])
 
         train_data = datasets.CIFAR10(root=path_to_dataset, train=True, download=True, transform=transform_train)
 

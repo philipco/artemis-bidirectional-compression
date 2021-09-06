@@ -4,7 +4,9 @@ Created by Philippenko, 26th April 2021.
 import torch
 from torch import nn
 import torch.nn.functional as F
+import torch.nn.init as init
 from torch.nn.modules.loss import _WeightedLoss
+from torchvision.models.squeezenet import Fire
 
 
 class LogisticLoss(_WeightedLoss):
@@ -226,145 +228,70 @@ class LeNet(nn.Module):
         return out
 
 
-class BasicBlock(nn.Module):
-    expansion = 1
+class SqueezeNet(nn.Module):
 
-    def __init__(self, in_planes, planes, stride=1):
-        super(BasicBlock, self).__init__()
-        self.conv1 = nn.Conv2d(
-            in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
-                               stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
-
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion*planes:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion*planes,
-                          kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(self.expansion*planes)
-            )
-
-    def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
-        out += self.shortcut(x)
-        out = F.relu(out)
-        return out
-
-
-class Bottleneck(nn.Module):
-    expansion = 4
-
-    def __init__(self, in_planes, planes, stride=1):
-        super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
-                               stride=stride, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, self.expansion *
-                               planes, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(self.expansion*planes)
-
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion*planes:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion*planes,
-                          kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(self.expansion*planes)
-            )
-
-    def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = F.relu(self.bn2(self.conv2(out)))
-        out = self.bn3(self.conv3(out))
-        out += self.shortcut(x)
-        out = F.relu(out)
-        return out
-
-
-class ResNet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10):
-        super(ResNet, self).__init__()
-        self.in_planes = 64
-
-        self.output_size = num_classes
-
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3,
-                               stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.linear = nn.Linear(512*block.expansion, self.output_size)
-
-    def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1]*(num_blocks-1)
-        layers = []
-        for stride in strides:
-            layers.append(block(self.in_planes, planes, stride))
-            self.in_planes = planes * block.expansion
-        return nn.Sequential(*layers)
-
-    def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-        out = F.avg_pool2d(out, 4)
-        out = out.view(out.size(0), -1)
-        out = self.linear(out)
-        return out
-
-
-def ResNet18():
-    """From https://github.com/kuangliu/pytorch-cifar/blob/master/models/resnet.py"""
-    return ResNet(BasicBlock, [2, 2, 2, 2])
-
-
-def ResNet50():
-    return ResNet(Bottleneck, [3, 4, 6, 3])
-
-
-class NetworkToNetwork(nn.Module):
-    """From https://github.com/jiecaoyu/pytorch-nin-cifar10"""
-    def __init__(self, input_size):
-        super(NetworkToNetwork, self).__init__()
+    def __init__(self, input_size, version='1_0', num_classes=10):
+        super(SqueezeNet, self).__init__()
+        self.num_classes = num_classes
         self.output_size = 10
+        if version == '1_0':
+            self.features = nn.Sequential(
+                nn.Conv2d(3, 96, kernel_size=7, stride=2),
+                nn.ReLU(inplace=True),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                Fire(96, 16, 64, 64),
+                Fire(128, 16, 64, 64),
+                Fire(128, 32, 128, 128),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                Fire(256, 32, 128, 128),
+                Fire(256, 48, 192, 192),
+                Fire(384, 48, 192, 192),
+                Fire(384, 64, 256, 256),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                Fire(512, 64, 256, 256),
+            )
+        elif version == '1_1':
+            self.features = nn.Sequential(
+                nn.Conv2d(3, 64, kernel_size=3, stride=2),
+                nn.ReLU(inplace=True),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                Fire(64, 16, 64, 64),
+                Fire(128, 16, 64, 64),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                Fire(128, 32, 128, 128),
+                Fire(256, 32, 128, 128),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                Fire(256, 48, 192, 192),
+                Fire(384, 48, 192, 192),
+                Fire(384, 64, 256, 256),
+                Fire(512, 64, 256, 256),
+            )
+        else:
+            # FIXME: Is this needed? SqueezeNet should only be called from the
+            # FIXME: squeezenet1_x() functions
+            # FIXME: This checking is not done for the other models
+            raise ValueError("Unsupported SqueezeNet version {version}:"
+                             "1_0 or 1_1 expected".format(version=version))
+
+        # Final convolution is initialized differently from the rest
+        final_conv = nn.Conv2d(512, self.num_classes, kernel_size=1)
         self.classifier = nn.Sequential(
-                nn.Conv2d(3, 192, kernel_size=5, stride=1, padding=2),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(192, 160, kernel_size=1, stride=1, padding=0),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(160,  96, kernel_size=1, stride=1, padding=0),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
-                nn.Dropout(0.5),
+            nn.Dropout(p=0.5),
+            final_conv,
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1))
+        )
 
-                nn.Conv2d(96, 192, kernel_size=5, stride=1, padding=2),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(192, 192, kernel_size=1, stride=1, padding=0),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(192, 192, kernel_size=1, stride=1, padding=0),
-                nn.ReLU(inplace=True),
-                nn.AvgPool2d(kernel_size=3, stride=2, padding=1),
-                nn.Dropout(0.5),
-
-                nn.Conv2d(192, 192, kernel_size=3, stride=1, padding=1),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(192, 192, kernel_size=1, stride=1, padding=0),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(192,  10, kernel_size=1, stride=1, padding=0),
-                nn.ReLU(inplace=True),
-                nn.AvgPool2d(kernel_size=8, stride=1, padding=0),
-
-                )
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                if m is final_conv:
+                    init.normal_(m.weight, mean=0.0, std=0.01)
+                else:
+                    init.kaiming_uniform_(m.weight)
+                if m.bias is not None:
+                    init.constant_(m.bias, 0)
 
     def forward(self, x):
+        x = self.features(x)
         x = self.classifier(x)
-        x = x.view(x.size(0), self.output_size)
-        return x
+        return torch.flatten(x, 1)

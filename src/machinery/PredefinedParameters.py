@@ -199,7 +199,7 @@ class Artemis(Diana):
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.use_down_memory = True
+        params.use_down_memory = False
         params.use_unique_up_memory = True
         params.down_compression_model = down_compression_model
         return params
@@ -570,10 +570,10 @@ class MCM(ModelCompr):
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.use_down_memory = True
+        params.use_up_memory = True
         if fraction_sampled_workers != 1:
             print("Use randomized version of MCM due to partial participation.")
             params.randomized = True
-        params.use_unique_up_memory = False
         params.use_unique_up_memory = True
         params.use_unique_down_memory = True
         params.non_degraded = True
