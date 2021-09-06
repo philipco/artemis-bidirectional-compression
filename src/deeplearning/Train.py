@@ -13,32 +13,148 @@ from src.deeplearning.DeepLearningRun import DeepLearningRun
 from src.deeplearning.OptimizerSGD import SGDGen
 from src.utils.Utilities import seed_everything
 
+down_memory_name = 'down_memory'
+down_learning_rate_name = 'down_learning_rate'
 
-def train_workers(model, optimizer, criterion, epochs, train_loader_workers, train_loader_workers_full,
+
+def compute_client_loss(model, optimizer, criterion, data, target, w_id, run):
+    # clear the gradients of all optimized variables
+    optimizer.zero_grad()
+    output = model(data)
+    if torch.isnan(output).any():
+        run.there_is_nan()
+        return run.best_val_loss, run # TODO : Il va y avoir un pb avec ça !!!
+    loss = criterion(output, target)
+    loss.backward()
+    optimizer.step_local_global(w_id)
+
+
+def initialize_gradients_to_zeros(global_model, shapes):
+    # Required because at first call, gradients do not exist.
+    with torch.no_grad():
+        for shape, global_p in zip(shapes, global_model.parameters()):
+            global_p.grad = torch.zeros(shape)
+
+
+def server_aggregate_gradients(global_model, client_models):
+    model = client_models[0]
+    initialize_gradients_to_zeros(global_model, [p.shape for p in model.parameters()])
+
+    nb_devices = len(client_models)
+    with torch.no_grad():
+        for model in client_models:
+            for (client_p, global_p) in zip(model.parameters(), global_model.parameters()):
+                global_p.grad.copy_(global_p.grad + client_p.grad / nb_devices)
+
+
+def server_compress_gradient(global_model, parameters: DLParameters):
+    with torch.no_grad():
+        for global_p in global_model.parameters():
+            global_p.grad.copy_(parameters.down_compression_model.compress(global_p.grad))
+
+
+def server_update_model(global_model, parameters: DLParameters):
+    with torch.no_grad():
+        for global_p in global_model.parameters():
+            update_model = global_p - global_p.grad.mul(parameters.optimal_step_size)
+            global_p.copy_(update_model)
+
+
+def compress_model_and_combine_with_down_memory(global_model, model, optimizer, parameters: DLParameters, device):
+    # TODO : Down error-feedback !!!
+    # We need the client mode/optimizer to get its state and thus, to get the associated memory.
+    with torch.no_grad():
+        for client_p, global_p in zip(model.parameters(), global_model.parameters()):
+            param_state = optimizer.state[client_p]
+            # Initialisation of down memory
+            if down_memory_name not in param_state and parameters.use_down_memory:
+                if parameters.down_compression_model.level != 0:
+                    param_state[down_memory_name] = copy.deepcopy(global_p).to(device)  # torch.zeros_like(p).to(device)
+                else:
+                    param_state[down_memory_name] = torch.zeros_like(global_p).to(device)
+            # Compressing the model
+            if parameters.down_compression_model is not None:
+                value_to_compress = global_p
+                if parameters.use_down_memory:
+                    value_to_compress = value_to_compress - param_state[down_memory_name]
+                omega = parameters.down_compression_model.compress(value_to_compress)
+                # Immediatly recovering the proper model value (i.e dezipping the memory)
+                if parameters.use_down_memory:
+                    client_p.copy_(omega + param_state[down_memory_name])
+                else:
+                    client_p.copy_(omega)
+
+            # Updating down memory
+            if down_learning_rate_name not in param_state:
+                # Initialisation of the memory learning rate
+                if parameters.down_compression_model.level != 0:
+                    param_state[down_learning_rate_name] = 1 / (
+                            2 * (parameters.down_compression_model.__compute_omega_c__(omega) + 1))
+                else:
+                    param_state[down_learning_rate_name] = 0
+            if parameters.use_down_memory:
+                param_state[down_memory_name] += omega.mul(param_state[down_learning_rate_name]).detach()
+
+
+def server_send_models_to_clients(global_model, client_models):
+    for model in client_models:
+        model.load_state_dict(global_model.state_dict())
+
+
+def server_compress_model_and_send_to_clients(global_model, client_models, optimizers, parameters: DLParameters, device):
+    with torch.no_grad():
+        if parameters.randomized:
+            for (model, optimizer) in zip(client_models, optimizers):
+                # There is new compression for each client
+                compress_model_and_combine_with_down_memory(global_model, model, optimizer, parameters, device)
+        else:
+            model, optimizer = client_models[0], optimizers[0]
+            compress_model_and_combine_with_down_memory(global_model, model, optimizer, parameters, device)
+            # Every model has the same compression !
+            for other_model in client_models[1:]:
+                other_model.load_state_dict(model.state_dict()) # : check that this is correct !
+    server_send_models_to_clients(global_model, client_models)
+
+
+# def update_run_loss(run: DeepLearningRun, global_model, parameters: DLParameters, train_loader_workers_full, criterion,
+#                     device, val_loader, test_loader):
+#     train_loss = compute_loss(parameters, global_model, train_loader_workers_full, criterion, device)
+#     test_loss_val, test_acc_val, best_val_loss = val_and_test_loss(run.best_val_loss, test_loss_val, test_acc_val,
+#                                                                    global_model, val_loader,
+#                                                                    test_loader, criterion, device)
+#     run.update_run(train_loss, test_loss_val, test_acc_val)
+
+
+def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_full,
                   val_loader, test_loader, n_workers, parameters: DLParameters):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    net = parameters.model
 
-    model = model.to(device)
-    preserved_model = copy.deepcopy(model).to(device)
+    #### global model ##########
+    global_model = net(input_size=parameters.n_dimensions).to(device)
 
-    lr_scheduler = MultiStepLR(optimizer, milestones=[50, 100, 150], gamma=0.1)
+    ############## client models ##############
+    client_models = [net(input_size=parameters.n_dimensions).to(device) for i in range(parameters.nb_devices)]
+    for model in client_models:
+        model.load_state_dict(global_model.state_dict())  ### initial synchronizing with global model
+
+    optimizers = [SGDGen(model.parameters(), parameters=parameters, weight_decay=parameters.weight_decay) for model in client_models]
+
+    # lr_scheduler = MultiStepLR(optimizer, milestones=[50, 100, 150], gamma=0.1)
 
     if device == 'cuda':
-        model = torch.nn.DataParallel(model)
+        global_model = torch.nn.DataParallel(global_model)
+        client_models = [torch.nn.DataParallel(model) for model in client_models]
         cudnn.benchmark = True
 
     run = DeepLearningRun(parameters)
 
-    best_val_loss = np.inf
     test_loss_val, test_acc_val = np.inf, 0
-    train_loss = compute_loss(parameters, preserved_model, model, train_loader_workers_full, criterion, device)
-    test_loss_val, test_acc_val, best_val_loss = val_and_test_loss(best_val_loss, test_loss_val, test_acc_val,
-                                                                   parameters, preserved_model, model, val_loader,
+    train_loss = compute_loss(parameters, global_model, train_loader_workers_full, criterion, device)
+    test_loss_val, test_acc_val, best_val_loss = val_and_test_loss(run.best_val_loss, test_loss_val, test_acc_val,
+                                                                   global_model, val_loader,
                                                                    test_loader, criterion, device)
     run.update_run(train_loss, test_loss_val, test_acc_val)
-
-    down_memory_name = 'down_memory'
-    down_learning_rate_name = 'down_learning_rate'
 
     for e in range(epochs):
 
@@ -48,7 +164,6 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
         #     print("Dividing learning rate.")
         #     optimizer.parameters.optimal_step_size *= 0.1
 
-        model.train()
         train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
 
         # Devices may have different number of points. Thus to reach an equal weight of participation,
@@ -65,67 +180,28 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
             for w_id in active_worker:
                 all_data[w_id], all_labels[w_id] = next(train_loader_iter[w_id])
 
-            # Down-compression step
-            if parameters.non_degraded:
-                with torch.no_grad():
-                    # Compressing the model (on central server side).
-                    for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
-                        param_state = optimizer.state[p]
-                        if down_memory_name not in param_state and parameters.use_down_memory:
-                            if parameters.down_compression_model.level != 0:
-                                param_state[down_memory_name] = copy.deepcopy(p).to(device) #torch.zeros_like(p).to(device)
-                            else:
-                                param_state[down_memory_name] = torch.zeros_like(p).to(device)
-                        if parameters.down_compression_model is not None:
-                            value_to_compress = preserved_p
-                            if parameters.use_down_memory:
-                                value_to_compress = value_to_compress - param_state[down_memory_name]
-                            omega = parameters.down_compression_model.compress(value_to_compress)
-                            p.copy_(omega)
-                    # Dezipping memory if required (on remote servers side).
-                    if parameters.use_down_memory:
-                        for zipped_omega in model.parameters():
-                            param_state = optimizer.state[zipped_omega]
-                            if down_learning_rate_name not in param_state:
-                                if parameters.down_compression_model.level != 0:
-                                    param_state[down_learning_rate_name] = 1 / (
-                                            2 * (parameters.down_compression_model.__compute_omega_c__(zipped_omega) + 1))
-                                else:
-                                    param_state[down_learning_rate_name] = 0
-                            dezipped_omega = zipped_omega + param_state[down_memory_name]
-                            param_state[down_memory_name] += zipped_omega.mul(param_state[down_learning_rate_name]).detach()
-                            zipped_omega.copy_(dezipped_omega)
-
-            # Computing and propagating gradients.
+            # Computing and propagating gradients for each clients
             for w_id in active_worker:
                 data, target = all_data[w_id].to(device), all_labels[w_id].to(device)
-                # clear the gradients of all optimized variables
-                optimizer.zero_grad()
-                output = model(data)
-                if torch.isnan(output).any():
-                    print("There is NaN in output values, stopping.")
-                    # Completing values to reach the given number of epoch.
-                    run.train_losses = run.train_losses + [run.train_losses[-1] for i in range(epochs - len(run.train_losses) + 1)]
-                    run.test_losses = run.test_losses + [run.test_losses[-1] for i in range(epochs - len(run.test_losses) + 1)]
-                    run.test_accuracies = run.test_accuracies + [run.test_accuracies[-1] for i in range(epochs - len(run.test_accuracies) + 1)]
-                    return best_val_loss, run
-                loss = criterion(output, target)
-                loss.backward()
-                optimizer.step_local_global(w_id)
-                # optimizer.zero_grad()
+                compute_client_loss(client_models[w_id], optimizers[w_id], criterion, data, target, w_id, run)
 
-            # Updating now the model if we use a non-degraded version (on central server side)
+            server_aggregate_gradients(global_model, client_models)
+
+            if not parameters.non_degraded and parameters.down_compression_model is not None:
+                server_compress_gradient(global_model, parameters)
+
+            server_update_model(global_model, parameters)
+
             if parameters.non_degraded:
-                with torch.no_grad():
-                    # Updating the model
-                    for p, preserved_p in zip(model.parameters(), preserved_model.parameters()):
-                        param_state = optimizer.state[p]
-                        update_model = preserved_p - param_state['final_grad'].mul(parameters.optimal_step_size)
-                        preserved_p.copy_(update_model)
+                server_compress_model_and_send_to_clients(global_model, client_models, optimizers, parameters, device)
+            else:
+                server_send_models_to_clients(global_model, client_models)
 
-        train_loss = compute_loss(parameters, preserved_model, model, train_loader_workers_full, criterion, device)
-        test_loss_val, test_acc_val, best_val_loss = val_and_test_loss(best_val_loss, test_loss_val, test_acc_val,
-                                                                       parameters, preserved_model, model, val_loader,
+
+        train_loss = compute_loss(parameters, global_model, train_loader_workers_full, criterion, device)
+        test_loss_val, test_acc_val, best_val_loss = val_and_test_loss(run.best_val_loss, test_loss_val,
+                                                                       test_acc_val,
+                                                                       global_model, val_loader,
                                                                        test_loader, criterion, device)
         run.update_run(train_loss, test_loss_val, test_acc_val)
 
@@ -134,23 +210,17 @@ def train_workers(model, optimizer, criterion, epochs, train_loader_workers, tra
                 print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
                     .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val), file=f)
 
-        # print("Time for computation :", elapsed_time)
-
     return best_val_loss, run
 
 
-def compute_loss(parameters, preserved_model, model, train_loader_workers_full, criterion, device):
+def compute_loss(parameters, global_model, train_loader_workers_full, criterion, device):
     train_loader_iter = [iter(train_loader_workers_full[w]) for w in range(parameters.nb_devices)]
     running_loss = 0
     for w_id in range(parameters.nb_devices):
-        preserved_model.eval()
-        model.eval()
+        global_model.eval()
         for data, target in train_loader_iter[w_id]:
             data, target = data.to(device), target.to(device)
-            if parameters.non_degraded:
-                output = preserved_model(data)
-            else:
-                output = model(data)
+            output = global_model(data)
             if torch.isnan(output).any():
                 raise ValueError("There is NaN in output values, stopping.")
             loss = criterion(output, target)
@@ -159,18 +229,12 @@ def compute_loss(parameters, preserved_model, model, train_loader_workers_full, 
     return train_loss
 
 
-def val_and_test_loss(best_val_loss, test_loss_val, test_acc_val, parameters, preserved_model, model, val_loader,
+def val_and_test_loss(best_val_loss, test_loss_val, test_acc_val, global_model, val_loader,
                       test_loader, criterion, device):
-    if parameters.non_degraded:
-        val_loss, _ = accuracy_and_loss(preserved_model, val_loader, criterion, device)
-    else:
-        val_loss, _ = accuracy_and_loss(model, val_loader, criterion, device)
+    val_loss, _ = accuracy_and_loss(global_model, val_loader, criterion, device)
 
     if val_loss < best_val_loss:
-        if parameters.non_degraded:
-            test_loss_val, test_acc_val = accuracy_and_loss(preserved_model, test_loader, criterion, device)
-        else:
-            test_loss_val, test_acc_val = accuracy_and_loss(model, test_loader, criterion, device)
+        test_loss_val, test_acc_val = accuracy_and_loss(global_model, test_loader, criterion, device)
         best_val_loss = val_loss
     return test_loss_val, test_acc_val, best_val_loss
 
@@ -198,29 +262,6 @@ def accuracy_and_loss(model, loader, criterion, device):
     return total_loss, accuracy
 
 
-def tune_step_size(parameters: DLParameters):
-    best_val_loss = np.inf
-    best_lr = 0
-
-    seed_everything()
-    hpo = True
-
-    for lr in np.array([0.5, 0.1, 0.05, 0.01]):
-        print('Learning rate {:2.4f}:'.format(lr))
-        try:
-            val_loss, run = run_workers(lr, parameters)
-        except RuntimeError as err:
-            with open(parameters.log_file, 'a') as f:
-                print("Fail with step size:", lr, file=f)
-            continue
-
-        if val_loss < best_val_loss:
-            best_lr = lr
-            best_val_loss = val_loss
-    parameters.optimal_step_size = best_lr
-    return parameters
-
-
 def compute_L(train_loader_workers):
     n_workers = len(train_loader_workers)
     train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
@@ -241,8 +282,6 @@ def run_workers(parameters: DLParameters, loaders):
     with open(parameters.log_file, 'a') as f:
         print("Device :", device, file = f)
 
-    net = parameters.model
-    model = net(input_size=parameters.n_dimensions)
     # Model's weights are initialized to zero.
     # for p in model.parameters():
     #     p.data.fill_(0)
@@ -251,17 +290,15 @@ def run_workers(parameters: DLParameters, loaders):
 
     train_loader_workers, train_loader_workers_full, val_loader, test_loader = loaders
 
-    optimizer = SGDGen(model.parameters(), parameters=parameters, weight_decay=parameters.weight_decay)
-
     criterion = parameters.criterion.to(device)
-    val_loss, run = train_workers(model, optimizer, criterion, parameters.nb_epoch, train_loader_workers,
+    val_loss, run = train_workers(criterion, parameters.nb_epoch, train_loader_workers,
                                   train_loader_workers_full, val_loader, test_loader, parameters.nb_devices,
                                   parameters=parameters)
 
     return val_loss, run
 
 
-def run_tuned_exp(parameters: DLParameters, loaders):
+def run_exp(parameters: DLParameters, loaders):
 
     if parameters.optimal_step_size is None:
         raise ValueError("Tune step size first")
