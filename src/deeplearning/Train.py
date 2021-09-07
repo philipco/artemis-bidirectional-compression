@@ -17,10 +17,10 @@ down_memory_name = 'down_memory'
 down_learning_rate_name = 'down_learning_rate'
 
 
-def compute_client_loss(model, optimizer, criterion, data, target, w_id, run):
+def compute_client_loss(model, optimizer, criterion, data, target, w_id, run, device):
     # clear the gradients of all optimized variables
     optimizer.zero_grad()
-    output = model(data)
+    output = model(data).to(device)
     if torch.isnan(output).any():
         run.there_is_nan()
         return run.best_val_loss, run # TODO : Il va y avoir un pb avec ça !!!
@@ -29,16 +29,16 @@ def compute_client_loss(model, optimizer, criterion, data, target, w_id, run):
     optimizer.step_local_global(w_id)
 
 
-def initialize_gradients_to_zeros(global_model, shapes):
+def initialize_gradients_to_zeros(global_model, shapes, device):
     # Required because at first call, gradients do not exist.
     with torch.no_grad():
         for shape, global_p in zip(shapes, global_model.parameters()):
-            global_p.grad = torch.zeros(shape)
+            global_p.grad = torch.zeros(shape).to(device)
 
 
-def server_aggregate_gradients(global_model, client_models):
+def server_aggregate_gradients(global_model, client_models, device):
     model = client_models[0]
-    initialize_gradients_to_zeros(global_model, [p.shape for p in model.parameters()])
+    initialize_gradients_to_zeros(global_model, [p.shape for p in model.parameters()], device)
 
     nb_devices = len(client_models)
     with torch.no_grad():
@@ -183,9 +183,9 @@ def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_
             # Computing and propagating gradients for each clients
             for w_id in active_worker:
                 data, target = all_data[w_id].to(device), all_labels[w_id].to(device)
-                compute_client_loss(client_models[w_id], optimizers[w_id], criterion, data, target, w_id, run)
+                compute_client_loss(client_models[w_id], optimizers[w_id], criterion, data, target, w_id, run, device)
 
-            server_aggregate_gradients(global_model, client_models)
+            server_aggregate_gradients(global_model, client_models, device)
 
             if not parameters.non_degraded and parameters.down_compression_model is not None:
                 server_compress_gradient(global_model, parameters)
