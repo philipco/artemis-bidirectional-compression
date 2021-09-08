@@ -11,8 +11,8 @@ from torch.optim.lr_scheduler import MultiStepLR
 from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.DeepLearningRun import DeepLearningRun
 from src.deeplearning.OptimizerSGD import SGDGen
-from src.utils.Utilities import seed_everything
 
+down_ef_name = 'down_ef'
 down_memory_name = 'down_memory'
 down_learning_rate_name = 'down_learning_rate'
 
@@ -61,28 +61,41 @@ def server_update_model(global_model, parameters: DLParameters):
 
 
 def compress_model_and_combine_with_down_memory(global_model, model, optimizer, parameters: DLParameters, device):
-    # TODO : Down error-feedback !!!
+
     # We need the client mode/optimizer to get its state and thus, to get the associated memory.
     with torch.no_grad():
         for client_p, global_p in zip(model.parameters(), global_model.parameters()):
             param_state = optimizer.state[client_p]
+
             # Initialisation of down memory
             if down_memory_name not in param_state and parameters.use_down_memory:
                 if parameters.down_compression_model.level != 0:
-                    param_state[down_memory_name] = copy.deepcopy(global_p).to(device)  # torch.zeros_like(p).to(device)
+                    param_state[down_memory_name] = copy.deepcopy(global_p).to(device)
                 else:
                     param_state[down_memory_name] = torch.zeros_like(global_p).to(device)
+
             # Compressing the model
             if parameters.down_compression_model is not None:
                 value_to_compress = global_p
+
+                # Combining with down EF/memory
+                if down_ef_name in param_state:
+                    value_to_compress += param_state[down_ef_name].mul(parameters.optimal_step_size)
                 if parameters.use_down_memory:
                     value_to_compress = value_to_compress - param_state[down_memory_name]
+
+                # Compression
                 omega = parameters.down_compression_model.compress(value_to_compress)
-                # Immediatly recovering the proper model value (i.e dezipping the memory)
+
+                # Immediately recovering the proper model value (i.e dezipping the memory)
                 if parameters.use_down_memory:
                     client_p.copy_(omega + param_state[down_memory_name])
                 else:
                     client_p.copy_(omega)
+
+                # Updating EF
+                if parameters.down_error_feedback:
+                    param_state[down_ef_name] = value_to_compress - omega
 
             # Updating down memory
             if down_learning_rate_name not in param_state:
@@ -113,7 +126,6 @@ def server_compress_model_and_send_to_clients(global_model, client_models, optim
             # Every model has the same compression !
             for other_model in client_models[1:]:
                 other_model.load_state_dict(model.state_dict()) # : check that this is correct !
-    server_send_models_to_clients(global_model, client_models)
 
 
 # def update_run_loss(run: DeepLearningRun, global_model, parameters: DLParameters, train_loader_workers_full, criterion,
@@ -177,11 +189,10 @@ def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_
 
             # Saving the data for this iteration
             all_data, all_labels = {}, {}
-            for w_id in active_worker:
-                all_data[w_id], all_labels[w_id] = next(train_loader_iter[w_id])
 
             # Computing and propagating gradients for each clients
             for w_id in active_worker:
+                all_data[w_id], all_labels[w_id] = next(train_loader_iter[w_id])
                 data, target = all_data[w_id].to(device), all_labels[w_id].to(device)
                 compute_client_loss(client_models[w_id], optimizers[w_id], criterion, data, target, w_id, run, device)
 
