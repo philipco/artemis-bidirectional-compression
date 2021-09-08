@@ -143,7 +143,7 @@ class AGradientDescent(ABC):
             nb_epoch = self.parameters.nb_epoch
 
         for i in range(1, nb_epoch):
-
+            print("epoch: ", i)
             # If we are in streaming mode, each sample should be used only once !
             if self.parameters.streaming:
                 number_of_inside_it = 1

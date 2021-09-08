@@ -10,6 +10,7 @@ from copy import deepcopy, copy
 import scipy.sparse as sp
 import torch
 import numpy as np
+from scipy.optimize import least_squares
 
 from src.models.CostModel import ACostModel
 from src.machinery.Parameters import Parameters
@@ -64,8 +65,8 @@ class AbstractLocalUpdate(ABC):
             self.g_i = cost_model.grad(self.model_param)
 
         # Smart initialisation of the memory (it corresponds to the first computed gradient).
-        if full_nb_iterations == 1 and self.parameters.use_up_memory:
-            self.h_i = self.g_i
+        # if full_nb_iterations == 1 and self.parameters.use_up_memory:
+        #     self.h_i = self.g_i
 
     @abstractmethod
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float):
@@ -118,8 +119,34 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
     def __init__(self, parameters: Parameters) -> None:
         super().__init__(parameters)
 
+        self.h_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
+
+        self.coef_mem = []
+
         # For bidirectional compression :
         self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+
+    def optimal_memory(self, worker_mem, coef_mem):
+        res = 0
+        for i in range(len(coef_mem)):
+            res += worker_mem[i] * coef_mem[i]
+        return res
+
+    def find_optimal_coef_mem(self):
+
+        def memory(x):
+            mem = 0
+            for i in range(len(self.h_i)):
+                mem += x[i] * self.h_i[i]
+            return np.array(self.g_i - mem)
+
+        self.coef_mem = [0 for i in range(len(self.h_i))]
+        res_1 = least_squares(memory, self.coef_mem, bounds=(-1, 1))
+        self.coef_mem = res_1.x
+
+    def find_delta(self):
+        self.find_optimal_coef_mem()
+        self.delta_i = self.g_i - self.optimal_memory(self.h_i, self.coef_mem)
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
 
@@ -144,12 +171,13 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.delta_i = (self.g_i - self.h_i) + self.error_i * self.parameters.error_feedback_coef
+        self.find_delta() #+ self.error_i * self.parameters.error_feedback_coef
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.up_error_feedback:
             self.error_i = self.delta_i - quantized_delta_i
         if self.parameters.use_up_memory:
-            self.h_i += self.parameters.up_learning_rate * quantized_delta_i
+            self.h_i.append(self.h_i[-1] + self.parameters.up_learning_rate * quantized_delta_i)
+            self.h_i = self.h_i[-3:]
         return quantized_delta_i
 
 class LocalFedAvgUpdate(AbstractLocalUpdate):

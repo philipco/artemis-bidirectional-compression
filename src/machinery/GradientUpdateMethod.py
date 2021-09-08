@@ -70,7 +70,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         # Local memories hold on the central server.
         if not self.parameters.use_unique_up_memory:
             if self.parameters.use_up_memory: print("Using multiple up memories.")
-            self.h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in range(self.parameters.nb_devices)]
+            self.h = [[torch.zeros(parameters.n_dimensions, dtype=np.float)] for k in range(self.parameters.nb_devices)]
         else:
             if self.parameters.use_up_memory: print("Using a single up memory.")
             self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -239,7 +239,6 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             # Smart initialisation of the memory (it corresponds to the first computed gradient).
             if full_nb_iterations == 1 and self.parameters.use_up_memory:
                 if self.parameters.use_unique_up_memory:
-                    # print(len(self.get_set_of_workers(cost_models)))
                     self.h += worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
                 if not self.parameters.use_unique_up_memory:
                     self.h[worker.ID] = worker.local_update.h_i
@@ -251,9 +250,12 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 if self.parameters.use_unique_up_memory:
                     self.all_delta_i.append(compressed_delta_i)
                 else:
-                    self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
+                    opt_mem = worker.local_update.optimal_memory(self.h[worker.ID], worker.local_update.coef_mem)
+                    # print(worker.local_update.coef_mem)
+                    self.all_delta_i.append(compressed_delta_i + opt_mem)
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
-                self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
+                self.h[worker.ID].append(self.h[worker.ID][-1] + self.parameters.up_learning_rate * compressed_delta_i)
+                self.h[worker.ID] = self.h[worker.ID][-3:]
 
         all_delta = self.compute_aggregation(self.all_delta_i)
 
