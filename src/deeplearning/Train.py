@@ -47,10 +47,17 @@ def server_aggregate_gradients(global_model, client_models, device):
                 global_p.grad.copy_(global_p.grad + client_p.grad / nb_devices)
 
 
-def server_compress_gradient(global_model, parameters: DLParameters):
+def server_compress_gradient(global_model, client0_model, optimizer0, parameters: DLParameters):
     with torch.no_grad():
-        for global_p in global_model.parameters():
-            global_p.grad.copy_(parameters.down_compression_model.compress(global_p.grad))
+        for global_p, client_p in zip(global_model.parameters(), client0_model.parameters()):
+            param_state = optimizer0.state[client_p]
+            value_to_compress = global_p.grad
+            if down_ef_name in param_state:
+                value_to_compress += param_state[down_ef_name].mul(parameters.optimal_step_size)
+            omega = parameters.down_compression_model.compress(value_to_compress)
+            if parameters.down_error_feedback:
+                param_state[down_ef_name] = value_to_compress - omega
+            global_p.grad.copy_(omega)
 
 
 def server_update_model(global_model, parameters: DLParameters):
@@ -199,7 +206,7 @@ def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_
             server_aggregate_gradients(global_model, client_models, device)
 
             if not parameters.non_degraded and parameters.down_compression_model is not None:
-                server_compress_gradient(global_model, parameters)
+                server_compress_gradient(global_model, client_models[0], optimizers[0], parameters)
 
             server_update_model(global_model, parameters)
 
