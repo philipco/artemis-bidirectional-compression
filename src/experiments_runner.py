@@ -145,7 +145,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     # Creating cost models which will be used to computed cost/loss, gradients, L ...
     cost_models = build_several_cost_model(model, X, Y, nb_devices)
 
-    if not file_exist("{0}/obj_min.pkl".format(pickle_path)):
+    if not file_exist("{0}/obj_min.pkl".format(pickle_path)) or not file_exist("{0}/grads_min.pkl".format(pickle_path)):
         obj_min_by_N_descent = SGD_Descent(Parameters(n_dimensions=dim_notebook,
                                                   nb_devices=nb_devices,
                                                   nb_epoch=40000,
@@ -157,6 +157,9 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         obj_min_by_N_descent.run(cost_models)
         obj_min = obj_min_by_N_descent.train_losses[-1]
         pickle_saver(obj_min, "{0}/obj_min".format(pickle_path))
+
+        grads_min = [worker.local_update.g_i for worker in obj_min_by_N_descent.workers]
+        pickle_saver(grads_min, "{0}/grads_min".format(pickle_path))
 
     # Choice of step size
     if stochastic and batch_size == 1:
