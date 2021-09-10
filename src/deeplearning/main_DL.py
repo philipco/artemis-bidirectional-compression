@@ -9,7 +9,7 @@ import time
 from src.deeplearning.DLParameters import cast_to_DL
 from src.deeplearning.NnDataPreparation import create_loaders
 from src.deeplearning.NnModels import *
-from src.deeplearning.Train import run_tuned_exp, compute_L
+from src.deeplearning.Train import run_exp, compute_L
 from src.machinery.PredefinedParameters import *
 from src.utils.ErrorPlotter import plot_error_dist
 from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, seed_everything, create_folder_if_not_existing
@@ -101,7 +101,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
         params.momentum = momentums[dataset]
         params.criterion = criterion[dataset]
 
-        obj_min = run_tuned_exp(params, loaders).train_losses[-1]
+        obj_min = run_exp(params, loaders).train_losses[-1]
         pickle_saver(obj_min, "{0}/obj_min_dl".format(pickle_path))
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
@@ -139,7 +139,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
                 print('Run {:3d}/{:3d}:'.format(i + 1, NB_RUN))
                 fixed_params = copy.deepcopy(params)
                 try:
-                    multiple_descent.append_from_DL(run_tuned_exp(fixed_params, loaders))
+                    multiple_descent.append_from_DL(run_exp(fixed_params, loaders))
                 except ValueError as err:
                     print(err)
                     continue
