@@ -161,6 +161,8 @@ def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_
 
     # lr_scheduler = MultiStepLR(optimizer, milestones=[50, 100, 150], gamma=0.1)
 
+    lr_scheduler = MultiStepLR(optimizer, milestones=[50, 100, 150], gamma=0.1)
+
     if device == 'cuda':
         global_model = torch.nn.DataParallel(global_model)
         client_models = [torch.nn.DataParallel(model) for model in client_models]
@@ -183,6 +185,8 @@ def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_
         #     print("Dividing learning rate.")
         #     optimizer.parameters.optimal_step_size *= 0.1
 
+
+        # model.train() TODO set in train mode all clients
         train_loader_iter = [iter(train_loader_workers[w]) for w in range(n_workers)]
 
         # Devices may have different number of points. Thus to reach an equal weight of participation,
