@@ -147,7 +147,7 @@ class AGradientDescent(ABC):
             nb_epoch = self.parameters.nb_epoch
 
         for i in range(1, nb_epoch):
-            print("epoch: ", i)
+            # print("epoch: ", i)
             # If we are in streaming mode, each sample should be used only once !
             if self.parameters.streaming:
                 number_of_inside_it = 1
@@ -218,6 +218,9 @@ class AGradientDescent(ABC):
         if len(self.dist_to_model) != self.parameters.nb_epoch:
             self.dist_to_model = self.dist_to_model + [self.dist_to_model[-1] for i in range(
                 self.parameters.nb_epoch - len(self.dist_to_model))]
+        if len(self.h_i_to_optimal_grad) != self.parameters.nb_epoch:
+            self.h_i_to_optimal_grad = self.h_i_to_optimal_grad + [self.h_i_to_optimal_grad[-1] for i in range(
+                self.parameters.nb_epoch - len(self.h_i_to_optimal_grad))]
         if len(self.var_models) != self.parameters.nb_epoch:
             self.var_models = self.var_models + [self.var_models[-1] for i in range(
                 self.parameters.nb_epoch - len(self.var_models))]
@@ -250,7 +253,7 @@ class AGradientDescent(ABC):
         ))
         if self.optimal_grad is not None:
             self.h_i_to_optimal_grad.append(np.mean(
-                [torch.norm(self.workers[i].local_update.h_i - self.optimal_grad[i]) ** 2 for i in range(len(self.workers))]
+                [torch.norm(self.workers[i].local_update.h_i[-1] - self.optimal_grad[i]) ** 2 for i in range(len(self.workers))]
             ))
         # if (not self.parameters.randomized):
         #     assert torch.all(torch.norm(self.model_params[-1] - self.workers[0].local_update.model_param) ** 2 == torch.tensor(0.0)), \

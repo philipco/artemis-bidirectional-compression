@@ -17,6 +17,8 @@ from src.machinery.Parameters import Parameters
 
 from abc import ABC, abstractmethod
 
+from src.utils.Constants import N_LAST_MEM
+
 
 class AbstractLocalUpdate(ABC):
 
@@ -77,55 +79,6 @@ class AbstractLocalUpdate(ABC):
         """
         pass
 
-
-class LocalGradientVanillaUpdate(AbstractLocalUpdate):
-
-    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
-        self.compute_local_gradient(cost_model, full_nb_iterations)
-
-        self.delta_i = self.g_i - self.h_i
-        if self.parameters.use_up_memory:
-            self.h_i += self.parameters.up_learning_rate * self.delta_i
-        return self.delta_i
-
-    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
-        for tensor in tensor_sent:
-            self.v = deepcopy(self.parameters.momentum * self.v + tensor)
-            self.model_param = deepcopy(self.model_param - step * self.v)
-
-
-class LocalDianaUpdate(AbstractLocalUpdate):
-
-    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
-        for tensor in tensor_sent:
-            self.v = deepcopy(self.parameters.momentum * self.v + tensor)
-            self.model_param = deepcopy(self.model_param - step * self.v)
-
-    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
-        self.compute_local_gradient(cost_model, full_nb_iterations)
-        if self.g_i is None:
-            return None
-
-        self.delta_i = deepcopy(self.g_i - self.h_i)
-        quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
-        if self.parameters.use_up_memory:
-            self.h_i += self.parameters.up_learning_rate * quantized_delta_i
-        return quantized_delta_i
-
-
-class LocalArtemisUpdate(AbstractLocalUpdate):
-    """This class carry out the local update of the Artemis algorithm."""
-
-    def __init__(self, parameters: Parameters) -> None:
-        super().__init__(parameters)
-
-        self.h_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
-
-        self.coef_mem = []
-
-        # For bidirectional compression :
-        self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-
     def optimal_memory(self, worker_mem, coef_mem):
         res = 0
         for i in range(len(coef_mem)):
@@ -147,6 +100,66 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
     def find_delta(self):
         self.find_optimal_coef_mem()
         self.delta_i = self.g_i - self.optimal_memory(self.h_i, self.coef_mem)
+
+
+class LocalGradientVanillaUpdate(AbstractLocalUpdate):
+
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
+        self.compute_local_gradient(cost_model, full_nb_iterations)
+
+        self.delta_i = self.g_i - self.h_i
+        if self.parameters.use_up_memory:
+            self.h_i += self.parameters.up_learning_rate * self.delta_i
+        return self.delta_i
+
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+        for tensor in tensor_sent:
+            self.v = deepcopy(self.parameters.momentum * self.v + tensor)
+            self.model_param = deepcopy(self.model_param - step * self.v)
+
+
+class LocalDianaUpdate(AbstractLocalUpdate):
+
+    def __init__(self, parameters: Parameters) -> None:
+        super().__init__(parameters)
+
+        self.h_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
+
+        self.coef_mem = []
+
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+        for tensor in tensor_sent:
+            self.v = deepcopy(self.parameters.momentum * self.v + tensor)
+            self.model_param = deepcopy(self.model_param - step * self.v)
+
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
+        self.compute_local_gradient(cost_model, full_nb_iterations)
+        if self.g_i is None:
+            return None
+
+        self.find_delta()  # + self.error_i * self.parameters.error_feedback_coef
+        quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
+
+        # self.delta_i = deepcopy(self.g_i - self.h_i)
+        quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
+        if self.parameters.use_up_memory:
+            self.h_i.append(self.h_i[-1] + self.parameters.up_learning_rate * quantized_delta_i)
+            self.h_i = self.h_i[-N_LAST_MEM:]
+        return quantized_delta_i
+
+
+class LocalArtemisUpdate(AbstractLocalUpdate):
+    """This class carry out the local update of the Artemis algorithm."""
+
+    def __init__(self, parameters: Parameters) -> None:
+        super().__init__(parameters)
+
+        self.h_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
+
+        self.coef_mem = []
+
+        # For bidirectional compression :
+        self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
 
@@ -177,7 +190,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             self.error_i = self.delta_i - quantized_delta_i
         if self.parameters.use_up_memory:
             self.h_i.append(self.h_i[-1] + self.parameters.up_learning_rate * quantized_delta_i)
-            self.h_i = self.h_i[-3:]
+            self.h_i = self.h_i[-N_LAST_MEM:]
         return quantized_delta_i
 
 class LocalFedAvgUpdate(AbstractLocalUpdate):

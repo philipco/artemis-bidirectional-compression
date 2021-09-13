@@ -33,9 +33,9 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos, fraction_sampled_workers)
 
-    list_algos = [ArtemisOptimalMem(), VanillaSGD()] #choose_algo(algos, stochastic, fraction_sampled_workers)
+    list_algos = [DianaOptMem(), ArtemisOptMem(), VanillaSGD()] #choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
-    nb_epoch = 200 if stochastic else 400
+    nb_epoch = 150 if stochastic else 400
 
     iid_data = True if iid == 'iid' else False
 
@@ -278,7 +278,7 @@ if __name__ == '__main__':
 
     elif sys.argv[1] == "real":
         for sto in [True]:
-            for dataset in [sys.argv[2]]:
+            for dataset in ["superconduct", "quantum", "a9a"]:#, "superconduct", "quantum", "a9a", "mushroom", "w8a"]:
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                                 use_averaging=True)
 

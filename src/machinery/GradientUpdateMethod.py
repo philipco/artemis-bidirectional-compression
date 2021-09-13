@@ -20,6 +20,7 @@ from typing import Tuple
 import numpy as np
 
 from src.machinery.Parameters import Parameters
+from src.utils.Constants import N_LAST_MEM
 
 
 class AbstractGradientUpdate(ABC):
