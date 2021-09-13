@@ -145,7 +145,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     # Creating cost models which will be used to computed cost/loss, gradients, L ...
     cost_models = build_several_cost_model(model, X, Y, nb_devices)
 
-    if not file_exist("{0}/obj_min.pkl".format(pickle_path)):
+    if not file_exist("{0}/obj_min.pkl".format(pickle_path)) or not file_exist("{0}/grads_min.pkl".format(pickle_path)):
         obj_min_by_N_descent = SGD_Descent(Parameters(n_dimensions=dim_notebook,
                                                   nb_devices=nb_devices,
                                                   nb_epoch=40000,
@@ -153,10 +153,13 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                                   verbose=True,
                                                   cost_models=cost_models,
                                                   stochastic=False
-                                                  ))
+                                                  ), None)
         obj_min_by_N_descent.run(cost_models)
         obj_min = obj_min_by_N_descent.train_losses[-1]
         pickle_saver(obj_min, "{0}/obj_min".format(pickle_path))
+
+        grads_min = [worker.local_update.g_i for worker in obj_min_by_N_descent.workers]
+        pickle_saver(grads_min, "{0}/grads_min".format(pickle_path))
 
     # Choice of step size
     if stochastic and batch_size == 1:
@@ -202,6 +205,9 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                         x_points=res.X_number_of_bits, x_legend="Communicated bits",
                         all_error=res.get_std(obj_min), picture_name="{0}/bits-noavg-{1}"
                         .format(picture_path, experiments_settings))
+        plot_error_dist(res.get_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
+                        all_error=res.get_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
+                        picture_name="{0}/h_i-{1}".format(picture_path, experiments_settings))
 
         # Plotting with averaging
         if use_averaging:

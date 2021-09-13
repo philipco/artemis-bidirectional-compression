@@ -116,7 +116,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                                               fraction_sampled_workers=fraction_sampled_workers,
                                               up_compression_model=compression_model,
                                               down_compression_model=compression_model)
-        model_descent = predefined_parameters.type_FL()(params)
+        model_descent = predefined_parameters.type_FL()(params, logs_file)
         model_descent.run(cost_models)
         multiple_descent.append(model_descent)
         elapsed_time = time.time() - start_time
