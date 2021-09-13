@@ -20,9 +20,7 @@ work correctly as soon as the update scheme method is correctly defined.
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import time
-from copy import copy
 
 import math
 import os
@@ -34,6 +32,7 @@ from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
 from src.models.CompressionModel import SQuantization
 from src.utils.Constants import MAX_LOSS
+from src.utils.Utilities import pickle_loader
 
 
 class AGradientDescent(ABC):
@@ -44,7 +43,7 @@ class AGradientDescent(ABC):
     # __slots__ = ('parameters', 'losses', 'model_params', 'model_params', 'averaged_model_params', 'averaged_losses',
     #              'workers', 'memory_info')
 
-    def __init__(self, parameters: Parameters) -> None:
+    def __init__(self, parameters: Parameters, algos_pickle_path: str) -> None:
         """Initialization of the gradient descent.
 
         It initialize all the worker of the network, the sequence of (averaged) losses,
@@ -58,11 +57,16 @@ class AGradientDescent(ABC):
         self.train_losses = []
         self.norm_error_feedback = []
         self.dist_to_model = [torch.tensor(0.)]
+        self.h_i_to_optimal_grad = []
         self.var_models = [torch.tensor(0.)]
         self.model_params = []
         self.averaged_model_params = []
         self.averaged_train_losses = []
         self.memory_info = None
+        if algos_pickle_path is not None:
+            self.optimal_grad = pickle_loader("{0}/../grads_min".format(algos_pickle_path))
+        else:
+            self.optimal_grad = None
 
         if self.parameters.use_up_memory and self.parameters.up_compression_model.omega_c != 0 and self.parameters.up_learning_rate is None:
             self.parameters.up_learning_rate = 1 / (2 * (self.parameters.up_compression_model.omega_c + 1))
@@ -163,32 +167,7 @@ class AGradientDescent(ABC):
                 inside_loop_time += (time.time() - in_loop)
 
             # We add the past update because at this time, local update has not been yet updated.
-            self.model_params.append(past_model)
-            self.train_losses.append(self.update.compute_cost(self.model_params[-1], cost_models))
-            if self.parameters.randomized:
-                self.norm_error_feedback.append(torch.norm(torch.mean(torch.stack(self.update.all_error_i[-1]), dim=0), p=2))
-                self.dist_to_model.append(np.mean(
-                    [torch.norm(self.model_params[-1] - w.local_update.model_param)**2 for w in self.workers]
-                ))
-                self.var_models.append(torch.mean(
-                    torch.var(torch.stack([w.local_update.model_param for w in self.workers]))
-                ))
-
-            else:
-                self.norm_error_feedback.append(torch.norm(self.update.all_error_i[-1], p=2))
-
-            self.dist_to_model.append(np.mean(
-                [torch.norm(self.model_params[-1] - w.local_update.model_param) ** 2 for w in self.workers]
-            ))
-            # if (not self.parameters.randomized):
-            #     assert torch.all(torch.norm(self.model_params[-1] - self.workers[0].local_update.model_param) ** 2 == torch.tensor(0.0)), \
-            #         "The distance from central server and remote nodes is not null."
-            self.var_models.append(torch.mean(
-                torch.var(torch.stack([w.local_update.model_param for w in self.workers]))
-            ))
-            # The norm of error feedback has not been initialized. We initialize it now with the first value.
-            if len(self.norm_error_feedback) == 1:
-                self.norm_error_feedback.append(self.norm_error_feedback[0])
+            self.update_gradient_descent_info(past_model, cost_models)
 
             start_averaging_time = time.time()
             if self.parameters.use_averaging:
@@ -250,6 +229,39 @@ class AGradientDescent(ABC):
 
         return elapsed_time
 
+    def update_gradient_descent_info(self, past_model, cost_models):
+        self.model_params.append(past_model)
+        self.train_losses.append(self.update.compute_cost(self.model_params[-1], cost_models))
+        if self.parameters.randomized:
+            self.norm_error_feedback.append(
+                torch.norm(torch.mean(torch.stack(self.update.all_error_i[-1]), dim=0), p=2))
+            self.dist_to_model.append(np.mean(
+                [torch.norm(self.model_params[-1] - w.local_update.model_param) ** 2 for w in self.workers]
+            ))
+            self.var_models.append(torch.mean(
+                torch.var(torch.stack([w.local_update.model_param for w in self.workers]))
+            ))
+
+        else:
+            self.norm_error_feedback.append(torch.norm(self.update.all_error_i[-1], p=2))
+
+        self.dist_to_model.append(np.mean(
+            [torch.norm(self.model_params[-1] - w.local_update.model_param) ** 2 for w in self.workers]
+        ))
+        if self.optimal_grad is not None:
+            self.h_i_to_optimal_grad.append(np.mean(
+                [torch.norm(self.workers[i].local_update.h_i - self.optimal_grad[i]) ** 2 for i in range(len(self.workers))]
+            ))
+        # if (not self.parameters.randomized):
+        #     assert torch.all(torch.norm(self.model_params[-1] - self.workers[0].local_update.model_param) ** 2 == torch.tensor(0.0)), \
+        #         "The distance from central server and remote nodes is not null."
+        self.var_models.append(torch.mean(
+            torch.var(torch.stack([w.local_update.model_param for w in self.workers]))
+        ))
+        # The norm of error feedback has not been initialized. We initialize it now with the first value.
+        if len(self.norm_error_feedback) == 1:
+            self.norm_error_feedback.append(self.norm_error_feedback[0])
+
 
 class ArtemisDescent(AGradientDescent):
     """Implementation of Artemis.
@@ -279,8 +291,8 @@ class ArtemisDescent(AGradientDescent):
 
 class SGD_Descent(AGradientDescent):
 
-    def __init__(self, parameters: Parameters) -> None:
-        super().__init__(parameters)
+    def __init__(self, parameters: Parameters, algos_pickle_path: str) -> None:
+        super().__init__(parameters, algos_pickle_path)
         # Vanilla SGD doesn't carry out any compression.
         self.parameters.up_compression_model = SQuantization(0, self.parameters.n_dimensions)
         self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
@@ -297,8 +309,8 @@ class SGD_Descent(AGradientDescent):
 
 class DianaDescent(AGradientDescent):
 
-    def __init__(self, parameters: Parameters) -> None:
-        super().__init__(parameters)
+    def __init__(self, parameters: Parameters, algos_pickle_path: str) -> None:
+        super().__init__(parameters, algos_pickle_path)
         # Diana doesn't carry out a down compression.
         self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
 
@@ -313,8 +325,8 @@ class DianaDescent(AGradientDescent):
 
 class FedAvgDescent(AGradientDescent):
 
-    def __init__(self, parameters: Parameters) -> None:
-        super().__init__(parameters)
+    def __init__(self, parameters: Parameters, algos_pickle_path: str) -> None:
+        super().__init__(parameters, algos_pickle_path)
         self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
 
     def __local_update__(self):
