@@ -16,7 +16,8 @@ NB_EPOCH = 100  # Number of epoch for one gradient descent.
 NB_OF_POINTS_BY_DEVICE = 200  # Default number of points by device.
 MAX_LOSS = 1e10 # maximal acceptable loss when considering that gradient descent diverged.
 
-N_LAST_MEM = 3
+N_LAST_MEM = 1
+START_AVG = -np.inf
 
 BIAS = 2
 

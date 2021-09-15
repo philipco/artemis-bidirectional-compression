@@ -137,6 +137,7 @@ class Diana(VanillaSGD):
                                 stochastic, streaming, batch_size)
         params.up_compression_model = up_compression_model
         params.use_up_memory = True
+        params.use_unique_up_memory = True
         return params
 
 

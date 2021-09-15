@@ -33,7 +33,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos, fraction_sampled_workers)
 
-    list_algos = [DianaOptMem(), ArtemisOptMem(), VanillaSGD()] #choose_algo(algos, stochastic, fraction_sampled_workers)
+    list_algos = [Diana(), Artemis(), VanillaSGD()] #choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
     nb_epoch = 150 if stochastic else 400
 
@@ -207,7 +207,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                         .format(picture_path, experiments_settings))
         plot_error_dist(res.get_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
                         all_error=res.get_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
-                        picture_name="{0}/h_i-{1}".format(picture_path, experiments_settings))
+                        picture_name="{0}/h_i-{1}".format(picture_path, experiments_settings), ylegends="h_i_dist")
 
         # Plotting with averaging
         if use_averaging:
@@ -278,7 +278,7 @@ if __name__ == '__main__':
 
     elif sys.argv[1] == "real":
         for sto in [True]:
-            for dataset in ["superconduct", "quantum", "a9a"]:#, "superconduct", "quantum", "a9a", "mushroom", "w8a"]:
+            for dataset in ["a9a"]:#, "superconduct", "quantum", "a9a", "mushroom", "w8a"]:
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                                 use_averaging=True)
 

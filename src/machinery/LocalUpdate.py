@@ -17,7 +17,7 @@ from src.machinery.Parameters import Parameters
 
 from abc import ABC, abstractmethod
 
-from src.utils.Constants import N_LAST_MEM
+from src.utils.Constants import N_LAST_MEM, START_AVG
 
 
 class AbstractLocalUpdate(ABC):
@@ -29,6 +29,8 @@ class AbstractLocalUpdate(ABC):
 
         # Local memory.
         self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.averaged_h_i = self.h_i
+        self.nb_it = - START_AVG
 
         # Local delta (information that is sent to central server).
         self.delta_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -97,9 +99,24 @@ class AbstractLocalUpdate(ABC):
         res_1 = least_squares(memory, self.coef_mem, bounds=(-1, 1))
         self.coef_mem = res_1.x
 
-    def find_delta(self):
-        self.find_optimal_coef_mem()
-        self.delta_i = self.g_i - self.optimal_memory(self.h_i, self.coef_mem)
+    def find_delta(self, cost_model):
+        # self.find_optimal_coef_mem()
+        if self.nb_it >= 0:
+            self.delta_i = self.g_i - self.averaged_h_i
+        else:
+            self.delta_i = self.g_i - self.h_i[-1]
+        # self.delta_i = self.g_i - self.averaged_h_i#self.optimal_memory(self.h_i, self.coef_mem)
+
+    def update_average_mem(self, average_mem, h_i, nb_it):
+        rho = 0.9
+        # Classic
+        return h_i
+        # Weighted average
+        # coef1 = rho * (1 - rho ** nb_it)  / (1 - rho ** (nb_it + 1))
+        # coef2 = (1 - rho)  / (1 - rho ** (nb_it + 1))
+        # return average_mem.mul(coef1) + h_i.mul(coef2)
+        # Average
+        # return (1 - 1 / (nb_it + 1)) * average_mem + 1 / (nb_it + 1) * h_i
 
 
 class LocalGradientVanillaUpdate(AbstractLocalUpdate):
@@ -137,13 +154,14 @@ class LocalDianaUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.find_delta()  # + self.error_i * self.parameters.error_feedback_coef
+        self.find_delta(cost_model)  # + self.error_i * self.parameters.error_feedback_coef
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
 
-        # self.delta_i = deepcopy(self.g_i - self.h_i)
-        quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.use_up_memory:
             self.h_i.append(self.h_i[-1] + self.parameters.up_learning_rate * quantized_delta_i)
+            self.nb_it += 1
+            if self.nb_it > 0:
+                self.averaged_h_i = self.update_average_mem(self.averaged_h_i, self.h_i[-1], self.nb_it)
             self.h_i = self.h_i[-N_LAST_MEM:]
         return quantized_delta_i
 
@@ -155,6 +173,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         super().__init__(parameters)
 
         self.h_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
+        self.averaged_h_i = self.h_i[-1]
 
         self.coef_mem = []
 
@@ -184,12 +203,15 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.find_delta() #+ self.error_i * self.parameters.error_feedback_coef
+        self.find_delta(cost_model) #+ self.error_i * self.parameters.error_feedback_coef
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.up_error_feedback:
             self.error_i = self.delta_i - quantized_delta_i
         if self.parameters.use_up_memory:
             self.h_i.append(self.h_i[-1] + self.parameters.up_learning_rate * quantized_delta_i)
+            self.nb_it += 1
+            if self.nb_it > 0:
+                self.averaged_h_i = self.update_average_mem(self.averaged_h_i, self.h_i[-1], self.nb_it)
             self.h_i = self.h_i[-N_LAST_MEM:]
         return quantized_delta_i
 

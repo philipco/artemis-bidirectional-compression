@@ -20,7 +20,7 @@ from typing import Tuple
 import numpy as np
 
 from src.machinery.Parameters import Parameters
-from src.utils.Constants import N_LAST_MEM
+from src.utils.Constants import N_LAST_MEM, START_AVG
 
 
 class AbstractGradientUpdate(ABC):
@@ -67,11 +67,13 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         # Delta sent from remote nodes to main server.
         self.all_delta_i = []
+        self.nb_it = - START_AVG
 
         # Local memories hold on the central server.
         if not self.parameters.use_unique_up_memory:
             if self.parameters.use_up_memory: print("Using multiple up memories.")
             self.h = [[torch.zeros(parameters.n_dimensions, dtype=np.float)] for k in range(self.parameters.nb_devices)]
+            self.averaged_h_i = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in range(self.parameters.nb_devices)]
         else:
             if self.parameters.use_up_memory: print("Using a single up memory.")
             self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -233,6 +235,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         # Warning, if one wants to run the case when subset are updating, but then al devices are updated,
         # the following lines must be changed.
+        self.nb_it += 1
         for worker, cost_model in self.get_set_of_workers(cost_models):
             # We get all the compressed gradient computed on each worker.
             compressed_delta_i = worker.local_update.compute_locally(cost_model, full_nb_iterations)
@@ -240,7 +243,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             # Smart initialisation of the memory (it corresponds to the first computed gradient).
             if full_nb_iterations == 1 and self.parameters.use_up_memory:
                 if self.parameters.use_unique_up_memory:
-                    self.h += worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
+                    self.h += worker.local_update.h_i[-1] / len(self.get_set_of_workers(cost_models))
                 if not self.parameters.use_unique_up_memory:
                     self.h[worker.ID] = worker.local_update.h_i
 
@@ -250,13 +253,19 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             if compressed_delta_i is not None:
                 if self.parameters.use_unique_up_memory:
                     self.all_delta_i.append(compressed_delta_i)
+                # TODO !!! Il y a une erreur pour les N last et surement le moment : je prenais la mémoire mise à jour !!!
                 else:
-                    opt_mem = worker.local_update.optimal_memory(self.h[worker.ID], worker.local_update.coef_mem)
-                    # print(worker.local_update.coef_mem)
+                    if self.nb_it > 0:
+                        opt_mem = self.averaged_h_i[worker.ID] #optimal_memory(self.h[worker.ID], worker.local_update.coef_mem)
+                    else:
+                        opt_mem = self.h[worker.ID][-1]
                     self.all_delta_i.append(compressed_delta_i + opt_mem)
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
                 self.h[worker.ID].append(self.h[worker.ID][-1] + self.parameters.up_learning_rate * compressed_delta_i)
-                self.h[worker.ID] = self.h[worker.ID][-3:]
+                if self.nb_it > 0:
+                    self.averaged_h_i[worker.ID] = worker.local_update.update_average_mem(
+                        self.averaged_h_i[worker.ID], self.h[worker.ID][-1], self.nb_it)
+                self.h[worker.ID] = self.h[worker.ID][-N_LAST_MEM:]
 
         all_delta = self.compute_aggregation(self.all_delta_i)
 
