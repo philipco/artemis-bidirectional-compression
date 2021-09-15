@@ -67,13 +67,18 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         # Delta sent from remote nodes to main server.
         self.all_delta_i = []
 
+        self.nb_it = 0
+
         # Local memories hold on the central server.
         if not self.parameters.use_unique_up_memory:
             if self.parameters.use_up_memory: print("Using multiple up memories.")
             self.h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in range(self.parameters.nb_devices)]
+            self.averaged_h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in
+                               range(self.parameters.nb_devices)]
         else:
             if self.parameters.use_up_memory: print("Using a single up memory.")
             self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
+            self.averaged_h = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         # Omega : used to update the model on central server.
         self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -232,6 +237,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         # Warning, if one wants to run the case when subset are updating, but then al devices are updated,
         # the following lines must be changed.
+        self.nb_it += 1
         for worker, cost_model in self.get_set_of_workers(cost_models):
             # We get all the compressed gradient computed on each worker.
             compressed_delta_i = worker.local_update.compute_locally(cost_model, full_nb_iterations)
@@ -241,8 +247,10 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 if self.parameters.use_unique_up_memory:
                     # print(len(self.get_set_of_workers(cost_models)))
                     self.h += worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
+                    self.averaged_h = self.h
                 if not self.parameters.use_unique_up_memory:
                     self.h[worker.ID] = worker.local_update.h_i
+                    self.averaged_h[worker.ID] = worker.local_update.h_i
 
             # If nothing is returned by the device, this device does not participate to the learning at this iterations.
             # This may happened if it is considered that during one epoch each devices should run through all its data
@@ -251,17 +259,21 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 if self.parameters.use_unique_up_memory:
                     self.all_delta_i.append(compressed_delta_i)
                 else:
-                    self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
+                    self.all_delta_i.append(compressed_delta_i + worker.local_update.which_mem(self.h[worker.ID], self.averaged_h[worker.ID]))
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
                 self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
+                self.averaged_h[worker.ID] = worker.local_update.update_average_mem(
+                        self.h[worker.ID], self.averaged_h[worker.ID], self.nb_it)
 
         all_delta = self.compute_aggregation(self.all_delta_i)
 
         # Aggregating all delta
-        self.g = all_delta + [0, self.h][self.parameters.use_unique_up_memory]
+        self.g = all_delta + [0, worker.local_update.which_mem(self.h, self.averaged_h)][self.parameters.use_unique_up_memory]
 
         if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
             self.h += self.parameters.up_learning_rate * all_delta
+            self.averaged_h = worker.local_update.update_average_mem(
+                self.h, self.averaged_h, self.nb_it)
 
         if self.parameters.up_compression_model.level != 0:
             if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:

@@ -87,6 +87,7 @@ class Parameters:
         self.reset_memories = False
         self.use_unique_up_memory = False#[use_unique_up_memory, True][fraction_sampled_workers == 1] # either use N memories, either a single one
         self.use_unique_down_memory = False#[use_unique_up_memory, True][fraction_sampled_workers == 1]
+        self.up_enhanced_up_mem = False
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
         self.time_debug = time_debug  # True is one want to debug the time spent in each procedure.

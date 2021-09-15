@@ -140,6 +140,28 @@ class Diana(VanillaSGD):
         return params
 
 
+class DianaOptMem(VanillaSGD):
+    """Predefine parameters to run Diana algorithm.
+    """
+
+    def name(self) -> str:
+        return "Diana-Enhanced"
+
+    def type_FL(self):
+        return DianaDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.up_compression_model = up_compression_model
+        params.use_up_memory = True
+        params.use_unique_up_memory = False
+        params.up_enhanced_up_mem = True
+        return params
+
 
 class DianaOneWay(VanillaSGD):
     """Predefine parameters to run Diana algorithm.
@@ -203,6 +225,30 @@ class Artemis(Diana):
         params.use_unique_up_memory = True
         params.down_compression_model = down_compression_model
         return params
+
+
+class ArtemisOptMem(Diana):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "Artemis-Enhanced"
+
+    def type_FL(self):
+        return ArtemisDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.use_down_memory = False
+        params.use_unique_up_memory = True
+        params.up_enhanced_up_mem = True
+        params.down_compression_model = down_compression_model
+        return params
+
 
 class ArtemisND(Artemis):
     """Predefine parameters to run Artemis algorithm.

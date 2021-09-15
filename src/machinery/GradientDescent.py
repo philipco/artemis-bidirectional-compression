@@ -58,6 +58,7 @@ class AGradientDescent(ABC):
         self.norm_error_feedback = []
         self.dist_to_model = [torch.tensor(0.)]
         self.h_i_to_optimal_grad = []
+        self.avg_h_i_to_optimal_grad = []
         self.var_models = [torch.tensor(0.)]
         self.model_params = []
         self.averaged_model_params = []
@@ -218,6 +219,12 @@ class AGradientDescent(ABC):
         if len(self.dist_to_model) != self.parameters.nb_epoch:
             self.dist_to_model = self.dist_to_model + [self.dist_to_model[-1] for i in range(
                 self.parameters.nb_epoch - len(self.dist_to_model))]
+        if len(self.h_i_to_optimal_grad) != self.parameters.nb_epoch:
+            self.h_i_to_optimal_grad = self.h_i_to_optimal_grad + [self.h_i_to_optimal_grad[-1] for i in range(
+                self.parameters.nb_epoch - len(self.h_i_to_optimal_grad))]
+        if len(self.avg_h_i_to_optimal_grad) != self.parameters.nb_epoch:
+            self.avg_h_i_to_optimal_grad = self.avg_h_i_to_optimal_grad + [self.avg_h_i_to_optimal_grad[-1] for i in range(
+                self.parameters.nb_epoch - len(self.avg_h_i_to_optimal_grad))]
         if len(self.var_models) != self.parameters.nb_epoch:
             self.var_models = self.var_models + [self.var_models[-1] for i in range(
                 self.parameters.nb_epoch - len(self.var_models))]
@@ -250,8 +257,13 @@ class AGradientDescent(ABC):
         ))
         if self.optimal_grad is not None:
             self.h_i_to_optimal_grad.append(np.mean(
-                [torch.norm(self.workers[i].local_update.h_i - self.optimal_grad[i]) ** 2 for i in range(len(self.workers))]
+                    [torch.norm(self.workers[i].local_update.h_i - self.optimal_grad[i]) ** 2 for i in range(len(self.workers))]
+                ))
+            self.avg_h_i_to_optimal_grad.append(np.mean(
+                [torch.norm(self.workers[i].local_update.averaged_h_i - self.optimal_grad[i]) ** 2 for i in
+                 range(len(self.workers))]
             ))
+
         # if (not self.parameters.randomized):
         #     assert torch.all(torch.norm(self.model_params[-1] - self.workers[0].local_update.model_param) ** 2 == torch.tensor(0.0)), \
         #         "The distance from central server and remote nodes is not null."

@@ -10,6 +10,7 @@ from copy import deepcopy, copy
 import scipy.sparse as sp
 import torch
 import numpy as np
+from scipy.optimize import least_squares
 
 from src.models.CostModel import ACostModel
 from src.machinery.Parameters import Parameters
@@ -26,6 +27,8 @@ class AbstractLocalUpdate(ABC):
 
         # Local memory.
         self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.nb_it = 0
 
         # Local delta (information that is sent to central server).
         self.delta_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -66,6 +69,7 @@ class AbstractLocalUpdate(ABC):
         # Smart initialisation of the memory (it corresponds to the first computed gradient).
         if full_nb_iterations == 1 and self.parameters.use_up_memory:
             self.h_i = self.g_i
+            self.averaged_h_i = self.g_i
 
     @abstractmethod
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float):
@@ -75,6 +79,46 @@ class AbstractLocalUpdate(ABC):
         :return:
         """
         pass
+
+    def optimal_memory(self, worker_mem, coef_mem):
+        res = 0
+        for i in range(len(coef_mem)):
+            res += worker_mem[i] * coef_mem[i]
+        return res
+
+    def find_optimal_coef_mem(self):
+
+        def memory(x):
+            mem = 0
+            for i in range(len(self.h_i)):
+                mem += x[i] * self.h_i[i]
+            return np.array(self.g_i - mem)
+
+        self.coef_mem = [0 for i in range(len(self.h_i))]
+        res_1 = least_squares(memory, self.coef_mem, bounds=(-1, 1))
+        self.coef_mem = res_1.x
+
+    def which_mem(self, h_i, averaged_h_i):
+        # self.find_optimal_coef_mem()
+        # if self.nb_it >= 0:
+        #     self.delta_i = self.g_i - self.averaged_h_i
+        # else:
+        if self.parameters.up_enhanced_up_mem:
+            return averaged_h_i
+        else:
+            return h_i
+        # self.delta_i = self.g_i - self.averaged_h_i#self.optimal_memory(self.h_i, self.coef_mem)
+
+    def update_average_mem(self, h_i, average_mem, nb_it):
+        rho = 0.9
+        # Classic
+        # return h_i
+        # Weighted average
+        # coef1 = rho * (1 - rho ** nb_it)  / (1 - rho ** (nb_it + 1))
+        # coef2 = (1 - rho)  / (1 - rho ** (nb_it + 1))
+        # return average_mem.mul(coef1) + h_i.mul(coef2)
+        # Average
+        return (1 - 1 / (nb_it + 1)) * average_mem + 1 / (nb_it + 1) * h_i
 
 
 class LocalGradientVanillaUpdate(AbstractLocalUpdate):
@@ -105,10 +149,12 @@ class LocalDianaUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.delta_i = deepcopy(self.g_i - self.h_i)
+        self.delta_i = self.g_i - self.which_mem(self.h_i, self.averaged_h_i) #deepcopy(self.g_i - self.h_i)
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.use_up_memory:
             self.h_i += self.parameters.up_learning_rate * quantized_delta_i
+            self.nb_it += 1
+            self.averaged_h_i = self.update_average_mem(self.h_i, self.averaged_h_i, self.nb_it)
         return quantized_delta_i
 
 
@@ -144,12 +190,14 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.delta_i = (self.g_i - self.h_i) + self.error_i * self.parameters.error_feedback_coef
+        self.delta_i = self.g_i - self.which_mem(self.h_i, self.averaged_h_i) + self.error_i * self.parameters.error_feedback_coef
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.up_error_feedback:
             self.error_i = self.delta_i - quantized_delta_i
         if self.parameters.use_up_memory:
             self.h_i += self.parameters.up_learning_rate * quantized_delta_i
+            self.nb_it += 1
+            self.averaged_h_i = self.update_average_mem(self.h_i, self.averaged_h_i, self.nb_it)
         return quantized_delta_i
 
 class LocalFedAvgUpdate(AbstractLocalUpdate):
