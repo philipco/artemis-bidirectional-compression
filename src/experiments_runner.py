@@ -44,47 +44,47 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         X, Y, dim_notebook = prepare_a9a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 535
         model = LogisticModel
-        
+
     if dataset == "abalone":
         X, Y, dim_notebook = prepare_abalone(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 86
         model = RMSEModel
-        
+
     if dataset == "covtype":
         X, Y, dim_notebook = prepare_covtype(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 10000 if iid == "non-iid" else 400 # b < 10413
         model = RMSEModel
-        
+
     if dataset == "gisette":
         X, Y, dim_notebook = prepare_gisette(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 8222
         model = RMSEModel
-        
+
     if dataset == "madelon":
         X, Y, dim_notebook = prepare_madelon(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 16 if iid == "non-iid" else 16 # b < 16
         model = LogisticModel
-        
+
     if dataset == "mushroom":
         X, Y, dim_notebook = prepare_mushroom(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 4 if iid == "non-iid" else 4 # b < 148
         model = LogisticModel
-        
+
     if dataset == "quantum":
         X, Y, dim_notebook = prepare_quantum(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 400 # b < 748
         model = LogisticModel
-        
+
     if dataset == "phishing":
         X, Y, dim_notebook = prepare_phishing(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 229
         model = LogisticModel
-        
+
     elif dataset == "superconduct":
         X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 # b < 284
         model = RMSEModel
-        
+
     if dataset == "w8a":
         X, Y, dim_notebook = prepare_w8a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 12 if iid == "non-iid" else 400 # b < 621
@@ -207,7 +207,10 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                         .format(picture_path, experiments_settings))
         plot_error_dist(res.get_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
                         all_error=res.get_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
-                        picture_name="{0}/h_i-{1}".format(picture_path, experiments_settings))
+                        picture_name="{0}/h_i-{1}".format(picture_path, experiments_settings), ylegends="h_i_dist")
+        plot_error_dist(res.get_avg_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
+                        all_error=res.get_avg_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
+                        picture_name="{0}/h_i_avg-{1}".format(picture_path, experiments_settings), ylegends="avg_h_i_dist")
 
         # Plotting with averaging
         if use_averaging:
