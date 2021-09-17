@@ -17,6 +17,8 @@ from src.machinery.Parameters import Parameters
 
 from abc import ABC, abstractmethod
 
+from src.utils.Constants import BETA
+
 
 class AbstractLocalUpdate(ABC):
 
@@ -27,6 +29,7 @@ class AbstractLocalUpdate(ABC):
 
         # Local memory.
         self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.previous_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
         self.averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
         self.nb_it = 0
 
@@ -110,7 +113,7 @@ class AbstractLocalUpdate(ABC):
         # self.delta_i = self.g_i - self.averaged_h_i#self.optimal_memory(self.h_i, self.coef_mem)
 
     def update_average_mem(self, h_i, average_mem, nb_it):
-        rho = 0.9
+        rho = 0.95
         # Classic
         # return h_i
         # Weighted average
@@ -152,7 +155,10 @@ class LocalDianaUpdate(AbstractLocalUpdate):
         self.delta_i = self.g_i - self.which_mem(self.h_i, self.averaged_h_i) #deepcopy(self.g_i - self.h_i)
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.use_up_memory:
-            self.h_i += self.parameters.up_learning_rate * quantized_delta_i
+            self.previous_h_i = self.h_i
+            self.h_i = self.h_i + self.parameters.up_learning_rate * quantized_delta_i + \
+                       [0, self.parameters.up_learning_rate * (self.averaged_h_i - self.h_i)][
+                           self.parameters.up_enhanced_up_mem]
             self.nb_it += 1
             self.averaged_h_i = self.update_average_mem(self.h_i, self.averaged_h_i, self.nb_it)
         return quantized_delta_i
@@ -195,7 +201,16 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         if self.parameters.up_error_feedback:
             self.error_i = self.delta_i - quantized_delta_i
         if self.parameters.use_up_memory:
-            self.h_i += self.parameters.up_learning_rate * quantized_delta_i
+            # temp = self.h_i
+            self.h_i = self.h_i + self.parameters.up_learning_rate * quantized_delta_i + \
+                     [0, self.parameters.up_learning_rate * (self.averaged_h_i - self.h_i)][
+                         self.parameters.up_enhanced_up_mem]
+
+            # self.h_i = self.h_i + self.parameters.up_learning_rate * (quantized_delta_i + self.h_i - self.averaged_h_i)
+            # When using a moment to update the memory
+            # if self.parameters.up_enhanced_up_mem:
+            #     self.h_i += BETA * (temp - self.previous_h_i)
+            # self.previous_h_i = temp
             self.nb_it += 1
             self.averaged_h_i = self.update_average_mem(self.h_i, self.averaged_h_i, self.nb_it)
         return quantized_delta_i

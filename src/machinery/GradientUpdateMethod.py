@@ -20,6 +20,7 @@ from typing import Tuple
 import numpy as np
 
 from src.machinery.Parameters import Parameters
+from src.utils.Constants import BETA
 
 
 class AbstractGradientUpdate(ABC):
@@ -78,6 +79,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         else:
             if self.parameters.use_up_memory: print("Using a single up memory.")
             self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
+            self.previous_h = torch.zeros(parameters.n_dimensions, dtype=np.float)
             self.averaged_h = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         # Omega : used to update the model on central server.
@@ -271,9 +273,14 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         self.g = all_delta + [0, worker.local_update.which_mem(self.h, self.averaged_h)][self.parameters.use_unique_up_memory]
 
         if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
-            self.h += self.parameters.up_learning_rate * all_delta
-            self.averaged_h = worker.local_update.update_average_mem(
-                self.h, self.averaged_h, self.nb_it)
+            # temp = self.h
+            self.h = self.h + self.parameters.up_learning_rate * all_delta \
+                     + [0, self.parameters.up_learning_rate *(self.averaged_h - self.h)][self.parameters.up_enhanced_up_mem]
+            # When using a moment to update the memory
+            # if self.parameters.up_enhanced_up_mem:
+            #     self.h += BETA * (temp - self.previous_h)
+            # self.previous_h = temp
+            self.averaged_h = worker.local_update.update_average_mem(self.h, self.averaged_h, self.nb_it)
 
         if self.parameters.up_compression_model.level != 0:
             if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
