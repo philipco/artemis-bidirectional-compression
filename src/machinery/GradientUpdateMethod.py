@@ -128,7 +128,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
     def compute_full_gradients(self, model_param):
         grad = 0
         for worker in self.workers:
-            grad += worker.cost_model.grad(model_param)
+            grad = grad + worker.cost_model.grad(model_param)
         return grad / len(self.workers)
 
     def compute_cost(self, model_param, cost_models):
@@ -248,7 +248,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             if full_nb_iterations == 1 and self.parameters.use_up_memory:
                 if self.parameters.use_unique_up_memory:
                     # print(len(self.get_set_of_workers(cost_models)))
-                    self.h += worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
+                    self.h = self.h + worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
                     self.averaged_h = self.h
                 if not self.parameters.use_unique_up_memory:
                     self.h[worker.ID] = worker.local_update.h_i
@@ -263,7 +263,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 else:
                     self.all_delta_i.append(compressed_delta_i + worker.local_update.which_mem(self.h[worker.ID], self.averaged_h[worker.ID]))
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
-                self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
+                self.h[worker.ID] = self.h[worker.ID] + self.parameters.up_learning_rate * compressed_delta_i
                 self.averaged_h[worker.ID] = worker.local_update.update_average_mem(
                         self.h[worker.ID], self.averaged_h[worker.ID], self.nb_it)
 
@@ -275,7 +275,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
             # temp = self.h
             self.h = self.h + self.parameters.up_learning_rate * all_delta \
-                     + [0, self.parameters.up_learning_rate *(self.averaged_h - self.h)][self.parameters.up_enhanced_up_mem]
+                     + [0, self.parameters.up_learning_rate *(self.averaged_h - self.h)][self.parameters.enhanced_up_mem]
             # When using a moment to update the memory
             # if self.parameters.up_enhanced_up_mem:
             #     self.h += BETA * (temp - self.previous_h)
@@ -325,7 +325,7 @@ class ArtemisUpdate(AbstractFLUpdate):
 
         # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
         if self.parameters.use_down_memory:
-            self.H += self.parameters.down_learning_rate * self.omega
+            self.H = self.H + self.parameters.down_learning_rate * self.omega
         return model_param
 
 class SympaUpdate(AbstractFLUpdate):
@@ -371,7 +371,7 @@ class SympaUpdate(AbstractFLUpdate):
             compressed_delta_i = worker.local_update.compute_locally(cost_model, nb_inside_it)
             if compressed_delta_i is not None:
                 self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
-                self.h[worker.ID] += self.parameters.up_learning_rate * compressed_delta_i
+                self.h[worker.ID] = self.h[worker.ID] + self.parameters.up_learning_rate * compressed_delta_i
 
         # Aggregating all delta
         self.g = self.compute_aggregation(self.all_delta_i)
@@ -412,9 +412,9 @@ class DownCompressModelUpdate(AbstractFLUpdate):
                 worker.local_update.send_global_informations_and_update_local_param(models_to_send, self.step)
             # Update the second memory if we are using bidirectional compression and if this feature has been turned on.
             if self.parameters.use_down_memory and self.parameters.randomized and not self.parameters.use_unique_down_memory:
-                self.H[worker.ID] += self.parameters.down_learning_rate * self.omega[worker.ID]
+                self.H[worker.ID] = self.H[worker.ID] + self.parameters.down_learning_rate * self.omega[worker.ID]
             elif self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_down_memory:
-                update_H_i += self.parameters.down_learning_rate * self.omega[worker.ID] / self.parameters.nb_devices
+                update_H_i = update_H_i + self.parameters.down_learning_rate * self.omega[worker.ID] / self.parameters.nb_devices
         if self.parameters.use_down_memory and self.parameters.randomized and self.parameters.use_unique_down_memory:
             self.H = self.H + update_H_i
         if self.parameters.use_down_memory and not self.parameters.randomized:

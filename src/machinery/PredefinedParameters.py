@@ -159,7 +159,7 @@ class DianaOptMem(VanillaSGD):
         params.up_compression_model = up_compression_model
         params.use_up_memory = True
         params.use_unique_up_memory = False
-        params.up_enhanced_up_mem = True
+        params.enhanced_up_mem = True
         return params
 
 
@@ -227,7 +227,7 @@ class Artemis(Diana):
         return params
 
 
-class ArtemisOptMem(Diana):
+class ArtemisEnhanced(Diana):
     """Predefine parameters to run Artemis algorithm.
     """
 
@@ -245,7 +245,7 @@ class ArtemisOptMem(Diana):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = True
-        params.up_enhanced_up_mem = True
+        params.enhanced_up_mem = True
         params.down_compression_model = down_compression_model
         return params
 

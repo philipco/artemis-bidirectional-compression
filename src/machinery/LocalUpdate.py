@@ -106,7 +106,7 @@ class AbstractLocalUpdate(ABC):
         # if self.nb_it >= 0:
         #     self.delta_i = self.g_i - self.averaged_h_i
         # else:
-        if self.parameters.up_enhanced_up_mem:
+        if self.parameters.enhanced_up_mem:
             return averaged_h_i
         else:
             return h_i
@@ -131,7 +131,7 @@ class LocalGradientVanillaUpdate(AbstractLocalUpdate):
 
         self.delta_i = self.g_i - self.h_i
         if self.parameters.use_up_memory:
-            self.h_i += self.parameters.up_learning_rate * self.delta_i
+            self.h_i = self.h_i + self.parameters.up_learning_rate * self.delta_i
         return self.delta_i
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
@@ -158,7 +158,7 @@ class LocalDianaUpdate(AbstractLocalUpdate):
             self.previous_h_i = self.h_i
             self.h_i = self.h_i + self.parameters.up_learning_rate * quantized_delta_i + \
                        [0, self.parameters.up_learning_rate * (self.averaged_h_i - self.h_i)][
-                           self.parameters.up_enhanced_up_mem]
+                           self.parameters.enhanced_up_mem]
             self.nb_it += 1
             self.averaged_h_i = self.update_average_mem(self.h_i, self.averaged_h_i, self.nb_it)
         return quantized_delta_i
@@ -204,7 +204,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             # temp = self.h_i
             self.h_i = self.h_i + self.parameters.up_learning_rate * quantized_delta_i + \
                      [0, self.parameters.up_learning_rate * (self.averaged_h_i - self.h_i)][
-                         self.parameters.up_enhanced_up_mem]
+                         self.parameters.enhanced_up_mem]
 
             # self.h_i = self.h_i + self.parameters.up_learning_rate * (quantized_delta_i + self.h_i - self.averaged_h_i)
             # When using a moment to update the memory
