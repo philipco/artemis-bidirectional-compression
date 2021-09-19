@@ -57,3 +57,9 @@ class MemoryHandler:
         # return average_mem.mul(coef1) + h_i.mul(coef2)
         # Average
         return (1 - 1 / (nb_it + 1)) * average_mem + 1 / (nb_it + 1) * h_i
+
+    def update_mem(self, h_i, averaged_h_i, quantized_delta):
+        mem = h_i + self.parameters.up_learning_rate * quantized_delta
+        if not self.parameters.enhanced_up_mem:
+            return mem
+        return mem + self.parameters.up_learning_rate * (averaged_h_i - h_i)

@@ -263,11 +263,14 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 if self.parameters.use_unique_up_memory:
                     self.all_delta_i.append(compressed_delta_i)
                 else:
-                    self.all_delta_i.append(compressed_delta_i + self.memory_handler.which_mem(self.h[worker.ID], self.averaged_h[worker.ID]))
+                    compressed_delta_i = compressed_delta_i + self.memory_handler.which_mem(self.h[worker.ID], self.averaged_h[worker.ID])
+                    self.all_delta_i.append(compressed_delta_i)
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
-                self.h[worker.ID] = self.h[worker.ID] + self.parameters.up_learning_rate * compressed_delta_i
-                self.averaged_h[worker.ID] = self.memory_handler.update_average_mem(
-                        self.h[worker.ID], self.averaged_h[worker.ID], self.nb_it)
+                self.h[worker.ID] = self.memory_handler.update_mem(self.h[worker.ID], self.averaged_h[worker.ID],
+                                                                   compressed_delta_i)
+                self.averaged_h[worker.ID] = self.memory_handler.update_average_mem(self.h[worker.ID],
+                                                                                    self.averaged_h[worker.ID],
+                                                                                    self.nb_it)
 
         all_delta = self.compute_aggregation(self.all_delta_i)
 
@@ -275,8 +278,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         self.g = all_delta + [0, self.memory_handler.which_mem(self.h, self.averaged_h)][self.parameters.use_unique_up_memory]
         if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
             # temp = self.h
-            self.h = self.h + self.parameters.up_learning_rate * all_delta \
-                     + [0, self.parameters.up_learning_rate * (self.averaged_h - self.h)][self.parameters.enhanced_up_mem]
+            self.h = self.memory_handler.update_mem(self.h, self.averaged_h, all_delta)
             # When using a moment to update the memory
             # if self.parameters.up_enhanced_up_mem:
             #     self.h += BETA * (temp - self.previous_h)

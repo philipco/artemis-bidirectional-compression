@@ -118,9 +118,7 @@ class LocalDianaUpdate(AbstractLocalUpdate):
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.use_up_memory:
             self.previous_h_i = self.h_i
-            self.h_i = self.h_i + self.parameters.up_learning_rate * quantized_delta_i + \
-                       [0, self.parameters.up_learning_rate * (self.averaged_h_i - self.h_i)][
-                           self.parameters.enhanced_up_mem]
+            self.h_i = self.memory_handler.update_mem(self.h_i, self.averaged_h_i, quantized_delta_i)
             self.nb_it += 1
             self.averaged_h_i = self.memory_handler.update_average_mem(self.h_i, self.averaged_h_i, self.nb_it)
         return quantized_delta_i
@@ -165,10 +163,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             self.error_i = self.delta_i - quantized_delta_i
         if self.parameters.use_up_memory:
             # temp = self.h_i
-            self.h_i = self.h_i + self.parameters.up_learning_rate * quantized_delta_i + \
-                     [0, self.parameters.up_learning_rate * (self.averaged_h_i - self.h_i)][
-                         self.parameters.enhanced_up_mem]
-
+            self.h_i = self.memory_handler.update_mem(self.h_i, self.averaged_h_i, quantized_delta_i)
             # self.h_i = self.h_i + self.parameters.up_learning_rate * (quantized_delta_i + self.h_i - self.averaged_h_i)
             # When using a moment to update the memory
             # if self.parameters.up_enhanced_up_mem:
