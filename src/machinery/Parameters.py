@@ -85,7 +85,7 @@ class Parameters:
         self.use_up_memory = use_up_memory  # use memory when sending to global server
         self.use_down_memory = use_down_memory  # a memory at back communication
         self.reset_memories = False
-        self.use_unique_up_memory = False#[use_unique_up_memory, True][fraction_sampled_workers == 1] # either use N memories, either a single one
+        self.use_unique_up_memory = True#[use_unique_up_memory, True][fraction_sampled_workers == 1] # either use N memories, either a single one
         self.use_unique_down_memory = False#[use_unique_up_memory, True][fraction_sampled_workers == 1]
         self.enhanced_up_mem = False
         self.verbose = verbose

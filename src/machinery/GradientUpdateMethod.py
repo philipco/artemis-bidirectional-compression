@@ -75,7 +75,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         # Local memories hold on the central server.
         if not self.parameters.use_unique_up_memory:
             if self.parameters.use_up_memory: print("Using multiple up memories.")
-            self.h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in range(self.parameters.nb_devices)]
+            self.h = [[torch.zeros(parameters.n_dimensions, dtype=np.float)] for k in range(self.parameters.nb_devices)]
             self.averaged_h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in
                                range(self.parameters.nb_devices)]
         else:
@@ -253,8 +253,8 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                     self.h = self.h + worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
                     self.averaged_h = self.h
                 if not self.parameters.use_unique_up_memory:
-                    self.h[worker.ID] = worker.local_update.h_i
-                    self.averaged_h[worker.ID] = worker.local_update.h_i
+                    self.h[worker.ID][-1] = worker.local_update.h_i[-1]
+                    self.averaged_h[worker.ID] = worker.local_update.h_i[-1]
 
             # If nothing is returned by the device, this device does not participate to the learning at this iterations.
             # This may happened if it is considered that during one epoch each devices should run through all its data
@@ -263,11 +263,10 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 if self.parameters.use_unique_up_memory:
                     self.all_delta_i.append(compressed_delta_i)
                 else:
-                    compressed_delta_i = compressed_delta_i + self.memory_handler.which_mem(self.h[worker.ID], self.averaged_h[worker.ID])
-                    self.all_delta_i.append(compressed_delta_i)
+                    self.all_delta_i.append(compressed_delta_i + self.memory_handler.which_mem(self.h[worker.ID][-1], self.averaged_h[worker.ID]))
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
-                self.h[worker.ID] = self.memory_handler.update_mem(self.h[worker.ID], self.averaged_h[worker.ID],
-                                                                   compressed_delta_i)
+                self.h[worker.ID].append(self.memory_handler.update_mem(self.h[worker.ID][-1], self.averaged_h[worker.ID],
+                                                                   compressed_delta_i))
                 self.averaged_h[worker.ID] = self.memory_handler.update_average_mem(self.h[worker.ID],
                                                                                     self.averaged_h[worker.ID],
                                                                                     self.nb_it)

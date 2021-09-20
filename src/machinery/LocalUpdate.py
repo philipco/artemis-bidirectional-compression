@@ -30,7 +30,10 @@ class AbstractLocalUpdate(ABC):
         # cost_model = cost_model
 
         # Local memory.
-        self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        if self.parameters.use_unique_up_memory:
+            self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        else:
+            self.h_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
         self.previous_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
         self.averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
         self.nb_it = 0
@@ -73,7 +76,10 @@ class AbstractLocalUpdate(ABC):
 
         # Smart initialisation of the memory (it corresponds to the first computed gradient).
         if full_nb_iterations == 1 and self.parameters.use_up_memory:
-            self.h_i = self.g_i
+            if self.parameters.use_unique_up_memory:
+                self.h_i = self.g_i
+            else:
+                self.h_i[-1] = self.g_i
             self.averaged_h_i = self.g_i
 
     @abstractmethod
@@ -156,14 +162,20 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i, self.averaged_h_i)
+        if self.parameters.use_unique_up_memory:
+            self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i, self.averaged_h_i)
+        else:
+            self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i[-1], self.averaged_h_i)
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.up_error_feedback:
             self.delta_i = self.delta_i + self.error_i * self.parameters.error_feedback_coef
             self.error_i = self.delta_i - quantized_delta_i
         if self.parameters.use_up_memory:
             # temp = self.h_i
-            self.h_i = self.memory_handler.update_mem(self.h_i, self.averaged_h_i, quantized_delta_i)
+            if self.parameters.use_unique_up_memory:
+                self.h_i = self.memory_handler.update_mem(self.h_i, self.averaged_h_i, quantized_delta_i)
+            else:
+                self.h_i.append(self.memory_handler.update_mem(self.h_i[-1], self.averaged_h_i, quantized_delta_i))
             # self.h_i = self.h_i + self.parameters.up_learning_rate * (quantized_delta_i + self.h_i - self.averaged_h_i)
             # When using a moment to update the memory
             # if self.parameters.up_enhanced_up_mem:
