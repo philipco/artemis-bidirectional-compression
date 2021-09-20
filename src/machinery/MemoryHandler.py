@@ -48,22 +48,23 @@ class MemoryHandler:
         # self.delta_i = self.g_i - self.averaged_h_i#self.optimal_memory(self.h_i, self.coef_mem)
 
     def update_average_mem(self, h_i, average_mem, nb_it):
-        rho = 0.95
-        # Classic
-        # return h_i
-        # Weighted average
-        # coef1 = rho * (1 - rho ** nb_it)  / (1 - rho ** (nb_it + 1))
-        # coef2 = (1 - rho)  / (1 - rho ** (nb_it + 1))
-        # return average_mem.mul(coef1) + h_i.mul(coef2)
-        if self.parameters.use_unique_up_memory:
+        if self.parameters.tail_averaging:
+            n = (len(h_i) - 1) // 2
+            return torch.mean(torch.stack(h_i[n:]), 0)
+        else:
+            rho = 0.95
+            # Classic
+            # return h_i
+            # Weighted average
+            # coef1 = rho * (1 - rho ** nb_it)  / (1 - rho ** (nb_it + 1))
+            # coef2 = (1 - rho)  / (1 - rho ** (nb_it + 1))
+            # return average_mem.mul(coef1) + h_i.mul(coef2)
             # Average
             return (1 - 1 / (nb_it + 1)) * average_mem + 1 / (nb_it + 1) * h_i
-        else:
-            n = len(h_i) // 2 - 1
-            return torch.mean(torch.stack(h_i[n:]), 0)
+
 
     def update_mem(self, h_i, averaged_h_i, quantized_delta):
         mem = h_i + self.parameters.up_learning_rate * quantized_delta
         if not self.parameters.enhanced_up_mem:
             return mem
-        return mem #+ self.parameters.up_learning_rate * (averaged_h_i - h_i)
+        return mem + self.parameters.up_learning_rate * (averaged_h_i - h_i)
