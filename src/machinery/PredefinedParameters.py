@@ -159,7 +159,7 @@ class DianaOptMem(VanillaSGD):
         params.up_compression_model = up_compression_model
         params.use_up_memory = True
         params.use_unique_up_memory = False
-        params.enhanced_up_mem = True
+        params.debiased = True
         return params
 
 
@@ -245,8 +245,60 @@ class ArtemisTailAvg(Diana):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = False
-        params.enhanced_up_mem = False
+        params.debiased = False
         params.tail_averaging = True
+        params.down_compression_model = down_compression_model
+        return params
+
+
+class ArtemisExpoTailAvg(ArtemisTailAvg):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "Artemis+ExpoTail"
+
+    def type_FL(self):
+        return ArtemisDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.use_down_memory = False
+        params.use_unique_up_memory = True
+        params.debiased = False
+        params.use_averaged_h = True
+        params.tail_averaging = True
+        params.expo_tail_averaging = True
+        params.down_compression_model = down_compression_model
+        return params
+
+
+class ArtemisAWATailAvg(ArtemisTailAvg):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "Artemis+AWATail"
+
+    def type_FL(self):
+        return ArtemisDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.use_down_memory = False
+        params.use_unique_up_memory = True
+        params.debiased = False
+        params.use_averaged_h = True
+        params.tail_averaging = True
+        params.awa_tail_averaging = True
         params.down_compression_model = down_compression_model
         return params
 
@@ -268,14 +320,16 @@ class ArtemisTailAvgDebiased(Diana):
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
-        params.use_unique_up_memory = False
-        params.enhanced_up_mem = True
+        params.use_unique_up_memory = True
+        params.debiased = True
+        params.use_averaged_h = True
         params.tail_averaging = True
+        params.expo_tail_averaging = True
         params.down_compression_model = down_compression_model
         return params
 
 
-class ArtemisEnhanced(Diana):
+class ArtemisDbsd(Diana):
     """Predefine parameters to run Artemis algorithm.
     """
 
@@ -293,7 +347,8 @@ class ArtemisEnhanced(Diana):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = True
-        params.enhanced_up_mem = True
+        params.debiased = True
+        params.use_averaged_h = True
         params.down_compression_model = down_compression_model
         return params
 

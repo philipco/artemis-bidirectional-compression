@@ -7,7 +7,7 @@ from src.models.CostModel import LogisticModel, RMSEModel, build_several_cost_mo
 
 from src.utils.ErrorPlotter import *
 from src.utils.data.DataPreparation import build_data_logistic, build_data_linear
-from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_superconduct, prepare_mushroom, \
+from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_superconduct, prepare_mushrooms, \
     prepare_phishing, prepare_a9a, prepare_abalone, prepare_covtype, prepare_madelon, prepare_gisette, prepare_w8a
 from src.utils.Constants import *
 from src.utils.data.DataClustering import *
@@ -25,7 +25,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
-    assert dataset in ["quantum", "superconduct", "mushroom", "phishing", "a9a", "abalone", "covtype", 'synth_logistic',
+    assert dataset in ["quantum", "superconduct", "mushrooms", "phishing", "a9a", "abalone", "covtype", 'synth_logistic',
                        'madelon', 'gisette', 'w8a', 'synth_linear_noised', 'synth_linear_nonoised'], \
         "The available dataset are ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']."
     assert iid in ['iid', 'non-iid'], "The iid option are ['iid', 'non-iid']."
@@ -65,8 +65,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         batch_size = 16 if iid == "non-iid" else 16 # b < 16
         model = LogisticModel
 
-    if dataset == "mushroom":
-        X, Y, dim_notebook = prepare_mushroom(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
+    if dataset == "mushrooms":
+        X, Y, dim_notebook = prepare_mushrooms(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 4 if iid == "non-iid" else 4 # b < 148
         model = LogisticModel
 
@@ -268,16 +268,20 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 if __name__ == '__main__':
 
     if sys.argv[1] == "synth":
-        run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
+        if sys.argv[2] == "logistic":
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+        elif sys.argv[2] == "linear":
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+        else:
+            raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
 
     elif sys.argv[1] == "real":
         for sto in [True, False]:

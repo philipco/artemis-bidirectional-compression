@@ -85,10 +85,13 @@ class Parameters:
         self.use_up_memory = use_up_memory  # use memory when sending to global server
         self.use_down_memory = use_down_memory  # a memory at back communication
         self.reset_memories = False
-        self.use_unique_up_memory = True#[use_unique_up_memory, True][fraction_sampled_workers == 1] # either use N memories, either a single one
-        self.use_unique_down_memory = False#[use_unique_up_memory, True][fraction_sampled_workers == 1]
-        self.enhanced_up_mem = False
+        self.use_unique_up_memory = True
+        self.use_unique_down_memory = False
+        self.debiased = False
+        self.use_averaged_h = False
         self.tail_averaging = False
+        self.expo_tail_averaging = False
+        self.awa_tail_averaging = False
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
         self.time_debug = time_debug  # True is one want to debug the time spent in each procedure.

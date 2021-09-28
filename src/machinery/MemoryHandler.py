@@ -6,6 +6,7 @@ import torch
 from scipy.optimize import least_squares
 
 from src.machinery.Parameters import Parameters
+from src.machinery.TailAverager import AnytimeWindowsAverage3Acc, AnytimeExpoAverage
 
 
 class MemoryHandler:
@@ -13,6 +14,8 @@ class MemoryHandler:
     def __init__(self, parameters: Parameters):
         super().__init__()
         self.parameters = parameters
+        self.expo_averager = AnytimeExpoAverage(parameters)
+        self.awa_averager = AnytimeWindowsAverage3Acc(parameters)
         # self.coef_mem = [0 for i in range(len(self.h_i))]
 
 
@@ -41,14 +44,23 @@ class MemoryHandler:
         # else:
         if not self.parameters.use_up_memory:
             return 0
-        if self.parameters.enhanced_up_mem:
+        if self.parameters.use_averaged_h:
             return averaged_h_i
         else:
             return h_i
         # self.delta_i = self.g_i - self.averaged_h_i#self.optimal_memory(self.h_i, self.coef_mem)
 
     def update_average_mem(self, h_i, average_mem, nb_it):
-        if self.parameters.tail_averaging:
+        if self.parameters.use_unique_up_memory:
+            new_val = h_i
+        else:
+            new_val = h_i[-1]
+        if self.parameters.awa_tail_averaging:
+            return self.awa_averager.compute_average(nb_it, new_val)
+        elif self.parameters.expo_tail_averaging:
+            return self.expo_averager.compute_average(nb_it, new_val)
+        elif self.parameters.tail_averaging:
+            assert not self.parameters.use_unique_up_memory, "When using true tail averaging, h_i should be the sequence of all h_i."
             n = (len(h_i) - 1) // 2
             return torch.mean(torch.stack(h_i[n:]), 0)
         else:
@@ -65,6 +77,6 @@ class MemoryHandler:
 
     def update_mem(self, h_i, averaged_h_i, quantized_delta):
         mem = h_i + self.parameters.up_learning_rate * quantized_delta
-        if not self.parameters.enhanced_up_mem:
+        if not self.parameters.debiased:
             return mem
         return mem + self.parameters.up_learning_rate * (averaged_h_i - h_i)

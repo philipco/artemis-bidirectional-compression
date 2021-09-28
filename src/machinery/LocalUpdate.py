@@ -185,6 +185,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             self.averaged_h_i = self.memory_handler.update_average_mem(self.h_i, self.averaged_h_i, self.nb_it)
         return quantized_delta_i
 
+
 class LocalFedAvgUpdate(AbstractLocalUpdate):
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
