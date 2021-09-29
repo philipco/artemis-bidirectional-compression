@@ -51,6 +51,7 @@ class Parameters:
                  streaming: bool = False,
                  use_up_memory: bool = False,
                  use_down_memory: bool = False,
+                 save_all_memories: bool = False,
                  use_unique_up_memory: bool = True,
                  use_averaging: bool = False,
                  time_debug: bool = False,
@@ -87,6 +88,7 @@ class Parameters:
         self.reset_memories = False
         self.use_unique_up_memory = True
         self.use_unique_down_memory = False
+        self.save_all_memories = save_all_memories
         self.debiased = False
         self.use_averaged_h_for_update = False
         self.use_tail_averaging_for_update = False

@@ -19,6 +19,7 @@ import torch
 from typing import Tuple
 import numpy as np
 
+from src.machinery.Memory import Memory
 from src.machinery.MemoryHandler import AbstractMemoryHandler
 from src.machinery.Parameters import Parameters
 
@@ -72,18 +73,12 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         self.nb_it = 0
 
         # Local memories hold on the central server.
-        if not self.parameters.use_unique_up_memory:
-            if self.parameters.use_up_memory: print("Using multiple up memories.")
-            self.h = [[torch.zeros(parameters.n_dimensions, dtype=np.float)] for k in range(self.parameters.nb_devices)]
-            self.averaged_h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in
-                               range(self.parameters.nb_devices)]
-            self.tail_averaged_h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in
-                               range(self.parameters.nb_devices)]
-        else:
-            if self.parameters.use_up_memory: print("Using a single up memory.")
-            self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
-            self.previous_h = torch.zeros(parameters.n_dimensions, dtype=np.float)
-            self.averaged_h = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        # if self.parameters.use_unique_up_memory:
+        #     if self.parameters.use_up_memory: print("Using a single up memory.")
+        #     self.memory = Memory(parameters)
+        # else:
+        #     if self.parameters.use_up_memory: print("Using multiple up memories.")
+        self.memory = [Memory(parameters) for k in range(self.parameters.nb_devices)]
 
         # Omega : used to update the model on central server.
         self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -248,57 +243,51 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
             # Smart initialisation of the memory (it corresponds to the first computed gradient).
             if full_nb_iterations == 1 and self.parameters.use_up_memory:
-                if self.parameters.use_unique_up_memory:
-                    # print(len(self.get_set_of_workers(cost_models)))
-                    self.h = self.h + worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
-                    self.averaged_h = self.h
-                    self.tail_averaged_h = self.h
+                # if self.parameters.use_unique_up_memory:
+                #     self.memory.smart_initialization(self.g_i)
+                #
+                #     # print(len(self.get_set_of_workers(cost_models)))
+                #     self.h = self.h + worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
+                #     self.averaged_h = self.h
+                #     self.tail_averaged_h = self.h
                 if not self.parameters.use_unique_up_memory:
-                    self.h[worker.ID][-1] = worker.local_update.h_i[0]
-                    self.averaged_h[worker.ID] = worker.local_update.h_i[0]
-                    self.tail_averaged_h[worker.ID] = worker.local_update.h_i[0]
+                    self.memory[worker.ID].smart_initialization(worker.local_update.memory.get_current_h_i())
 
             # If nothing is returned by the device, this device does not participate to the learning at this iterations.
             # This may happened if it is considered that during one epoch each devices should run through all its data
             # exactly once, and if there is different numbers of points on each device.
             if compressed_delta_i is not None:
-                if self.parameters.use_unique_up_memory:
-                    self.all_delta_i.append(compressed_delta_i)
-                else:
-                    which_mem = self.memory_handler.which_mem(self.h[worker.ID][-1], self.averaged_h[worker.ID], self.tail_averaged_h[worker.ID])
-                    self.all_delta_i.append(compressed_delta_i + which_mem)
-            if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
-                self.h[worker.ID].append(self.memory_handler.update_mem(self.h[worker.ID][-1], self.averaged_h[worker.ID],
-                                                                   compressed_delta_i))
-                self.averaged_h[worker.ID] = self.memory_handler.update_average_mem(self.h[worker.ID],
-                                                                                    self.averaged_h[worker.ID],
-                                                                                    self.nb_it)
-                if not self.parameters.use_unique_up_memory:
-                    self.tail_averaged_h[worker.ID] = self.memory_handler.update_tail_average_mem(self.h[worker.ID], self.nb_it)
+                # if self.parameters.use_unique_up_memory:
+                #     self.all_delta_i.append(compressed_delta_i)
+                # else:
+                which_mem = self.memory_handler.which_mem(self.memory[worker.ID])
+                self.all_delta_i.append(compressed_delta_i + which_mem)
+            # if self.parameters.use_up_memory:# and not self.parameters.use_unique_up_memory:
+            self.memory_handler.update_memory(self.memory[worker.ID], compressed_delta_i)
 
         all_delta = self.compute_aggregation(self.all_delta_i)
 
         # Aggregating all delta
-        which_mem = self.memory_handler.which_mem(self.h, self.averaged_h, None)
-        self.g = all_delta + [0, which_mem][self.parameters.use_unique_up_memory]
-        if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
-            # temp = self.h
-            self.h = self.memory_handler.update_mem(self.h, self.averaged_h, all_delta)
-            # When using a moment to update the memory
-            # if self.parameters.up_enhanced_up_mem:
-            #     self.h += BETA * (temp - self.previous_h)
-            # self.previous_h = temp
-            self.averaged_h = self.memory_handler.update_average_mem(self.h, self.averaged_h, self.nb_it)
+        # which_mem = self.memory_handler.which_mem(self.h, self.averaged_h, None)
+        self.g = all_delta #+ [0, which_mem][self.parameters.use_unique_up_memory]
+        # if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
+        #     # temp = self.h
+        #     self.h = self.memory_handler.update_h_i(self.h, self.averaged_h, all_delta)
+        #     # When using a moment to update the memory
+        #     # if self.parameters.up_enhanced_up_mem:
+        #     #     self.h += BETA * (temp - self.previous_h)
+        #     # self.previous_h = temp
+        #     self.averaged_h = self.memory_handler.update_average_h_i(self.h, self.averaged_h, self.nb_it)
 
-        if self.parameters.up_compression_model.level != 0:
-            if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
-                assert isinstance(self.h, torch.Tensor), "Up memory is not a tensor."
-                assert not torch.equal(self.h, torch.zeros(self.parameters.n_dimensions, dtype=np.float)), "Up memory is still null."
-            if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
-                assert not isinstance(self.h, torch.FloatTensor) and len(self.h) == self.parameters.nb_devices, \
-                    "Up memory should be a list of length equal to the number of devices."
-                # assert all([not torch.equal(e, torch.zeros(self.parameters.n_dimensions, dtype=np.float)) for e in self.h]), \
-                #     "Up memories are still null."
+        # if self.parameters.up_compression_model.level != 0:
+        #     if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
+        #         assert isinstance(self.h, torch.Tensor), "Up memory is not a tensor."
+        #         assert not torch.equal(self.h, torch.zeros(self.parameters.n_dimensions, dtype=np.float)), "Up memory is still null."
+        #     if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
+        #         assert not isinstance(self.h, torch.FloatTensor) and len(self.h) == self.parameters.nb_devices, \
+        #             "Up memory should be a list of length equal to the number of devices."
+        #         # assert all([not torch.equal(e, torch.zeros(self.parameters.n_dimensions, dtype=np.float)) for e in self.h]), \
+        #         #     "Up memories are still null."
 
 
 class ArtemisUpdate(AbstractFLUpdate):

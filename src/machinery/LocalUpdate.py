@@ -12,6 +12,7 @@ import torch
 import numpy as np
 from scipy.optimize import least_squares
 
+from src.machinery.Memory import Memory
 from src.machinery.MemoryHandler import AbstractMemoryHandler
 from src.models.CostModel import ACostModel
 from src.machinery.Parameters import Parameters
@@ -27,17 +28,18 @@ class AbstractLocalUpdate(ABC):
         super().__init__()
         self.parameters = parameters
         self.memory_handler = memory_handler
+        self.memory = Memory(parameters)
         # cost_model = cost_model
 
         # Local memory.
-        if self.parameters.use_unique_up_memory:
-            self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        else:
-            self.h_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
-        self.previous_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.tail_averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.nb_it = 0
+        # if self.parameters.use_unique_up_memory:
+        #     self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        # else:
+        #     self.h_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
+        # self.previous_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        # self.averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        # self.tail_averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        # self.nb_it = 0
 
         # Local delta (information that is sent to central server).
         self.delta_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -77,12 +79,13 @@ class AbstractLocalUpdate(ABC):
 
         # Smart initialisation of the memory (it corresponds to the first computed gradient).
         if full_nb_iterations == 1 and self.parameters.use_up_memory:
-            if self.parameters.use_unique_up_memory:
-                self.h_i = self.g_i
-            else:
-                self.h_i[-1] = self.g_i
-            self.averaged_h_i = self.g_i
-            self.tail_averaged_h_i = self.g_i
+            self.memory.smart_initialization(self.g_i)
+            # if self.parameters.use_unique_up_memory:
+            #     self.h_i = self.g_i
+            # else:
+            #     self.h_i[-1] = self.g_i
+            # self.averaged_h_i = self.g_i
+            # self.tail_averaged_h_i = self.g_i
 
     @abstractmethod
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float):
@@ -98,10 +101,8 @@ class LocalGradientVanillaUpdate(AbstractLocalUpdate):
 
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
         self.compute_local_gradient(cost_model, full_nb_iterations)
-
-        self.delta_i = self.g_i - self.h_i
-        if self.parameters.use_up_memory:
-            self.h_i = self.h_i + self.parameters.up_learning_rate * self.delta_i
+        self.delta_i = self.g_i - self.memory_handler.which_mem(self.memory)
+        self.memory_handler.update_memory(self.memory, self.delta_i)
         return self.delta_i
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
@@ -122,15 +123,9 @@ class LocalDianaUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i, self.averaged_h_i, self.tail_averaged_h_i)
+        self.delta_i = self.g_i - self.memory_handler.which_mem(self.memory)
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
-        if self.parameters.use_up_memory:
-            self.previous_h_i = self.h_i
-            self.h_i = self.memory_handler.update_mem(self.h_i, self.averaged_h_i, quantized_delta_i)
-            self.nb_it += 1
-            self.averaged_h_i = self.memory_handler.update_average_mem(self.h_i, self.averaged_h_i, self.nb_it)
-            if self.parameters.use_tail_averaging_for_update:
-                self.tail_averaged_h_i = self.memory_handler.update_tail_average_mem(self.h_i, self.nb_it)
+        self.memory_handler.update_memory(self.memory)
         return quantized_delta_i
 
 
@@ -166,10 +161,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        if self.parameters.use_unique_up_memory:
-            self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i, self.averaged_h_i, self.tail_averaged_h_i)
-        else:
-            self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i[-1], self.averaged_h_i, self.tail_averaged_h_i)
+        self.delta_i = self.g_i - self.memory_handler.which_mem(self.memory)
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.up_error_feedback:
             self.delta_i = self.delta_i + self.error_i * self.parameters.error_feedback_coef
@@ -177,15 +169,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
 
         ## UPDATING MEMORY
         if self.parameters.use_up_memory:
-            # temp = self.h_i
-            if self.parameters.use_unique_up_memory:
-                self.h_i = self.memory_handler.update_mem(self.h_i, self.averaged_h_i, quantized_delta_i)
-            else:
-                self.h_i.append(self.memory_handler.update_mem(self.h_i[-1], self.averaged_h_i, quantized_delta_i))
-            self.nb_it += 1
-            self.averaged_h_i = self.memory_handler.update_average_mem(self.h_i, self.averaged_h_i, self.nb_it)
-            if not self.parameters.use_unique_up_memory:
-                self.tail_averaged_h_i = self.memory_handler.update_tail_average_mem(self.h_i, self.nb_it)
+            self.memory_handler.update_memory(self.memory, quantized_delta_i)
         return quantized_delta_i
 
 

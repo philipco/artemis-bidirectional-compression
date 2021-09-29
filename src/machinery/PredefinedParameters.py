@@ -79,7 +79,8 @@ class VanillaSGD(PredefinedParameters):
                           batch_size=batch_size,
                           cost_models=cost_models,
                           use_averaging=use_averaging,
-                          use_up_memory=False
+                          use_up_memory=False,
+                          save_all_memories=True
                           )
 
 class VanillaSGDMem(VanillaSGD):
@@ -223,6 +224,7 @@ class Artemis(Diana):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = False
+        params.save_all_memories = True
         params.down_compression_model = down_compression_model
         params.check_param_validity()
         return params
@@ -246,6 +248,7 @@ class ArtemisAvg(Diana):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = False
+        params.save_all_memories = True
         params.use_averaged_h_for_update = True
         params.down_compression_model = down_compression_model
         params.check_param_validity()
@@ -270,6 +273,7 @@ class ArtemisTailAvg(Diana):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = False
+        params.save_all_memories = True
         params.use_tail_averaging_for_update = True
         params.down_compression_model = down_compression_model
         params.check_param_validity()
@@ -294,6 +298,7 @@ class ArtemisExpoTailAvg(ArtemisTailAvg):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = True
+        params.save_all_memories = True
         params.debiased = False
         params.use_tail_averaging_for_update = True
         params.expo_tail_averaging = True
@@ -320,6 +325,7 @@ class ArtemisAWATailAvg(ArtemisTailAvg):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = True
+        params.save_all_memories = True
         params.debiased = False
         params.use_tail_averaging_for_update = True
         params.awa_tail_averaging = True
@@ -346,6 +352,7 @@ class ArtemisTailAvgDebiased(Diana):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = True
+        params.save_all_memories = True
         params.debiased = True
         params.use_unique_up_memory = False
         params.use_tail_averaging_for_update = True
@@ -363,7 +370,7 @@ class ArtemisDbsd(Diana):
         return "Artemis+Dbsd"
 
     def type_FL(self):
-        return ArtemisDescent
+        return AvgArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
@@ -372,8 +379,9 @@ class ArtemisDbsd(Diana):
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
-        params.use_unique_up_memory = True
+        params.use_unique_up_memory = False
         params.debiased = True
+        params.save_all_memories = True
         params.use_averaged_h_for_update = True
         params.down_compression_model = down_compression_model
         params.check_param_validity()

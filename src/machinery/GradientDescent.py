@@ -268,20 +268,20 @@ class AGradientDescent(ABC):
             [torch.norm(self.model_params[-1] - w.local_update.model_param) ** 2 for w in self.workers]
         ))
         if self.optimal_grad is not None:
-            if self.parameters.use_unique_up_memory:
-                self.h_i_to_optimal_grad.append(np.mean(
-                    [torch.norm(self.workers[i].local_update.h_i - self.optimal_grad[i]) ** 2 for i in range(len(self.workers))]
+            # if self.parameters.use_unique_up_memory:
+            #     self.h_i_to_optimal_grad.append(np.mean(
+            #         [torch.norm(self.workers[i].local_update.h_i - self.optimal_grad[i]) ** 2 for i in range(len(self.workers))]
+            #     ))
+            # else:
+            self.h_i_to_optimal_grad.append(np.mean(
+                    [torch.norm(self.workers[i].local_update.memory.h_i[-1] - self.optimal_grad[i]) ** 2 for i in range(len(self.workers))]
                 ))
-            else:
-                self.h_i_to_optimal_grad.append(np.mean(
-                        [torch.norm(self.workers[i].local_update.h_i[-1] - self.optimal_grad[i]) ** 2 for i in range(len(self.workers))]
-                    ))
             self.avg_h_i_to_optimal_grad.append(np.mean(
-                [torch.norm(self.workers[i].local_update.averaged_h_i - self.optimal_grad[i]) ** 2 for i in
+                [torch.norm(self.workers[i].local_update.memory.averaged_h_i - self.optimal_grad[i]) ** 2 for i in
                  range(len(self.workers))]
             ))
             self.tail_avg_h_i_to_optimal_grad.append(np.mean(
-                [torch.norm(self.workers[i].local_update.tail_averaged_h_i - self.optimal_grad[i]) ** 2 for i in
+                [torch.norm(self.workers[i].local_update.memory.tail_averaged_h_i - self.optimal_grad[i]) ** 2 for i in
                  range(len(self.workers))]
             ))
 
