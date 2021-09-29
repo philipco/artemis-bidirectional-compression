@@ -22,6 +22,8 @@ class AverageOfSeveralIdenticalRun:
         self.norm_error_feedback = []
         self.dist_to_model = []
         self.h_i_to_optimal_grad = []
+        self.avg_h_i_to_optimal_grad = []
+        self.tail_avg_h_i_to_optimal_grad = []
         self.var_models = []
         self.theoretical_nb_bits = None
         self.omega_c = None
@@ -46,6 +48,7 @@ class AverageOfSeveralIdenticalRun:
         self.dist_to_model = [d.dist_to_model for d in self.multiple_descent]
         self.h_i_to_optimal_grad = [d.h_i_to_optimal_grad for d in self.multiple_descent]
         self.avg_h_i_to_optimal_grad = [d.avg_h_i_to_optimal_grad for d in self.multiple_descent]
+        self.tail_avg_h_i_to_optimal_grad = [d.tail_avg_h_i_to_optimal_grad for d in self.multiple_descent]
         self.var_models = [d.var_models for d in self.multiple_descent]
 
     def append_from_DL(self, new_run: DeepLearningRun):

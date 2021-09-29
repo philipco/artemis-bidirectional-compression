@@ -12,7 +12,7 @@ import torch
 import numpy as np
 from scipy.optimize import least_squares
 
-from src.machinery.MemoryHandler import MemoryHandler
+from src.machinery.MemoryHandler import AbstractMemoryHandler
 from src.models.CostModel import ACostModel
 from src.machinery.Parameters import Parameters
 
@@ -23,10 +23,10 @@ from src.utils.Constants import BETA
 
 class AbstractLocalUpdate(ABC):
 
-    def __init__(self, parameters: Parameters) -> None:
+    def __init__(self, parameters: Parameters, memory_handler: AbstractMemoryHandler) -> None:
         super().__init__()
         self.parameters = parameters
-        self.memory_handler = MemoryHandler(parameters)
+        self.memory_handler = memory_handler
         # cost_model = cost_model
 
         # Local memory.
@@ -36,6 +36,7 @@ class AbstractLocalUpdate(ABC):
             self.h_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
         self.previous_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
         self.averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.tail_averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
         self.nb_it = 0
 
         # Local delta (information that is sent to central server).
@@ -81,6 +82,7 @@ class AbstractLocalUpdate(ABC):
             else:
                 self.h_i[-1] = self.g_i
             self.averaged_h_i = self.g_i
+            self.tail_averaged_h_i = self.g_i
 
     @abstractmethod
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float):
@@ -120,21 +122,23 @@ class LocalDianaUpdate(AbstractLocalUpdate):
         if self.g_i is None:
             return None
 
-        self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i, self.averaged_h_i)
+        self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i, self.averaged_h_i, self.tail_averaged_h_i)
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.use_up_memory:
             self.previous_h_i = self.h_i
             self.h_i = self.memory_handler.update_mem(self.h_i, self.averaged_h_i, quantized_delta_i)
             self.nb_it += 1
             self.averaged_h_i = self.memory_handler.update_average_mem(self.h_i, self.averaged_h_i, self.nb_it)
+            if self.parameters.use_tail_averaging_for_update:
+                self.tail_averaged_h_i = self.memory_handler.update_tail_average_mem(self.h_i, self.nb_it)
         return quantized_delta_i
 
 
 class LocalArtemisUpdate(AbstractLocalUpdate):
     """This class carry out the local update of the Artemis algorithm."""
 
-    def __init__(self, parameters: Parameters) -> None:
-        super().__init__(parameters)
+    def __init__(self, parameters: Parameters, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, memory_handler)
 
         # For bidirectional compression :
         self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -163,26 +167,25 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             return None
 
         if self.parameters.use_unique_up_memory:
-            self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i, self.averaged_h_i)
+            self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i, self.averaged_h_i, self.tail_averaged_h_i)
         else:
-            self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i[-1], self.averaged_h_i)
+            self.delta_i = self.g_i - self.memory_handler.which_mem(self.h_i[-1], self.averaged_h_i, self.tail_averaged_h_i)
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
         if self.parameters.up_error_feedback:
             self.delta_i = self.delta_i + self.error_i * self.parameters.error_feedback_coef
             self.error_i = self.delta_i - quantized_delta_i
+
+        ## UPDATING MEMORY
         if self.parameters.use_up_memory:
             # temp = self.h_i
             if self.parameters.use_unique_up_memory:
                 self.h_i = self.memory_handler.update_mem(self.h_i, self.averaged_h_i, quantized_delta_i)
             else:
                 self.h_i.append(self.memory_handler.update_mem(self.h_i[-1], self.averaged_h_i, quantized_delta_i))
-            # self.h_i = self.h_i + self.parameters.up_learning_rate * (quantized_delta_i + self.h_i - self.averaged_h_i)
-            # When using a moment to update the memory
-            # if self.parameters.up_enhanced_up_mem:
-            #     self.h_i += BETA * (temp - self.previous_h_i)
-            # self.previous_h_i = temp
             self.nb_it += 1
             self.averaged_h_i = self.memory_handler.update_average_mem(self.h_i, self.averaged_h_i, self.nb_it)
+            if not self.parameters.use_unique_up_memory:
+                self.tail_averaged_h_i = self.memory_handler.update_tail_average_mem(self.h_i, self.nb_it)
         return quantized_delta_i
 
 
@@ -201,8 +204,8 @@ class LocalFedAvgUpdate(AbstractLocalUpdate):
 
 class LocalDownCompressModelUpdate(AbstractLocalUpdate):
 
-    def __init__(self, parameters: Parameters) -> None:
-        super().__init__(parameters)
+    def __init__(self, parameters: Parameters, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, memory_handler)
 
         # Memory for bidirectional compression.
         # There is no need for smart initialiation as we take w_0 = 0.

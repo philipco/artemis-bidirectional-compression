@@ -88,8 +88,8 @@ class Parameters:
         self.use_unique_up_memory = True
         self.use_unique_down_memory = False
         self.debiased = False
-        self.use_averaged_h = False
-        self.tail_averaging = False
+        self.use_averaged_h_for_update = False
+        self.use_tail_averaging_for_update = False
         self.expo_tail_averaging = False
         self.awa_tail_averaging = False
         self.verbose = verbose
@@ -101,6 +101,18 @@ class Parameters:
         self.nb_local_update = nb_local_update
         self.non_degraded = non_degraded
         self.log_file = log_file
+
+    def check_param_validity(self):
+        if self.use_averaged_h_for_update:
+            assert not self.use_tail_averaging_for_update
+            assert not self.awa_tail_averaging, "We do not use tail averaging, thus awa approximation is useless."
+            assert not self.expo_tail_averaging, "We do not use tail averaging, thus expo approximation is useless."
+        if self.use_tail_averaging_for_update:
+            assert not self.use_averaged_h_for_update, "We cannot use both average averaging and tail averaging to compute delta/omega."
+            assert not self.use_unique_up_memory, "When using tail averaging, me must store all values of the memory."
+        if self.expo_tail_averaging or self.awa_tail_averaging:
+            assert self.use_tail_averaging_for_update, "When compute tail averaging approximation, the tail option must be set to true."
+
 
     def print(self):
         print("federated", self.federated)

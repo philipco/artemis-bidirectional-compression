@@ -19,9 +19,8 @@ import torch
 from typing import Tuple
 import numpy as np
 
-from src.machinery.MemoryHandler import MemoryHandler
+from src.machinery.MemoryHandler import AbstractMemoryHandler
 from src.machinery.Parameters import Parameters
-from src.utils.Constants import BETA
 
 
 class AbstractGradientUpdate(ABC):
@@ -31,12 +30,12 @@ class AbstractGradientUpdate(ABC):
 
     time_sample = 0
 
-    def __init__(self, parameters: Parameters) -> None:
+    def __init__(self, parameters: Parameters, memory_handler: AbstractMemoryHandler) -> None:
         super().__init__()
         self.parameters = parameters
         self.step = 0
         self.all_delta_i = []
-        self.memory_handler = MemoryHandler(parameters)
+        self.memory_handler = memory_handler
 
     def compute_cost(self, model_param):
         """Compute the cost function for the model's parameter."""
@@ -64,8 +63,8 @@ class AbstractGradientUpdate(ABC):
 
 class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, memory_handler)
 
         # Delta sent from remote nodes to main server.
         self.all_delta_i = []
@@ -77,6 +76,8 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             if self.parameters.use_up_memory: print("Using multiple up memories.")
             self.h = [[torch.zeros(parameters.n_dimensions, dtype=np.float)] for k in range(self.parameters.nb_devices)]
             self.averaged_h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in
+                               range(self.parameters.nb_devices)]
+            self.tail_averaged_h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in
                                range(self.parameters.nb_devices)]
         else:
             if self.parameters.use_up_memory: print("Using a single up memory.")
@@ -251,9 +252,11 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                     # print(len(self.get_set_of_workers(cost_models)))
                     self.h = self.h + worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
                     self.averaged_h = self.h
+                    self.tail_averaged_h = self.h
                 if not self.parameters.use_unique_up_memory:
-                    self.h[worker.ID][-1] = worker.local_update.h_i[-1]
-                    self.averaged_h[worker.ID] = worker.local_update.h_i[-1]
+                    self.h[worker.ID][-1] = worker.local_update.h_i[0]
+                    self.averaged_h[worker.ID] = worker.local_update.h_i[0]
+                    self.tail_averaged_h[worker.ID] = worker.local_update.h_i[0]
 
             # If nothing is returned by the device, this device does not participate to the learning at this iterations.
             # This may happened if it is considered that during one epoch each devices should run through all its data
@@ -262,18 +265,22 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 if self.parameters.use_unique_up_memory:
                     self.all_delta_i.append(compressed_delta_i)
                 else:
-                    self.all_delta_i.append(compressed_delta_i + self.memory_handler.which_mem(self.h[worker.ID][-1], self.averaged_h[worker.ID]))
+                    which_mem = self.memory_handler.which_mem(self.h[worker.ID][-1], self.averaged_h[worker.ID], self.tail_averaged_h[worker.ID])
+                    self.all_delta_i.append(compressed_delta_i + which_mem)
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
                 self.h[worker.ID].append(self.memory_handler.update_mem(self.h[worker.ID][-1], self.averaged_h[worker.ID],
                                                                    compressed_delta_i))
                 self.averaged_h[worker.ID] = self.memory_handler.update_average_mem(self.h[worker.ID],
                                                                                     self.averaged_h[worker.ID],
                                                                                     self.nb_it)
+                if not self.parameters.use_unique_up_memory:
+                    self.tail_averaged_h[worker.ID] = self.memory_handler.update_tail_average_mem(self.h[worker.ID], self.nb_it)
 
         all_delta = self.compute_aggregation(self.all_delta_i)
 
         # Aggregating all delta
-        self.g = all_delta + [0, self.memory_handler.which_mem(self.h, self.averaged_h)][self.parameters.use_unique_up_memory]
+        which_mem = self.memory_handler.which_mem(self.h, self.averaged_h, None)
+        self.g = all_delta + [0, which_mem][self.parameters.use_unique_up_memory]
         if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
             # temp = self.h
             self.h = self.memory_handler.update_mem(self.h, self.averaged_h, all_delta)
@@ -299,8 +306,8 @@ class ArtemisUpdate(AbstractFLUpdate):
 
     It hold two potential memories (one for each way), and can either compress gradients, either models."""
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters, workers)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, workers, memory_handler)
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
@@ -331,8 +338,8 @@ class ArtemisUpdate(AbstractFLUpdate):
 
 class SympaUpdate(AbstractFLUpdate):
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters, workers)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, workers, memory_handler)
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
@@ -385,8 +392,8 @@ class SympaUpdate(AbstractFLUpdate):
 
 class DownCompressModelUpdate(AbstractFLUpdate):
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters, workers)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, workers, memory_handler)
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
@@ -451,8 +458,8 @@ class FedAvgUpdate(AbstractFLUpdate):
 
     It hold two potentiel memories (one for each way), and can either compress gradients, either models."""
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters, workers)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, workers, memory_handler)
 
     def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
@@ -486,8 +493,8 @@ class DianaUpdate(AbstractFLUpdate):
 
     It hold two potentiel memories (one for each way), and can either compress gradients, either models."""
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters, workers)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, workers, memory_handler)
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 

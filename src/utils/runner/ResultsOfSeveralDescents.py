@@ -65,6 +65,7 @@ class ResultsOfSeveralDescents:
         self.distance_to_model = [desc.dist_to_model for desc in self.all_descent.values()]
         self.h_i_to_optimal_grad = [desc.h_i_to_optimal_grad for desc in self.all_descent.values()]
         self.avg_h_i_to_optimal_grad = [desc.avg_h_i_to_optimal_grad for desc in self.all_descent.values()]
+        self.tail_avg_h_i_to_optimal_grad = [desc.tail_avg_h_i_to_optimal_grad for desc in self.all_descent.values()]
         self.var_models = [desc.var_models for desc in self.all_descent.values()]
         self.names = [names for names in self.all_descent]
 
@@ -170,6 +171,14 @@ class ResultsOfSeveralDescents:
 
     def get_avg_h_i_to_optimal_grad_std(self, in_log=True):
         return self.getter_std(self.avg_h_i_to_optimal_grad)
+
+    def get_tail_avg_h_i_to_optimal_grad(self, in_log=True):
+        """Return the sequence of average distance between all the local memories and the corresponding optimal
+        gradients."""
+        return self.getter(self.tail_avg_h_i_to_optimal_grad)
+
+    def get_tail_avg_h_i_to_optimal_grad_std(self, in_log=True):
+        return self.getter_std(self.tail_avg_h_i_to_optimal_grad)
 
     def get_var_models(self, in_log=True):
         """Return the sequence of average distance between the central model and the remotes one for each of the
