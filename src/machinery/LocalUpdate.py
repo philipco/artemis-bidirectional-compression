@@ -10,7 +10,6 @@ from copy import deepcopy, copy
 import scipy.sparse as sp
 import torch
 import numpy as np
-from scipy.optimize import least_squares
 
 from src.machinery.Memory import Memory
 from src.machinery.MemoryHandler import AbstractMemoryHandler
@@ -18,8 +17,6 @@ from src.models.CostModel import ACostModel
 from src.machinery.Parameters import Parameters
 
 from abc import ABC, abstractmethod
-
-from src.utils.Constants import BETA
 
 
 class AbstractLocalUpdate(ABC):
@@ -29,17 +26,6 @@ class AbstractLocalUpdate(ABC):
         self.parameters = parameters
         self.memory_handler = memory_handler
         self.memory = Memory(parameters)
-        # cost_model = cost_model
-
-        # Local memory.
-        # if self.parameters.use_unique_up_memory:
-        #     self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        # else:
-        #     self.h_i = [torch.zeros(parameters.n_dimensions, dtype=np.float)]
-        # self.previous_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        # self.averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        # self.tail_averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        # self.nb_it = 0
 
         # Local delta (information that is sent to central server).
         self.delta_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -80,17 +66,10 @@ class AbstractLocalUpdate(ABC):
         # Smart initialisation of the memory (it corresponds to the first computed gradient).
         if full_nb_iterations == 1 and self.parameters.use_up_memory:
             self.memory.smart_initialization(self.g_i)
-            # if self.parameters.use_unique_up_memory:
-            #     self.h_i = self.g_i
-            # else:
-            #     self.h_i[-1] = self.g_i
-            # self.averaged_h_i = self.g_i
-            # self.tail_averaged_h_i = self.g_i
 
     @abstractmethod
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float):
         """
-
         :param full_nb_iterations: total number of computed iteration
         :return:
         """

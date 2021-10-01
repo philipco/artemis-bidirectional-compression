@@ -141,29 +141,6 @@ class Diana(VanillaSGD):
         return params
 
 
-class DianaOptMem(VanillaSGD):
-    """Predefine parameters to run Diana algorithm.
-    """
-
-    def name(self) -> str:
-        return "Diana-Enhanced"
-
-    def type_FL(self):
-        return DianaDescent
-
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
-               stochastic=True, streaming=False, batch_size=1) -> Parameters:
-        params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
-                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
-                                stochastic, streaming, batch_size)
-        params.up_compression_model = up_compression_model
-        params.use_up_memory = True
-        params.use_unique_up_memory = False
-        params.debiased = True
-        return params
-
-
 class DianaOneWay(VanillaSGD):
     """Predefine parameters to run Diana algorithm.
     """
@@ -249,7 +226,6 @@ class ArtemisAvg(Diana):
         params.use_down_memory = False
         params.use_unique_up_memory = False
         params.save_all_memories = True
-        params.use_averaged_h_for_update = True
         params.down_compression_model = down_compression_model
         params.check_param_validity()
         return params
@@ -274,18 +250,17 @@ class ArtemisTailAvg(Diana):
         params.use_down_memory = False
         params.use_unique_up_memory = False
         params.save_all_memories = True
-        params.use_tail_averaging_for_update = True
         params.down_compression_model = down_compression_model
         params.check_param_validity()
         return params
 
 
-class ArtemisExpoTailAvg(ArtemisTailAvg):
+class ArtemisExpoTailAvgDbsd(ArtemisTailAvg):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "Artemis+ExpoTail"
+        return "Artemis+ExpoTail+Dbsd"
 
     def type_FL(self):
         return TailAvgArtemisDescent
@@ -299,20 +274,19 @@ class ArtemisExpoTailAvg(ArtemisTailAvg):
         params.use_down_memory = False
         params.use_unique_up_memory = True
         params.save_all_memories = True
-        params.debiased = False
-        params.use_tail_averaging_for_update = True
         params.expo_tail_averaging = True
+        # params.debiased = True
         params.down_compression_model = down_compression_model
         params.check_param_validity()
         return params
 
 
-class ArtemisAWATailAvg(ArtemisTailAvg):
+class ArtemisAWATailAvgDbsd(ArtemisTailAvg):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "Artemis+AWATail"
+        return "Artemis+AWATail+Dbsd"
 
     def type_FL(self):
         return TailAvgArtemisDescent
@@ -326,15 +300,14 @@ class ArtemisAWATailAvg(ArtemisTailAvg):
         params.use_down_memory = False
         params.use_unique_up_memory = True
         params.save_all_memories = True
-        params.debiased = False
-        params.use_tail_averaging_for_update = True
         params.awa_tail_averaging = True
+        params.debiased = True
         params.down_compression_model = down_compression_model
         params.check_param_validity()
         return params
 
 
-class ArtemisTailAvgDebiased(Diana):
+class ArtemisTailAvgDbsd(Diana):
     """Predefine parameters to run Artemis algorithm.
     """
 
@@ -355,19 +328,18 @@ class ArtemisTailAvgDebiased(Diana):
         params.save_all_memories = True
         params.debiased = True
         params.use_unique_up_memory = False
-        params.use_tail_averaging_for_update = True
         # params.expo_tail_averaging = True
         params.down_compression_model = down_compression_model
         params.check_param_validity()
         return params
 
 
-class ArtemisDbsd(Diana):
+class ArtemisAvgDbsd(Diana):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "Artemis+Dbsd"
+        return "Artemis+Avg+Dbsd"
 
     def type_FL(self):
         return AvgArtemisDescent
@@ -382,7 +354,6 @@ class ArtemisDbsd(Diana):
         params.use_unique_up_memory = False
         params.debiased = True
         params.save_all_memories = True
-        params.use_averaged_h_for_update = True
         params.down_compression_model = down_compression_model
         params.check_param_validity()
         return params

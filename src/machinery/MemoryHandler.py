@@ -34,19 +34,27 @@ class AbstractMemoryHandler(ABC):
         elif self.parameters.expo_tail_averaging:
             memory.tail_averaged_h_i = self.expo_averager.compute_average(memory.nb_it, new_val)
         else:
-            # assert not self.parameters.use_unique_up_memory, "When using true tail averaging, h_i should be the sequence of all h_i."
-            n = (len(memory.h_i) - 1) // 2
-            memory.tail_averaged_h_i = torch.mean(torch.stack(memory.h_i[n:]), 0)
+            n = memory.nb_it // 2
+            if n == 0:
+                return memory.h_i[-1]
+            # Removing the first element of the list that will be no more used.
+            if memory.nb_it % 2 == 0:
+                memory.h_i = memory.h_i[1:]
+            length = n + 1
+            if memory.nb_it % 2 == 1:
+                length += 1
+            memory.tail_averaged_h_i = torch.sum(torch.stack(memory.h_i), 0) / length
 
     def update_average_h_i(self, memory: Memory):
         new_val = memory.get_current_h_i()
         memory.averaged_h_i = (1 - 1 / (memory.nb_it + 1)) * memory.averaged_h_i + 1 / (memory.nb_it + 1) * new_val
 
     def update_h_i(self, memory: Memory, quantized_delta):
+        # Called only if the use_memory flag is set to True.
         mem = memory.get_current_h_i() + self.parameters.up_learning_rate * quantized_delta
         if not self.parameters.debiased:
             return mem
-        return mem + self.parameters.up_learning_rate * (memory.averaged_h_i - memory.get_current_h_i())
+        return mem + self.parameters.up_learning_rate * (self.which_mem(memory) - memory.get_current_h_i())
 
 
 class NoMemoryHandler(AbstractMemoryHandler):
