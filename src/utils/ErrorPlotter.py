@@ -28,9 +28,12 @@ fourfigsize=(13, 8)
 sixfigsize=(13, 11)
 
 Y_LEGENDS = {"loss": r"$\log_{10}(F(w_k) - F(w_*))$",
-             "ef": r"$\log_{10}(\| \| EF_k \| \|)$",
-             "rand_dist": r"$\log_{10}(\mathbb{E} \| \| w_k - w_k^i \| \|^2)$",
-             "rand_var": r"$\log_{10}( \| \| \mathbb{V}~[w_k^i] \| \| )$",
+             "ef": r"$\log_{10}( \| EF_k \|)$",
+             "rand_dist": r"$\log_{10}(\mathbb{E} \| w_k - w_k^i \|^2)$",
+             "h_i_dist": r"$\log_{10}(1 / N \sum \| h_k^i - h_k^* \|^2)$",
+             "avg_h_i_dist": r"$\log_{10}(1 / N \sum \| \overline{h_k^i} - h_k^* \|^2)$",
+             "tail_avg_h_i_dist": r"$\log_{10}(1 / N \sum \| \overline{h_k^i}^T - h_k^* \|^2)$",
+             "rand_var": r"$\log_{10}( \| \mathbb{V}~[w_k^i] \| )$",
              "train_loss": r"$\log($Train loss$)$",
              "test_loss": r"$\log($Test loss$)$",
              "accuracy": "Accuracy",}
@@ -95,13 +98,6 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None
             # setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw)
         it += 1
 
-    # title_precision = "\n(N=" + str(nb_devices)
-    # if nb_dim is not None:
-    #     title_precision += ", d=" + str(nb_dim)
-    # if batch_size is not None:
-    #     title_precision += ", b=" + str(batch_size)
-    # title_precision += ")"
-
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
     setup_plot(x_legend, ylegends=ylegends, xlog=xlog, xlabels=xlabels,
                ylim=ylim, picture_name=picture_name, ax=ax, fig=fig)
@@ -129,7 +125,6 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
     title_precision = "\n(d={0})".format(nb_dim)
 
     setup_plot(x_legend + title_precision, xticks_fontsize=15, xlog=False)
-
 
 
 def setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw):

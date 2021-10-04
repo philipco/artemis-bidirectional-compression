@@ -79,11 +79,11 @@ class SGDGen(Optimizer):
                         param_state[up_learning_rate_name] = 0
 
                 if up_error_feedback_name in param_state:
-                    loc_grad += param_state[up_error_feedback_name].mul(self.parameters.optimal_step_size)  # TODO : multiplier par un coef ?
+                    loc_grad = loc_grad + param_state[up_error_feedback_name].mul(self.parameters.optimal_step_size)  # TODO : multiplier par un coef ?
 
                 # Combining with up memory
                 if self.parameters.use_up_memory:
-                    loc_grad -= param_state[up_local_memory_name]
+                    loc_grad = loc_grad - param_state[up_local_memory_name]
 
                 if self.parameters.up_compression_model is not None:
                     delta = self.parameters.up_compression_model.compress(loc_grad)
@@ -95,7 +95,7 @@ class SGDGen(Optimizer):
 
                 if self.parameters.use_up_memory:
                     grad = delta + param_state[up_local_memory_name]
-                    param_state[up_local_memory_name] += delta.mul(param_state[up_learning_rate_name]).detach()
+                    param_state[up_local_memory_name] = param_state[up_local_memory_name] +delta.mul(param_state[up_learning_rate_name]).detach()
                 else:
                     grad = delta
 

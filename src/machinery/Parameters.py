@@ -51,6 +51,7 @@ class Parameters:
                  streaming: bool = False,
                  use_up_memory: bool = False,
                  use_down_memory: bool = False,
+                 save_all_memories: bool = False,
                  use_unique_up_memory: bool = True,
                  use_averaging: bool = False,
                  time_debug: bool = False,
@@ -85,8 +86,12 @@ class Parameters:
         self.use_up_memory = use_up_memory  # use memory when sending to global server
         self.use_down_memory = use_down_memory  # a memory at back communication
         self.reset_memories = False
-        self.use_unique_up_memory = False#[use_unique_up_memory, True][fraction_sampled_workers == 1] # either use N memories, either a single one
-        self.use_unique_down_memory = False#[use_unique_up_memory, True][fraction_sampled_workers == 1]
+        self.use_unique_up_memory = True
+        self.use_unique_down_memory = False
+        self.save_all_memories = save_all_memories
+        self.debiased = False
+        self.expo_tail_averaging = False
+        self.awa_tail_averaging = False
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.
         self.time_debug = time_debug  # True is one want to debug the time spent in each procedure.
@@ -96,6 +101,10 @@ class Parameters:
         self.nb_local_update = nb_local_update
         self.non_degraded = non_degraded
         self.log_file = log_file
+
+    def check_param_validity(self):
+        pass
+
 
     def print(self):
         print("federated", self.federated)

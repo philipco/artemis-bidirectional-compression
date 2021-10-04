@@ -22,6 +22,8 @@ class AverageOfSeveralIdenticalRun:
         self.norm_error_feedback = []
         self.dist_to_model = []
         self.h_i_to_optimal_grad = []
+        self.avg_h_i_to_optimal_grad = []
+        self.tail_avg_h_i_to_optimal_grad = []
         self.var_models = []
         self.theoretical_nb_bits = None
         self.omega_c = None
@@ -45,6 +47,8 @@ class AverageOfSeveralIdenticalRun:
         self.norm_error_feedback = [d.norm_error_feedback for d in self.multiple_descent]
         self.dist_to_model = [d.dist_to_model for d in self.multiple_descent]
         self.h_i_to_optimal_grad = [d.h_i_to_optimal_grad for d in self.multiple_descent]
+        self.avg_h_i_to_optimal_grad = [d.avg_h_i_to_optimal_grad for d in self.multiple_descent]
+        self.tail_avg_h_i_to_optimal_grad = [d.tail_avg_h_i_to_optimal_grad for d in self.multiple_descent]
         self.var_models = [d.var_models for d in self.multiple_descent]
 
     def append_from_DL(self, new_run: DeepLearningRun):
@@ -54,7 +58,7 @@ class AverageOfSeveralIdenticalRun:
         self.test_accuracies = [d.test_accuracies for d in self.multiple_descent]
 
     def append_list(self, my_list, my_list_averaged, my_list_norm_ef, my_list_dist_model, my_list_h_i_to_optimal_grad,
-                    my_list_var_models):
+                    my_list_avg_h_i_to_optimal_grad, my_list_var_models):
         """Used when running experiments with different step size/compression.
 
         :param my_list:
@@ -64,20 +68,22 @@ class AverageOfSeveralIdenticalRun:
         """
         number_points = len(my_list[0])
         for i in range(number_points):
-            loss, loss_avg, norm_ef, dist_model, h_i_to_optimal_grad, var_models = [], [], [], [], [], []
-            for list, list_avg, list_ef, list_dist, list_h_i, list_var_models in \
+            loss, loss_avg, norm_ef, dist_model, h_i_to_optimal_grad, avg_h_i_to_optimal_grad, var_models = [], [], [], [], [], [], []
+            for list, list_avg, list_ef, list_dist, list_h_i, list_avg_h_i, list_var_models in \
                     zip(my_list, my_list_averaged, my_list_norm_ef, my_list_dist_model, my_list_h_i_to_optimal_grad,
-                        my_list_var_models):
+                        my_list_avg_h_i_to_optimal_grad, my_list_var_models):
                 loss.append(list[i])
                 loss_avg.append(list_avg[i])
                 norm_ef.append(list_ef[i])
                 dist_model.append(list_dist[i])
                 h_i_to_optimal_grad.append(list_h_i[i])
+                avg_h_i_to_optimal_grad.append(list_avg_h_i[i])
                 var_models.append(list_var_models[i])
             self.train_losses.append(np.array(loss))
             self.averaged_train_losses.append(np.array(loss_avg))
             self.norm_error_feedback.append(np.array(norm_ef))
             self.dist_to_model.append(np.array(dist_model))
             self.h_i_to_optimal_grad.append(np.array(h_i_to_optimal_grad))
+            self.avg_h_i_to_optimal_grad.append(np.array(avg_h_i_to_optimal_grad))
             self.var_models.append(np.array(var_models))
         self.artificial = True

@@ -7,7 +7,7 @@ from src.models.CostModel import LogisticModel, RMSEModel, build_several_cost_mo
 
 from src.utils.ErrorPlotter import *
 from src.utils.data.DataPreparation import build_data_logistic, build_data_linear
-from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_superconduct, prepare_mushroom, \
+from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_superconduct, prepare_mushrooms, \
     prepare_phishing, prepare_a9a, prepare_abalone, prepare_covtype, prepare_madelon, prepare_gisette, prepare_w8a
 from src.utils.Constants import *
 from src.utils.data.DataClustering import *
@@ -25,7 +25,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
-    assert dataset in ["quantum", "superconduct", "mushroom", "phishing", "a9a", "abalone", "covtype", 'synth_logistic',
+    assert dataset in ["quantum", "superconduct", "mushrooms", "phishing", "a9a", "abalone", "covtype", 'synth_logistic',
                        'madelon', 'gisette', 'w8a', 'synth_linear_noised', 'synth_linear_nonoised'], \
         "The available dataset are ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']."
     assert iid in ['iid', 'non-iid'], "The iid option are ['iid', 'non-iid']."
@@ -35,7 +35,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
-    nb_epoch = 1000 if stochastic else 400
+    nb_epoch = 600 if stochastic else 400
 
     iid_data = True if iid == 'iid' else False
 
@@ -44,47 +44,47 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         X, Y, dim_notebook = prepare_a9a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 535
         model = LogisticModel
-        
+
     if dataset == "abalone":
         X, Y, dim_notebook = prepare_abalone(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 86
         model = RMSEModel
-        
+
     if dataset == "covtype":
         X, Y, dim_notebook = prepare_covtype(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 10000 if iid == "non-iid" else 400 # b < 10413
         model = RMSEModel
-        
+
     if dataset == "gisette":
         X, Y, dim_notebook = prepare_gisette(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 8222
         model = RMSEModel
-        
+
     if dataset == "madelon":
         X, Y, dim_notebook = prepare_madelon(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 16 if iid == "non-iid" else 16 # b < 16
         model = LogisticModel
-        
-    if dataset == "mushroom":
-        X, Y, dim_notebook = prepare_mushroom(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
+
+    if dataset == "mushrooms":
+        X, Y, dim_notebook = prepare_mushrooms(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 4 if iid == "non-iid" else 4 # b < 148
         model = LogisticModel
-        
+
     if dataset == "quantum":
         X, Y, dim_notebook = prepare_quantum(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 400 # b < 748
         model = LogisticModel
-        
+
     if dataset == "phishing":
         X, Y, dim_notebook = prepare_phishing(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 if iid == "non-iid" else 50 # b < 229
         model = LogisticModel
-        
+
     elif dataset == "superconduct":
         X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 50 # b < 284
         model = RMSEModel
-        
+
     if dataset == "w8a":
         X, Y, dim_notebook = prepare_w8a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
         batch_size = 12 if iid == "non-iid" else 400 # b < 621
@@ -207,7 +207,14 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                         .format(picture_path, experiments_settings))
         plot_error_dist(res.get_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
                         all_error=res.get_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
-                        picture_name="{0}/h_i-{1}".format(picture_path, experiments_settings))
+                        picture_name="{0}/h_i-{1}".format(picture_path, experiments_settings), ylegends="h_i_dist")
+        plot_error_dist(res.get_avg_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
+                        all_error=res.get_avg_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
+                        picture_name="{0}/h_i_avg-{1}".format(picture_path, experiments_settings), ylegends="avg_h_i_dist")
+        plot_error_dist(res.get_tail_avg_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
+                        all_error=res.get_tail_avg_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
+                        picture_name="{0}/tail_h_i_avg-{1}".format(picture_path, experiments_settings),
+                        ylegends="tail_avg_h_i_dist")
 
         # Plotting with averaging
         if use_averaging:
@@ -265,16 +272,20 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 if __name__ == '__main__':
 
     if sys.argv[1] == "synth":
-        run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
+        if sys.argv[2] == "logistic":
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+        elif sys.argv[2] == "linear":
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+        else:
+            raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
 
     elif sys.argv[1] == "real":
         for sto in [True, False]:

@@ -53,7 +53,7 @@ def server_compress_gradient(global_model, client0_model, optimizer0, parameters
             param_state = optimizer0.state[client_p]
             value_to_compress = global_p.grad
             if down_ef_name in param_state:
-                value_to_compress += param_state[down_ef_name].mul(parameters.optimal_step_size)
+                value_to_compress = value_to_compress + param_state[down_ef_name].mul(parameters.optimal_step_size)
             omega = parameters.down_compression_model.compress(value_to_compress)
             if parameters.down_error_feedback:
                 param_state[down_ef_name] = value_to_compress - omega
@@ -87,7 +87,7 @@ def compress_model_and_combine_with_down_memory(global_model, model, optimizer, 
 
                 # Combining with down EF/memory
                 if down_ef_name in param_state:
-                    value_to_compress += param_state[down_ef_name].mul(parameters.optimal_step_size)
+                    value_to_compress = value_to_compress + param_state[down_ef_name].mul(parameters.optimal_step_size)
                 if parameters.use_down_memory:
                     value_to_compress = value_to_compress - param_state[down_memory_name]
 
@@ -113,7 +113,7 @@ def compress_model_and_combine_with_down_memory(global_model, model, optimizer, 
                 else:
                     param_state[down_learning_rate_name] = 0
             if parameters.use_down_memory:
-                param_state[down_memory_name] += omega.mul(param_state[down_learning_rate_name]).detach()
+                param_state[down_memory_name] = param_state[down_memory_name] + omega.mul(param_state[down_learning_rate_name]).detach()
 
 
 def server_send_models_to_clients(global_model, client_models):
@@ -160,8 +160,6 @@ def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_
     optimizers = [SGDGen(model.parameters(), parameters=parameters, weight_decay=parameters.weight_decay) for model in client_models]
 
     # lr_scheduler = MultiStepLR(optimizer, milestones=[50, 100, 150], gamma=0.1)
-
-    lr_scheduler = MultiStepLR(optimizer, milestones=[50, 100, 150], gamma=0.1)
 
     if device == 'cuda':
         global_model = torch.nn.DataParallel(global_model)

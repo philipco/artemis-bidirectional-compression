@@ -15,12 +15,12 @@ from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-NB_RUN = 1  # Number of gradient descent before averaging.
+NB_RUN = 5  # Number of gradient descent before averaging.
 
 
 def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1):
     assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-1-mem", "mcm-one-way",
-                     "mcm-other-options", "artemis-vs-existing", "artemis-and-ef"], \
+                     "mcm-other-options", "artemis-vs-existing", "artemis-and-ef", "memories"], \
         "The possible choice of algorithms are : " \
         "uni-vs-bi (to compare uni-compression with bi-compression), " \
         "with-without-ef (to compare algorithms using or not error-feedback), " \
@@ -52,6 +52,8 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
             list_algos = [VanillaSGD(), FedAvg(), FedPAQ(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
         else:
             list_algos = [VanillaSGD(), FedSGD(), FedPAQ(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
+    elif algos == "memories":
+        list_algos = [VanillaSGD(), Artemis(), ArtemisTailAvg(), ArtemisTailAvgDbsd(), ArtemisAvgDbsd()]
     return list_algos
 
 
