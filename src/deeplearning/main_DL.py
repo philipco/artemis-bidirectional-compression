@@ -41,6 +41,7 @@ criterion = {"cifar10": nn.CrossEntropyLoss(), "mnist": nn.CrossEntropyLoss(), "
              "phishing": torch.nn.BCELoss(reduction='mean'), "quantum": torch.nn.BCELoss(reduction='mean'),
              "mushroom": torch.nn.BCELoss(reduction='mean')}
 
+
 def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
     fraction_sampled_workers = 1
@@ -82,27 +83,6 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
     if not stochastic:
         exp_name += "-full"
-
-    if False:#not file_exist("{0}/obj_min_dl.pkl".format(pickle_path)):
-        with open(log_file, 'a') as f:
-            print("==> Computing objective loss.", file=f)
-        params = VanillaSGD().define(cost_models=None,
-                                     n_dimensions=dim,
-                                     stochastic=False,
-                                     nb_epoch=10000,
-                                     nb_devices=nb_devices,
-                                     batch_size=batch_size,
-                                     fraction_sampled_workers=1,
-                                     up_compression_model=SQuantization(0, norm=norm_quantization[dataset]),
-                                     down_compression_model=SQuantization(0, norm=norm_quantization[dataset]))
-
-        params = cast_to_DL(params, dataset, models[dataset], optimal_steps_size[dataset], weight_decay[dataset], iid)
-        params.log_file = log_file
-        params.momentum = momentums[dataset]
-        params.criterion = criterion[dataset]
-
-        obj_min = run_exp(params, loaders).train_losses[-1]
-        pickle_saver(obj_min, "{0}/obj_min_dl".format(pickle_path))
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
 
@@ -152,16 +132,10 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
 
             pickle_saver(res, "{0}/{1}".format(algos_pickle_path, exp_name))
 
-    # obj_min_cvx = pickle_loader("{0}/obj_min".format(pickle_path))
-    obj_min = 0#pickle_loader("{0}/obj_min".format(pickle_path))
+    obj_min = 0 #pickle_loader("{0}/obj_min".format(pickle_path))
 
     res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
     res.recompute_nb_bits()
-
-    # obj_min = min(res.get_loss(np.array(0), in_log=False)[0])
-
-    # print("Obj min in convex:", obj_min_cvx)
-    print("Obj min in dl:", obj_min)
 
     # Plotting
     plot_error_dist(res.get_loss(np.array(obj_min)), res.names, res.nb_devices, batch_size=batch_size,

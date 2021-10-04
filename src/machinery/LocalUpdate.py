@@ -81,6 +81,8 @@ class LocalGradientVanillaUpdate(AbstractLocalUpdate):
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
         self.compute_local_gradient(cost_model, full_nb_iterations)
         self.delta_i = self.g_i - self.memory_handler.which_mem(self.memory)
+
+        ## UPDATING MEMORY
         self.memory_handler.update_memory(self.memory, self.delta_i)
         return self.delta_i
 
@@ -104,7 +106,9 @@ class LocalDianaUpdate(AbstractLocalUpdate):
 
         self.delta_i = self.g_i - self.memory_handler.which_mem(self.memory)
         quantized_delta_i = self.parameters.up_compression_model.compress(self.delta_i)
-        self.memory_handler.update_memory(self.memory)
+
+        ## UPDATING MEMORY
+        self.memory_handler.update_memory(self.memory, quantized_delta_i)
         return quantized_delta_i
 
 
@@ -147,8 +151,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             self.error_i = self.delta_i - quantized_delta_i
 
         ## UPDATING MEMORY
-        if self.parameters.use_up_memory:
-            self.memory_handler.update_memory(self.memory, quantized_delta_i)
+        self.memory_handler.update_memory(self.memory, quantized_delta_i)
         return quantized_delta_i
 
 

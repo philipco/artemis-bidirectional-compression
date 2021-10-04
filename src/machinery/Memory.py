@@ -1,5 +1,7 @@
 """
 Created by Philippenko, 17th September 2021.
+
+This class allows to store all important information required to handle the memory, and in particular all (h^i).
 """
 import numpy as np
 import torch
@@ -8,6 +10,7 @@ from src.machinery.Parameters import Parameters
 
 
 class Memory:
+    """Handle the memory."""
 
     def __init__(self, parameters: Parameters):
         super().__init__()

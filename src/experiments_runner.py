@@ -35,7 +35,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
-    nb_epoch = 1000 if stochastic else 400
+    nb_epoch = 600 if stochastic else 400
 
     iid_data = True if iid == 'iid' else False
 
@@ -211,6 +211,10 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         plot_error_dist(res.get_avg_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
                         all_error=res.get_avg_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
                         picture_name="{0}/h_i_avg-{1}".format(picture_path, experiments_settings), ylegends="avg_h_i_dist")
+        plot_error_dist(res.get_tail_avg_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
+                        all_error=res.get_tail_avg_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
+                        picture_name="{0}/tail_h_i_avg-{1}".format(picture_path, experiments_settings),
+                        ylegends="tail_avg_h_i_dist")
 
         # Plotting with averaging
         if use_averaging:

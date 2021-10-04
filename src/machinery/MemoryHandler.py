@@ -1,5 +1,7 @@
 """
 Created by Philippenko, 17th September 2021.
+
+This class allows to handle computation related to memory.
 """
 from abc import ABC, abstractmethod
 
@@ -11,6 +13,7 @@ from src.machinery.TailAverager import AnytimeWindowsAverage3Acc, AnytimeExpoAve
 
 
 class AbstractMemoryHandler(ABC):
+    """Abstract class to handle memory."""
 
     def __init__(self, parameters: Parameters):
         super().__init__()
@@ -58,6 +61,7 @@ class AbstractMemoryHandler(ABC):
 
 
 class NoMemoryHandler(AbstractMemoryHandler):
+    """When there is no memory."""
 
     def __init__(self, parameters: Parameters):
         super().__init__(parameters)
@@ -67,6 +71,7 @@ class NoMemoryHandler(AbstractMemoryHandler):
 
 
 class ClassicMemoryHandler(AbstractMemoryHandler):
+    """When we use the classical (h^i) as memory."""
 
     def __init__(self, parameters: Parameters):
         super().__init__(parameters)
@@ -76,6 +81,7 @@ class ClassicMemoryHandler(AbstractMemoryHandler):
 
 
 class AverageMemoryHandler(AbstractMemoryHandler):
+    """When we use the average of all (h^i) as memory."""
 
     def __init__(self, parameters: Parameters):
         super().__init__(parameters)
@@ -85,6 +91,7 @@ class AverageMemoryHandler(AbstractMemoryHandler):
 
 
 class TailAverageMemoryHandler(AbstractMemoryHandler):
+    """When we use the average of all (h^i) as memory."""
 
     def __init__(self, parameters: Parameters):
         super().__init__(parameters)
