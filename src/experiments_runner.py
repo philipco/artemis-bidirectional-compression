@@ -268,16 +268,20 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 if __name__ == '__main__':
 
     if sys.argv[1] == "synth":
-        run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
-        run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid', algos=sys.argv[3],
-                        use_averaging=True)
+        if sys.argv[2] == "logistic":
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+        elif sys.argv[2] == "linear":
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True)
+        else:
+            raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
 
     elif sys.argv[1] == "real":
         for sto in [True, False]:

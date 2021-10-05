@@ -56,6 +56,8 @@ agregate their results.
 
 ## Usage
 
+TODO !!
+
 - `main.py` can be called from the command line to run a single network training and testing. It can take a variety of optional arguments. Type `python main.py --help` for further details.
 - `utils.hyperparameters.py` facilitate the definition of all the hyper-parameters of the experiments.
 - `tune_lr.py` allows to tune the learning rate for a network architecture/data set/optimizer configuration.
@@ -73,7 +75,7 @@ To install them automatically: `pip install -r requirements.txt`
 
 ## Maintainers
 
-[@ConstantinPhilippenko](https://github.com/philipco).
+[@ConstantinPhilippenko](https://github.com/philipco)
 
 ## License
 
