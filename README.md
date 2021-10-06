@@ -11,9 +11,7 @@ constraints and device partial participation. Several workers (randomly sampled)
 a central server to aggregate their computations. To alleviate the communication cost, we compresse the information sent
 in both directions (from the workers to the server and conversely).
 
-
 <img src="mcm.png" alt="FL framework" width="400"/>
-
 
 ## Table of Contents
 
@@ -56,12 +54,18 @@ agregate their results.
 
 ## Usage
 
-TODO !!
+**Running experiments:**
+- `src.experiments_runner.py` allows to run experiments in the convex settings. 
+- `src.deeplearning.main_DL.py`allows to run experiments in the non-convex settings (cifar10, fashion mnist, femnist and mnist).
+- `src.main.py` aims to provide a tutorial to explain how the code can be used.
 
-- `main.py` can be called from the command line to run a single network training and testing. It can take a variety of optional arguments. Type `python main.py --help` for further details.
-- `utils.hyperparameters.py` facilitate the definition of all the hyper-parameters of the experiments.
-- `tune_lr.py` allows to tune the learning rate for a network architecture/data set/optimizer configuration.
-- `main_experiments.py` contains the experiments presented in the paper, section 6.
+To run all experiments in convex mode on a CPU, just do `sh shell_runner_convex.sh `.
+
+It takes too long time to run neural networks on a CPU, it requires a GPU, then just run the following: 
+`python3 -m src.deeplearning.main_DL $dataset mcm-vs-existing iid`.
+
+**Checking  experiments:**
+Two notebooks are provided to plot all experiments that are used in the paper.
 
 ## Requirements
 

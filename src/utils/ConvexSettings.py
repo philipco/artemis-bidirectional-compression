@@ -1,5 +1,7 @@
 """
 Created by Constantin Philippenko, 6th October 2021.
+
+This file gather all the settings used in non-convex experiments.
 """
 from src.models.CostModel import RMSEModel, LogisticModel
 
