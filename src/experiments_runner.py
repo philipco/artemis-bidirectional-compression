@@ -183,9 +183,6 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                         x_points=res.X_number_of_bits, x_legend="Communicated bits",
                         all_error=res.get_std(obj_min), picture_name="{0}/bits-noavg-{1}"
                         .format(picture_path, experiments_settings))
-        plot_error_dist(res.get_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
-                        all_error=res.get_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
-                        picture_name="{0}/h_i-{1}".format(picture_path, experiments_settings), ylegends="h_i_dist")
 
         # Plotting with averaging
         if use_averaging:

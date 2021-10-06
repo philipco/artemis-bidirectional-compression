@@ -11,3 +11,7 @@ models =  {"a9a": LogisticModel, "abalone": RMSEModel, "covtype": RMSEModel, "gi
            "madelon": LogisticModel, "mushroom": LogisticModel, "quantum": LogisticModel, "phishing": LogisticModel,
            "superconduct": RMSEModel, "w8a": LogisticModel,
            "synth_logistic": LogisticModel, "synth_linear_noised": RMSEModel, "synth_linear_nonoised": RMSEModel}
+
+dimensions = {"a9a": 124, "abalone": 9, "covtype": 55, "gisette": 5001, "madelon": 501, "mushroom": 22, "quantum": 66,
+               "phishing": 69, "superconduct": 82, "w8a": 301,
+               "synth_logistic": 2, "synth_linear_noised": 20, "synth_linear_nonoised": 20}

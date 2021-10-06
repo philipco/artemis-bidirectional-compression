@@ -12,20 +12,25 @@
 # Arg4: iid ('idd' or 'non-iid')
 #    if Arg1 = synth, this argument is useless
 
+# To kill all jobs: kill -9 `cat save_pid.txt` && rm save_pid.txt
+
 algos=mcm-vs-existing
 
 # If not existing, creates a logs repository.
 [ ! -d "./logs" ] && mkdir ./logs
+[ -d "save_pid.txt" ] && rm save_pid.txt
 
 for dataset in logistic linear
 do
-  nohup time python3 -m src.experiments_runner synth $dataset $algos NONE 2> logs/${dataset}.txt &
+  nohup python3 -m src.experiments_runner synth $dataset $algos NONE > logs/${dataset}.txt & 2>&1 &
+  echo $! >> save_pid.txt
 done
 
 for iid in iid non-iid
 do
 	for dataset in a9a quantum phishing superconduct w8a
 	do
-	  nohup time python3 -m src.experiments_runner real $dataset $algos $iid 2> logs/log_${dataset}_${iid}.txt &
+	  nohup python3 -m src.experiments_runner real $dataset $algos $iid > logs/log_${dataset}_${iid}.txt 2>&1 &
+	  echo $! >> save_pid.txt
 	done
 done
