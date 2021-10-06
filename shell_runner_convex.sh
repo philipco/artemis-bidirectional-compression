@@ -14,15 +14,18 @@
 
 algos=mcm-vs-existing
 
+# If not existing, creates a logs repository.
+[ ! -d "./logs" ] && mkdir ./logs
+
 for dataset in logistic linear
 do
-  nohup time python3 -m src.experiments_runner synth $dataset $algos NONE 2> log.txt &
+  nohup time python3 -m src.experiments_runner synth $dataset $algos NONE 2> logs/${dataset}.txt &
 done
 
 for iid in iid non-iid
 do
 	for dataset in a9a quantum phishing superconduct w8a
 	do
-	  nohup time python3 -m src.experiments_runner real $dataset $algos $iid 2> log.txt &
+	  nohup time python3 -m src.experiments_runner real $dataset $algos $iid 2> logs/log_${dataset}_${iid}.txt &
 	done
 done

@@ -3,7 +3,8 @@ Created by Philippenko, 15 January 2021
 """
 import sys
 
-from src.models.CostModel import LogisticModel, RMSEModel, build_several_cost_model
+from src.models.CostModel import build_several_cost_model
+from src.utils.ConvexSettings import batch_sizes, models
 
 from src.utils.ErrorPlotter import *
 from src.utils.data.DataPreparation import build_data_logistic, build_data_linear
@@ -39,62 +40,43 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     iid_data = True if iid == 'iid' else False
 
+    batch_size = batch_sizes[dataset]
+    model = models[dataset]
+
     # Select the correct dataset
     if dataset == "a9a":
         X, Y, dim_notebook = prepare_a9a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 50 if iid == "non-iid" else 50 # b < 535
-        model = LogisticModel
 
     if dataset == "abalone":
         X, Y, dim_notebook = prepare_abalone(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 50 if iid == "non-iid" else 50 # b < 86
-        model = RMSEModel
 
     if dataset == "covtype":
         X, Y, dim_notebook = prepare_covtype(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 10000 if iid == "non-iid" else 400 # b < 10413
-        model = RMSEModel
 
     if dataset == "gisette":
         X, Y, dim_notebook = prepare_gisette(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 50 if iid == "non-iid" else 50 # b < 8222
-        model = RMSEModel
 
     if dataset == "madelon":
         X, Y, dim_notebook = prepare_madelon(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 16 if iid == "non-iid" else 16 # b < 16
-        model = LogisticModel
 
     if dataset == "mushroom":
         X, Y, dim_notebook = prepare_mushroom(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 4 if iid == "non-iid" else 4 # b < 148
-        model = LogisticModel
 
     if dataset == "quantum":
         X, Y, dim_notebook = prepare_quantum(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 400 # b < 748
-        model = LogisticModel
 
     if dataset == "phishing":
         X, Y, dim_notebook = prepare_phishing(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 50 if iid == "non-iid" else 50 # b < 229
-        model = LogisticModel
 
     elif dataset == "superconduct":
         X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 50 # b < 284
-        model = RMSEModel
 
     if dataset == "w8a":
         X, Y, dim_notebook = prepare_w8a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-        batch_size = 12 if iid == "non-iid" else 400 # b < 621
-        model = LogisticModel
 
     elif dataset == 'synth_logistic':
         nb_epoch = 100 if stochastic else 400
         dim_notebook = 2
-        batch_size = 1
-        model = LogisticModel
         if not file_exist("{0}/data.pkl".format(pickle_path)):
             w = torch.FloatTensor([10, 10]).to(dtype=torch.float64)
             X, Y = build_data_logistic(w, n_dimensions=2, n_devices=nb_devices, with_seed=False)
@@ -112,8 +94,6 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             pickle_saver((X, Y), pickle_path + "/data")
         else:
             X, Y = pickle_loader(pickle_path + "/data")
-        model = RMSEModel
-        batch_size = 1
     elif dataset == 'synth_linear_nonoised':
         nb_epoch = 100 if stochastic else 400
         dim_notebook = 20
@@ -125,8 +105,6 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             pickle_saver((X, Y), pickle_path + "/data")
         else:
             X, Y = pickle_loader(pickle_path + "/data")
-        model = RMSEModel
-        batch_size = 1
 
     default_level_of_quantization = 1 if fraction_sampled_workers == 1 else 2
     compression_by_default = SQuantization(default_level_of_quantization, dim_notebook, norm=2)
@@ -208,9 +186,6 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         plot_error_dist(res.get_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
                         all_error=res.get_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
                         picture_name="{0}/h_i-{1}".format(picture_path, experiments_settings), ylegends="h_i_dist")
-        plot_error_dist(res.get_avg_h_i_to_optimal_grad(np.array(0)), res.names, res.nb_devices, dim_notebook,
-                        all_error=res.get_avg_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
-                        picture_name="{0}/h_i_avg-{1}".format(picture_path, experiments_settings), ylegends="avg_h_i_dist")
 
         # Plotting with averaging
         if use_averaging:
@@ -284,7 +259,7 @@ if __name__ == '__main__':
             raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
 
     elif sys.argv[1] == "real":
-        for sto in [True, False]:
+        for sto in [False, True]:
             for dataset in [sys.argv[2]]:
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                                 use_averaging=True)
