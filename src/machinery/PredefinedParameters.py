@@ -140,7 +140,6 @@ class Diana(VanillaSGD):
         return params
 
 
-
 class DianaOneWay(VanillaSGD):
     """Predefine parameters to run Diana algorithm.
     """
@@ -203,6 +202,7 @@ class Artemis(Diana):
         params.use_unique_up_memory = True
         params.down_compression_model = down_compression_model
         return params
+
 
 class ArtemisND(Artemis):
     """Predefine parameters to run Artemis algorithm.

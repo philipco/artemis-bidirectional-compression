@@ -1,5 +1,4 @@
 #Require Python 3.7 in order to use annotation library
-python=3.7
 ipywidgets
 numpy==1.16.4
 scipy
@@ -10,7 +9,7 @@ matplotlib
 jupyter
 pandas>0.25
 scikit-learn
-pytorch
+torch
 torchvision
 seaborn
 tqdm
