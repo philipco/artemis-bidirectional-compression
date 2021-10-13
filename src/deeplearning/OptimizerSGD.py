@@ -38,7 +38,7 @@ class SGDGen(Optimizer):
 
     @torch.no_grad()
     def step_local_global(self, w_id, closure=None):
-        """Performs a single optimization step.
+        """Performs a single optimization step. Does NOT update the model !
 
         Arguments:
             w_id: integer, id of the worker
@@ -61,18 +61,16 @@ class SGDGen(Optimizer):
 
                 param_state = self.state[p]
 
-                d_p = p.grad.data
+                loc_grad = p.grad.data
 
                 up_error_feedback_name = 'up_error_feedback_' + str(w_id)
-                down_error_feedback_name = 'down_error_feedback_' + str(w_id)
                 up_local_memory_name = 'up_memory_' + str(w_id)
                 up_learning_rate_name = 'up_learning_rate_' + str(w_id)
-                loc_grad = d_p
 
                 if up_local_memory_name not in param_state and self.parameters.use_up_memory:
                     # We initialize memory with first computed gradient (smart initialization).
                     if self.parameters.up_compression_model.level != 0:
-                        param_state[up_local_memory_name] = torch.clone(d_p).detach()
+                        param_state[up_local_memory_name] = torch.clone(loc_grad).detach()
                     else:
                         param_state[up_local_memory_name] = torch.zeros_like(p)
                 if up_learning_rate_name not in param_state:
@@ -83,48 +81,47 @@ class SGDGen(Optimizer):
                         param_state[up_learning_rate_name] = 0
 
                 if up_error_feedback_name in param_state:
-                    loc_grad += param_state[up_error_feedback_name].mul(self.parameters.optimal_step_size)  # TODO : multiplier par un coef ?
+                    loc_grad = loc_grad + param_state[up_error_feedback_name].mul(self.parameters.optimal_step_size)  # TODO : multiplier par un coef ?
 
                 # Combining with up memory
                 if self.parameters.use_up_memory:
-                    loc_grad -= param_state[up_local_memory_name]
+                    loc_grad = loc_grad - param_state[up_local_memory_name]
 
                 if self.parameters.up_compression_model is not None:
-                    d_p = self.parameters.up_compression_model.compress(loc_grad)
+                    delta = self.parameters.up_compression_model.compress(loc_grad)
                 else:
-                    d_p = loc_grad
+                    delta = loc_grad
 
                 if self.parameters.up_error_feedback:
-                    param_state[up_error_feedback_name] = loc_grad - d_p
+                    param_state[up_error_feedback_name] = loc_grad - delta
+
+                if self.parameters.use_up_memory:
+                    grad = delta + param_state[up_local_memory_name]
+                    param_state[up_local_memory_name] = param_state[up_local_memory_name] +delta.mul(param_state[up_learning_rate_name]).detach()
+                else:
+                    grad = delta
 
                 if 'full_grad' not in param_state or self.grads_received == 1:
-                    param_state['full_grad'] = torch.clone(d_p).detach()
+                    param_state['full_grad'] = torch.clone(grad).detach()
                 else:
-                    param_state['full_grad'] += torch.clone(d_p).detach()
+                    param_state['full_grad'] += torch.clone(grad).detach()
 
                 if self.parameters.use_up_memory:
                     param_state['full_grad'] += param_state[up_local_memory_name]
-                    param_state[up_local_memory_name] += d_p.mul(param_state[up_learning_rate_name]).detach()
+                    param_state[up_local_memory_name] += grad.mul(param_state[up_learning_rate_name]).detach()
 
                 if not self.parameters.use_up_memory:
                     assert up_local_memory_name not in param_state, "Up memory should not be in parameters' state."  # torch.equal(param_state['up_global_memory'], torch.zeros_like(param_state['up_global_memory'])), "Global memory must be null."
                 if not self.parameters.up_error_feedback:
                     assert up_error_feedback_name not in param_state, "Error feedback should not be in parameters' state."
 
-                ###### Computation carried out on  the global server's side. ######
                 if self.grads_received == self.parameters.nb_devices:
                     full_grad = param_state['full_grad'] / self.parameters.nb_devices
-
-                    if down_error_feedback_name in param_state:
-                        full_grad += param_state[down_error_feedback_name].mul(self.parameters.optimal_step_size)
 
                     if not self.parameters.non_degraded:
                         grad = self.parameters.down_compression_model.compress(full_grad)
                     else:
                         grad = full_grad
-
-                    if self.parameters.down_error_feedback:
-                        param_state[down_error_feedback_name] = full_grad - grad
 
                     if self.parameters.weight_decay != 0:
                         grad.add(p, alpha=self.parameters.weight_decay)
@@ -140,8 +137,7 @@ class SGDGen(Optimizer):
                             grad = buf
 
                     param_state['final_grad'] = grad.detach()
-                    if not self.parameters.non_degraded:
-                        p.data.add_(grad.mul(self.parameters.optimal_step_size), alpha=-1)
+                    p.grad.copy_(grad)
 
         if self.grads_received == self.parameters.nb_devices:
             self.grads_received = 0
