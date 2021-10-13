@@ -36,7 +36,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
-    nb_epoch = 1000 if stochastic else 400
+    nb_epoch = 600 if stochastic else 400
 
     iid_data = True if iid == 'iid' else False
 
