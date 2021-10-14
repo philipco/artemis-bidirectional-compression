@@ -64,7 +64,10 @@ class AGradientDescent(ABC):
         self.averaged_train_losses = []
         self.memory_info = None
         if algos_pickle_path is not None:
-            self.optimal_grad = pickle_loader("{0}/../grads_min".format(algos_pickle_path))
+            if self.parameters.fraction_sampled_workers == 1:
+                self.optimal_grad = pickle_loader("{0}/../grads_min".format(algos_pickle_path))
+            else:
+                self.optimal_grad = pickle_loader("{0}/../../grads_min".format(algos_pickle_path))
         else:
             self.optimal_grad = None
 
