@@ -762,7 +762,7 @@ class RandMCM1Mem(RandMCM):
 class RandMCM1MemReset(RandMCM1Mem):
 
     def name(self) -> str:
-        return "R-MCM 1Mem"
+        return "R-MCM 1Mem Reset"
 
     def type_FL(self):
         return DownCompressModelDescent

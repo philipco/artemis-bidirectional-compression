@@ -21,7 +21,7 @@ markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
 markersize = 1
 curve_size=4
 fontsize=35
-fontsize_legend=25
+fontsize_legend=15
 # figsize=(15,7)
 figsize=(8,7)
 fourfigsize=(13, 8)
@@ -40,7 +40,7 @@ nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None, all_error=None,
                     x_points=None, x_legend=None, one_on_two_points=True, xlabels=None,
-                    ylegends="loss", ylim=False, omega_c = None, picture_name=None):
+                    ylegends="loss", ylim=False, omega_c = None, picture_name=None, zoom = None):
 
     assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
 
@@ -54,10 +54,11 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None
     xlog = (x_points is not None)
 
     fig, ax = plt.subplots(figsize=figsize)
-    # if xlog:
-    #     axins = zoomed_inset_axes(ax, zoom=2.5, loc=3)
-    # else:
-    #     axins = zoomed_inset_axes(ax, zoom=5, loc="lower left")
+    if zoom is not None:
+        if xlog:
+            axins = zoomed_inset_axes(ax, zoom=2.5, loc=3)
+        else:
+            axins = zoomed_inset_axes(ax, zoom=5, loc="lower left")
     it = 0
 
     nb_curves = min(len(all_losses), len(markers))
@@ -87,20 +88,15 @@ def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None
                 legend_i = legend_i + " {0}".format(str(omega_c[i]))[:4]
             ax.errorbar(abscisse, objectives_dist, yerr=error_to_plot, label=legend_i, lw=lw, marker=markers[it],
                          markersize=ms)
-            # setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw)
+            if zoom is not None:
+                setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw, zoom)
 
         else:
             objectives_dist = error_distance
             ax.plot(abscisse, objectives_dist, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
-            # setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw)
+            if zoom is not None:
+                setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw, zoom)
         it += 1
-
-    # title_precision = "\n(N=" + str(nb_devices)
-    # if nb_dim is not None:
-    #     title_precision += ", d=" + str(nb_dim)
-    # if batch_size is not None:
-    #     title_precision += ", b=" + str(batch_size)
-    # title_precision += ")"
 
     x_legend = x_legend if x_legend is not None else "Number of passes on data"
     setup_plot(x_legend, ylegends=ylegends, xlog=xlog, xlabels=xlabels,
@@ -132,7 +128,7 @@ def plot_multiple_run_each_curve_different_objectives(x_points, all_losses, nb_d
 
 
 
-def setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw):
+def setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw, zoom):
 
     axins.plot(abscisse, objectives_dist, label=legend[i], lw=lw, marker=markers[it], markersize=ms)
 
@@ -141,8 +137,10 @@ def setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw
 
     max_x = abscisse[-1]
 
-    axins.set_xlim(390, 500)  # Limit the region for zoom
-    axins.set_ylim(-1.63, -1.4)
+    x1, x2, y1, y2 = zoom
+
+    axins.set_xlim(x1, x2)  # Limit the region for zoom
+    axins.set_ylim(y1, y2)
     plt.xticks(visible=False)  # Not present ticks
     plt.yticks(visible=False)
     ## draw a bbox of the region of the inset axes in the parent axes and
