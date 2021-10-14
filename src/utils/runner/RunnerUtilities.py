@@ -11,6 +11,7 @@ from src.machinery.PredefinedParameters import *
 from src.models.CompressionModel import CompressionModel
 
 from src.utils.Constants import NB_EPOCH
+from src.utils.PathDataset import get_path_to_pickle
 from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if_not_existing
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
@@ -65,7 +66,7 @@ def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str,
     if fraction_sampled_workers != 1:
         picture_path += "/pp-{0}".format(fraction_sampled_workers)
     # Contains the pickle of the dataset
-    data_path = "{0}/pickle".format(get_project_root(), foldername)
+    data_path = "{0}/pickle".format(get_path_to_pickle(), foldername)
     # Contains the pickle of the minimum objective.
     pickle_path = "{0}/{1}".format(data_path, foldername)
     # Contains the pickle of the gradient descent for each kind of algorithms.
