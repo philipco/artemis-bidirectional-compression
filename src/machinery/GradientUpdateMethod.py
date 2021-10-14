@@ -237,11 +237,12 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             compressed_delta_i = worker.local_update.compute_locally(cost_model, full_nb_iterations)
 
             # Smart initialisation of the memory (it corresponds to the first computed gradient).
-            if full_nb_iterations == 1 and self.parameters.use_up_memory:
-                if self.parameters.use_unique_up_memory:
-                    self.h = self.h + worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
-                if not self.parameters.use_unique_up_memory:
-                    self.h[worker.ID] = worker.local_update.h_i
+            if self.parameters.fraction_sampled_workers==1: # TODO : There is issue with PP and multiple memories
+                if full_nb_iterations == 1 and self.parameters.use_up_memory:
+                    if self.parameters.use_unique_up_memory:
+                        self.h = self.h + worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
+                    if not self.parameters.use_unique_up_memory:
+                        self.h[worker.ID] = worker.local_update.h_i
 
             # If nothing is returned by the device, this device does not participate to the learning at this iterations.
             # This may happened if it is considered that during one epoch each devices should run through all its data

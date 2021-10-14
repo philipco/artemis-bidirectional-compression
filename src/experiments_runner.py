@@ -259,7 +259,7 @@ if __name__ == '__main__':
         for sto in [False, True]:
             for dataset in [sys.argv[2]]:
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                                use_averaging=True, fraction_sampled_workers=int(sys.argv[5]))
+                                use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))
 
         # for sto in [True, False]:
         #     for dataset in ["phishing", "mushroom", "a9a", "quantum", "superconduct"]:

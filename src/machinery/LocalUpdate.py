@@ -64,8 +64,9 @@ class AbstractLocalUpdate(ABC):
             self.g_i = cost_model.grad(self.model_param)
 
         # Smart initialisation of the memory (it corresponds to the first computed gradient).
-        if full_nb_iterations == 1 and self.parameters.use_up_memory:
-            self.h_i = self.g_i
+        if self.parameters.fraction_sampled_workers == 1: # TODO : There is issue with PP and multiple memories
+            if full_nb_iterations == 1 and self.parameters.use_up_memory:
+                self.h_i = self.g_i
 
     @abstractmethod
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float):
