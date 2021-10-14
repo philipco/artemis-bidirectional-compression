@@ -1,5 +1,7 @@
 """
 Created by Philippenko, 26th April 2021.
+
+Warnings: we have not implemented PP in deep learning, but it is straightforward.
 """
 import copy
 
@@ -18,7 +20,7 @@ down_learning_rate_name = 'down_learning_rate'
 
 def compute_client_loss(model, optimizer, criterion, data, target, w_id, run, device):
     """Compute the local loss that corresponds to a given client."""
-    # clear the gradients of all optimized variables
+    # Clear the gradients of all optimized variables
     optimizer.zero_grad()
     output = model(data).to(device)
     if torch.isnan(output).any():
@@ -50,7 +52,7 @@ def server_aggregate_gradients(global_model, client_models, device):
     :param device: 'cpu' or 'cuda'
     :return: nothing
     """
-    model = client_models[0]
+    model = client_models[0] # Required only for initialization of global model.
     initialize_gradients_to_zeros(global_model, [p.shape for p in model.parameters()], device)
 
     nb_devices = len(client_models)
@@ -99,6 +101,7 @@ def compress_model_and_combine_with_down_memory(global_model, model, optimizer, 
             # Initialisation of down memory
             if down_memory_name not in param_state and parameters.use_down_memory:
                 if parameters.down_compression_model.level != 0:
+                    # Important to split the case because if there is no compression, memory should always be at zero.
                     param_state[down_memory_name] = copy.deepcopy(global_p).to(device)
                 else:
                     param_state[down_memory_name] = torch.zeros_like(global_p).to(device)

@@ -402,7 +402,6 @@ class DownCompressModelUpdate(AbstractFLUpdate):
 
         if self.parameters.use_down_memory and self.parameters.use_unique_down_memory:
             assert isinstance(self.H, torch.Tensor), "Down memory is not a tensor."
-            assert not torch.equal(self.H, torch.zeros(self.parameters.n_dimensions, dtype=np.float)), "Down memory is still null."
         if self.parameters.use_down_memory and not self.parameters.use_unique_down_memory:
             assert not isinstance(self.H, torch.Tensor) and len(self.H) == self.parameters.nb_devices, \
                 "Down memory should be a list of length equal to the number of devices."

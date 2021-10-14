@@ -24,7 +24,8 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
         "The possible choice of algorithms are : " \
         "uni-vs-bi (to compare uni-compression with bi-compression), " \
         "with-without-ef (to compare algorithms using or not error-feedback), " \
-        "compress-model (algorithms compressing the model)."
+        "compress-model (algorithms compressing the model)," \
+        "mcm-other-options."
     if algos == 'uni-vs-bi':
         if fraction_sampled_workers==1:
             list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
@@ -42,7 +43,7 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
         else:
             list_algos = [VanillaSGD(), Diana(), Artemis(), Dore(), RandMCM()]
     elif algos == "mcm-1-mem":
-        list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1MemReset()]
+        list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1Mem(), RandMCM1MemReset()]
     elif algos == "mcm-other-options":
         list_algos = [ArtemisND(), MCM0(), MCM1(), MCM()]
     elif algos == "mcm-one-way":
