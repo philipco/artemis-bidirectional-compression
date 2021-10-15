@@ -115,7 +115,9 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         true_mean = torch.stack(local_information_to_aggregate).mean(0)
         approximate_mean = torch.stack(local_information_to_aggregate).sum(0) / (self.parameters.fraction_sampled_workers * self.parameters.nb_devices)
         if self.parameters.fraction_sampled_workers == 1.:
-            assert true_mean.equal(approximate_mean), "The true and approximate means are not equal !"
+            # If tensors are both NAN, torch return False.
+            if not (torch.isnan(approximate_mean).any() and torch.isnan(true_mean).any()):
+                assert true_mean.equal(approximate_mean), "The true and approximate means are not equal !"
         return approximate_mean
 
     def compute_full_gradients(self, model_param):
