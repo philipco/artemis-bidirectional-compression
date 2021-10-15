@@ -1,5 +1,8 @@
 """
 Created by Philippenko, 13rd May 2021.
+
+This class contains the data processing for datasets used in a deeplearning environment that are not classical
+(FE Mnist, quantum, a9a, phishing, mushroom).
 """
 import os
 import random
@@ -88,6 +91,7 @@ class FEMNISTDataset(MNIST):
         return len(self.data)
 
 class QuantumDataset(Dataset):
+    """ Create a dataset class for quantum."""
 
     def __init__(self, train: bool =True, iid: str = "iid"):
         root = get_project_root()
@@ -136,7 +140,7 @@ class QuantumDataset(Dataset):
         return self.data[index].float(),  self.labels[index].float()#type(torch.LongTensor)
 
 class PhishingDataset(Dataset):
-
+    """ Create a dataset class for phishing."""
     def __init__(self, train=True, iid: str = "iid"):
         root = get_project_root()
         bool_iid = True if iid == "iid" else False
@@ -178,6 +182,7 @@ class PhishingDataset(Dataset):
         return self.data[index].float(), self.targets[index].float()
 
 class A9ADataset(Dataset):
+    """ Create a dataset class for a9a."""
 
     def __init__(self, train=True, iid: str ="iid"):
         root = get_project_root()
@@ -228,6 +233,7 @@ class A9ADataset(Dataset):
 
 
 class MushroomDataset(Dataset):
+    """ Create a dataset class for mushroom."""
 
     def __init__(self, train=True, iid: str ="iid"):
         root = get_project_root()

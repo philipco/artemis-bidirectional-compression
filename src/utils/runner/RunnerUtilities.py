@@ -11,7 +11,8 @@ from src.machinery.PredefinedParameters import *
 from src.models.CompressionModel import CompressionModel
 
 from src.utils.Constants import NB_EPOCH
-from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if_not_existing
+from src.utils.PathDataset import get_path_to_pickle
+from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if_not_existing, pickle_loader
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
@@ -24,7 +25,8 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
         "The possible choice of algorithms are : " \
         "uni-vs-bi (to compare uni-compression with bi-compression), " \
         "with-without-ef (to compare algorithms using or not error-feedback), " \
-        "compress-model (algorithms compressing the model)."
+        "compress-model (algorithms compressing the model)," \
+        "mcm-other-options."
     if algos == 'uni-vs-bi':
         if fraction_sampled_workers==1:
             list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
@@ -42,7 +44,7 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
         else:
             list_algos = [VanillaSGD(), Diana(), Artemis(), Dore(), RandMCM()]
     elif algos == "mcm-1-mem":
-        list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1MemReset()]
+        list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1Mem(), RandMCM1MemReset()]
     elif algos == "mcm-other-options":
         list_algos = [ArtemisND(), MCM0(), MCM1(), MCM()]
     elif algos == "mcm-one-way":
@@ -64,7 +66,7 @@ def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str,
     if fraction_sampled_workers != 1:
         picture_path += "/pp-{0}".format(fraction_sampled_workers)
     # Contains the pickle of the dataset
-    data_path = "{0}/pickle".format(get_project_root(), foldername)
+    data_path = "{0}/pickle".format(get_path_to_pickle(), foldername)
     # Contains the pickle of the minimum objective.
     pickle_path = "{0}/{1}".format(data_path, foldername)
     # Contains the pickle of the gradient descent for each kind of algorithms.
@@ -139,14 +141,20 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
 
 def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1, stochastic: bool = True,
                      nb_epoch: int = 250, step_size = None, compression: CompressionModel = None,
-                     use_averaging: bool = False, fraction_sampled_workers: int = 1) -> None:
-    all_descent = {}
+                     use_averaging: bool = False, fraction_sampled_workers: int = 1, modify_run = None) -> None:
+
     stochasticity = 'sto' if stochastic else "full"
     if stochastic:
         experiments_settings = "{0}-b{1}".format(stochasticity, batch_size)
     else:
         experiments_settings = stochasticity
-    for type_params in tqdm(list_algos):
+    if modify_run is None:
+        all_descent = {}
+        algos = list_algos
+    else:
+        res = pickle_loader("{0}/descent-{1}".format(filename, experiments_settings))
+        algos = [list_algos[i] for i in modify_run]
+    for type_params in tqdm(algos):
         multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models,
                                                    compression_model=compression,
                                                    use_averaging=use_averaging,
@@ -156,6 +164,9 @@ def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1
                                                    batch_size=batch_size,
                                                    logs_file=filename,
                                                    fraction_sampled_workers=fraction_sampled_workers)
+
+        if modify_run is not None:
+            all_descent = res.all_descent
         all_descent[type_params.name()] = multiple_sg_descent
         res = ResultsOfSeveralDescents(all_descent, len(cost_models))
         pickle_saver(res, "{0}/descent-{1}".format(filename, experiments_settings))

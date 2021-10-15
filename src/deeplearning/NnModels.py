@@ -1,5 +1,7 @@
 """
 Created by Philippenko, 26th April 2021.
+
+All neural network use for DL.
 """
 import torch
 from torch import nn
@@ -34,20 +36,6 @@ class LogisticReg(nn.Module):
     def forward(self, x):
         x = self.l1(x)
         return torch.sigmoid(x)
-
-class Phishing_HiddenLayer(nn.Module):
-
-    def __init__(self, input_size: int):
-        self.output_size = 2
-        hidden_size = 10
-        super(Phishing_HiddenLayer, self).__init__()
-        self.hidden_l = nn.Linear(input_size, hidden_size)
-        self.predictive_l = nn.Linear(hidden_size, self.output_size)
-
-    def forward(self, x):
-        x = F.relu(self.hidden_l(x))
-        x = self.predictive_l(x)
-        return x
 
 
 class MNIST_Linear(nn.Module):
@@ -87,8 +75,6 @@ class MNIST_FullyConnected(nn.Module):
 
 
 class MNIST_CNN(nn.Module):
-    """https://nbviewer.jupyter.org/github/greydanus/baselines/blob/master/mnist-cnn.ipynb ?
-    https://github.com/greydanus/baselines ?"""
     def __init__(self, input_size):
         super(MNIST_CNN, self).__init__()
         self.output_size = 10
@@ -110,8 +96,7 @@ class MNIST_CNN(nn.Module):
 
 
 class FashionSimpleNet(nn.Module):
-    """ From https://github.com/kefth/fashion-mnist/blob/master/model.py
-    Baseline for FashionMnist : 0.923"""
+    """ From https://github.com/kefth/fashion-mnist/blob/master/model.py"""
 
     def __init__(self, input_size):
         super().__init__()

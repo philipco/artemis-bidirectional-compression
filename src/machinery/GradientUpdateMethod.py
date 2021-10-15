@@ -115,7 +115,9 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         true_mean = torch.stack(local_information_to_aggregate).mean(0)
         approximate_mean = torch.stack(local_information_to_aggregate).sum(0) / (self.parameters.fraction_sampled_workers * self.parameters.nb_devices)
         if self.parameters.fraction_sampled_workers == 1.:
-            assert true_mean.equal(approximate_mean), "The true and approximate means are not equal !"
+            # If tensors are both NAN, torch return False.
+            if not (torch.isnan(approximate_mean).any() and torch.isnan(true_mean).any()):
+                assert true_mean.equal(approximate_mean), "The true and approximate means are not equal !"
         return approximate_mean
 
     def compute_full_gradients(self, model_param):
@@ -237,11 +239,12 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             compressed_delta_i = worker.local_update.compute_locally(cost_model, full_nb_iterations)
 
             # Smart initialisation of the memory (it corresponds to the first computed gradient).
-            if full_nb_iterations == 1 and self.parameters.use_up_memory:
-                if self.parameters.use_unique_up_memory:
-                    self.h = self.h + worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
-                if not self.parameters.use_unique_up_memory:
-                    self.h[worker.ID] = worker.local_update.h_i
+            if self.parameters.fraction_sampled_workers==1: # TODO : There is issue with PP and multiple memories
+                if full_nb_iterations == 1 and self.parameters.use_up_memory:
+                    if self.parameters.use_unique_up_memory:
+                        self.h = self.h + worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
+                    if not self.parameters.use_unique_up_memory:
+                        self.h[worker.ID] = worker.local_update.h_i
 
             # If nothing is returned by the device, this device does not participate to the learning at this iterations.
             # This may happened if it is considered that during one epoch each devices should run through all its data
@@ -402,7 +405,6 @@ class DownCompressModelUpdate(AbstractFLUpdate):
 
         if self.parameters.use_down_memory and self.parameters.use_unique_down_memory:
             assert isinstance(self.H, torch.Tensor), "Down memory is not a tensor."
-            assert not torch.equal(self.H, torch.zeros(self.parameters.n_dimensions, dtype=np.float)), "Down memory is still null."
         if self.parameters.use_down_memory and not self.parameters.use_unique_down_memory:
             assert not isinstance(self.H, torch.Tensor) and len(self.H) == self.parameters.nb_devices, \
                 "Down memory should be a list of length equal to the number of devices."

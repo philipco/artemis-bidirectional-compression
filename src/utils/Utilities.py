@@ -18,7 +18,6 @@ from src.deeplearning.DLParameters import DLParameters
 from src.machinery.Parameters import Parameters
 
 
-
 def number_of_bits_needed_to_communicates_compressed(nb_devices: int, s: int, d: int) -> int:
     """Computing the theoretical number of bits used for a single way when using compression (with Elias encoding)."""
     if s==0:
@@ -33,6 +32,7 @@ def number_of_bits_needed_to_communicates_no_compressed(nb_devices:int, d: int) 
 
 
 def compute_number_of_bits_by_layer(type_params: Parameters, d: int, nb_epoch: int, compress_model: bool):
+    """Returns the theoretical number of bits used for a single layer."""
     fraction = type_params.fraction_sampled_workers
     number_of_bits = [0]
     nb_devices = type_params.nb_devices
@@ -51,12 +51,13 @@ def compute_number_of_bits_by_layer(type_params: Parameters, d: int, nb_epoch: i
             nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d)
 
         number_of_bits.append(nb_bits + number_of_bits[-1])
+    # Due to intialization, the first element needs to be removed at the end.
     return np.array(number_of_bits[1:])
 
 
 def compute_number_of_bits(type_params: Parameters, nb_epoch: int, compress_model: bool):
     """Computing the theoretical number of bits used by an algorithm (with Elias encoding)."""
-    # Initialization, the first element needs to be removed at the end.
+    # Initialization
     number_of_bits = np.array([0 for i in range(nb_epoch)])
     if isinstance(type_params, DLParameters):
         model = type_params.model(type_params.n_dimensions)
@@ -142,10 +143,6 @@ def keep_until_found_nan(values):
     return result
 
 def seed_everything(seed=42):
-    """
-    :param seed:
-    :return:
-    """
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)

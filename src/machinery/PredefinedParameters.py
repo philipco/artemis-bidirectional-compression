@@ -198,8 +198,9 @@ class Artemis(Diana):
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
+        # Important settings to recover results provided in the paper !
         params.use_down_memory = False
-        params.use_unique_up_memory = True
+        params.use_unique_up_memory = False
         params.down_compression_model = down_compression_model
         return params
 
@@ -736,7 +737,8 @@ class RandMCM(MCM):
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.randomized = True
-        params.use_unique_up_memory = True
+        # Important settings to recover results provided in the paper !
+        params.use_unique_up_memory = False
         params.use_unique_down_memory = False
         return params
 
@@ -762,7 +764,7 @@ class RandMCM1Mem(RandMCM):
 class RandMCM1MemReset(RandMCM1Mem):
 
     def name(self) -> str:
-        return "R-MCM 1Mem"
+        return "R-MCM 1Mem Reset"
 
     def type_FL(self):
         return DownCompressModelDescent

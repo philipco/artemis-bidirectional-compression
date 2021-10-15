@@ -1,5 +1,8 @@
 """
 Created by Philippenko, 27th April 2021.
+
+This class gathers all important information compute during a Deep Learning run. These informations are later required
+for plotting.
 """
 import numpy as np
 
@@ -7,6 +10,7 @@ from src.deeplearning.DLParameters import DLParameters
 
 
 class DeepLearningRun:
+    """Gathers all important information compute during a Deep Learning run."""
 
     def __init__(self, parameters: DLParameters = None) -> None:
         super().__init__()
@@ -20,11 +24,13 @@ class DeepLearningRun:
         self.epoch = parameters.nb_epoch
 
     def update_run(self, train_loss, test_loss, test_acc):
+        """Updates train/test losses and test accuracy."""
         self.train_losses.append(train_loss)
         self.test_losses.append(test_loss)
         self.test_accuracies.append(test_acc)
 
     def there_is_nan(self):
+        """In the case of NaN, completes train/test losses and test accuracy using with last value. """
         print("There is NaN in output values, stopping.")
         # Completing values to reach the given number of epoch.
         self.train_losses = self.train_losses + [self.train_losses[-1] for i in
