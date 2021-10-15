@@ -1,5 +1,7 @@
 """
 Created by Philippenko, 26th April 2021.
+
+All neural network use for DL.
 """
 import torch
 from torch import nn

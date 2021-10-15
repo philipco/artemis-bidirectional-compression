@@ -1,5 +1,7 @@
 """
 Created by Philippenko, 26th April 2021.
+
+All function required to process data before doing DL.
 """
 from math import floor
 

@@ -1,8 +1,7 @@
 """
 Created by Philippenko, 12th March 2020.
 
-This python file provide tools to easily customize a gradient descent based on its hyperparameters.
-It also provide predefine parameters to run classical algorithm without introducing an error.
+This file provides tools to easily customize a gradient descent based on its hyperparameters.
 """
 from src.models.CompressionModel import *
 from src.utils.Constants import NB_EPOCH, NB_DEVICES, DIM
