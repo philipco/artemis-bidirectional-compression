@@ -19,8 +19,7 @@ def prep_grad(vector):
 
 
 class CompressionModel(ABC):
-    """
-    """
+    """Abstract class"""
     
     def __init__(self, level: int, dim: int = None, norm: int = 2):
         self.level = level

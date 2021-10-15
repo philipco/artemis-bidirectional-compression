@@ -16,7 +16,7 @@ from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-NB_RUN = 1  # Number of gradient descent before averaging.
+NB_RUN = 5  # Number of gradient descent before averaging.
 
 
 def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1):
@@ -46,7 +46,7 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
     elif algos == "mcm-1-mem":
         list_algos = [VanillaSGD(), Artemis(), RandMCM(), RandMCM1Mem(), RandMCM1MemReset()]
     elif algos == "mcm-other-options":
-        list_algos = [MCM1(), MCM(), ArtemisND(), MCM0()]
+        list_algos = [ArtemisND(), MCM0(), MCM1(), MCM()]
     elif algos == "mcm-one-way":
         list_algos = [VanillaSGD(), DianaOneWay(), ArtemisOneWay(), DoreOneWay(), MCMOneWay(), RandMCMOneWay()]
     elif algos == "artemis-vs-existing":
@@ -150,9 +150,11 @@ def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1
         experiments_settings = stochasticity
     if modify_run is None:
         all_descent = {}
+        algos = list_algos
     else:
         res = pickle_loader("{0}/descent-{1}".format(filename, experiments_settings))
-    for type_params in tqdm([list_algos[i] for i in modify_run]):
+        algos = [list_algos[i] for i in modify_run]
+    for type_params in tqdm(algos):
         multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models,
                                                    compression_model=compression,
                                                    use_averaging=use_averaging,
@@ -163,11 +165,10 @@ def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1
                                                    logs_file=filename,
                                                    fraction_sampled_workers=fraction_sampled_workers)
 
-        if modify_run is None:
-            all_descent[type_params.name()] = multiple_sg_descent
-            res = ResultsOfSeveralDescents(all_descent, len(cost_models))
-        else:
-            res.add_descent(multiple_sg_descent, type_params.name())
+        if modify_run is not None:
+            all_descent = res.all_descent
+        all_descent[type_params.name()] = multiple_sg_descent
+        res = ResultsOfSeveralDescents(all_descent, len(cost_models))
         pickle_saver(res, "{0}/descent-{1}".format(filename, experiments_settings))
 
 def run_for_different_scenarios(cost_models, list_algos, values, labels, filename: str, batch_size: int = 1,
