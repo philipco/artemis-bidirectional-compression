@@ -22,7 +22,7 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False):
+                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=[1,4]):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
@@ -162,7 +162,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             run_one_scenario(cost_models=cost_models, list_algos=list_algos, filename=algos_pickle_path,
                              batch_size=batch_size, stochastic=stochastic, nb_epoch=nb_epoch, step_size=step_size,
                              use_averaging=use_averaging, compression=compression_by_default,
-                             fraction_sampled_workers=fraction_sampled_workers)
+                             fraction_sampled_workers=fraction_sampled_workers, modify_run=modify_run)
 
     obj_min = pickle_loader("{0}/obj_min".format(pickle_path))
     print("Obj min:", obj_min)
