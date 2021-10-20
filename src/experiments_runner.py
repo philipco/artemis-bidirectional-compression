@@ -22,7 +22,7 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=[1,4]):
+                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=None):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
@@ -30,7 +30,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                        'madelon', 'gisette', 'w8a', 'synth_linear_noised', 'synth_linear_nonoised'], \
         "The available dataset are ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']."
     assert iid in ['iid', 'non-iid'], "The iid option are ['iid', 'non-iid']."
-    assert scenario in [None, "compression", "step"], "The possible scenario are [None, 'compression', 'step']."
+    assert scenario in [None, "compression", "step", "alpha"], "The possible scenario are [None, 'compression', 'step', 'alpha']."
 
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos, fraction_sampled_workers)
 
@@ -107,7 +107,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             X, Y = pickle_loader(pickle_path + "/data")
 
     default_level_of_quantization = 1 if fraction_sampled_workers == 1 else 2
-    compression_by_default = SQuantization(default_level_of_quantization, dim_notebook, norm=2)
+    compression_by_default = RandomSparsification(0.1, dim_notebook, norm=2)
 
     values_compression = [SQuantization(0, dim_notebook, norm=2),
                           SQuantization(16, dim_notebook, norm=2),
@@ -119,6 +119,16 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                           ]
 
     label_compression = ["SGD"] + [str(value.omega_c)[:4] for value in values_compression[1:]]
+
+    values_alpha = [SQuantization(1, dim_notebook, norm=2, constant=0.25),
+                    SQuantization(1, dim_notebook, norm=2, constant=0.5),
+                    SQuantization(1, dim_notebook, norm=2, constant=1),
+                    SQuantization(1, dim_notebook, norm=2, constant=2),
+                    SQuantization(1, dim_notebook, norm=2, constant=4),
+                    SQuantization(1, dim_notebook, norm=2, constant=8)
+                    ]
+
+    label_alpha = [str(value.constant) for value in values_alpha]
 
     # Creating cost models which will be used to computed cost/loss, gradients, L ...
     cost_models = build_several_cost_model(model, X, Y, nb_devices)
@@ -148,6 +158,11 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         step_size = deacreasing_step_size
 
     stochasticity = 'sto' if stochastic else "full"
+    experiments_settings = compression_by_default.get_name()
+    if stochastic:
+        experiments_settings = "{0}-{1}-b{2}".format(compression_by_default.get_name(), stochasticity, batch_size)
+    else:
+        experiments_settings = "{0}-{1}".format(compression_by_default.get_name(), stochasticity)
 
     if not plot_only:
         if scenario == "compression":
@@ -158,19 +173,19 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             run_for_different_scenarios(cost_models, list_algos, step_formula, label_step_formula,
                                         filename=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
+        elif scenario == "alpha":
+            run_for_different_scenarios(cost_models, [Artemis(), MCM(), RandMCM()], values_alpha, label_alpha,
+                                        filename=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
+                                        scenario=scenario, compression=compression_by_default)
         else:
             run_one_scenario(cost_models=cost_models, list_algos=list_algos, filename=algos_pickle_path,
-                             batch_size=batch_size, stochastic=stochastic, nb_epoch=nb_epoch, step_size=step_size,
+                             batch_size=batch_size, experiments_settings=experiments_settings,
+                             stochastic=stochastic, nb_epoch=nb_epoch, step_size=step_size,
                              use_averaging=use_averaging, compression=compression_by_default,
                              fraction_sampled_workers=fraction_sampled_workers, modify_run=modify_run)
 
     obj_min = pickle_loader("{0}/obj_min".format(pickle_path))
     print("Obj min:", obj_min)
-
-    if stochastic:
-        experiments_settings = "{0}-b{1}".format(stochasticity, batch_size)
-    else:
-        experiments_settings = stochasticity
 
     if scenario is None:
         res = pickle_loader("{0}/descent-{1}".format(algos_pickle_path, experiments_settings))
@@ -258,6 +273,8 @@ if __name__ == '__main__':
     elif sys.argv[1] == "real":
         for sto in [False, True]:
             for dataset in [sys.argv[2]]:
+                # run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+                #                 use_averaging=True, scenario="alpha", fraction_sampled_workers=float(sys.argv[5]))
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                                 use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))
 

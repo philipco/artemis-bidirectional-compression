@@ -1,6 +1,8 @@
 """
 Created by Philippenko, 26th April 2021.
 
+All function requires to carry out a DL training.
+
 Warnings: we have not implemented PP in deep learning, but it is straightforward.
 """
 import copy

@@ -10,9 +10,7 @@ from src.deeplearning.DLParameters import DLParameters
 
 
 class SGDGen(Optimizer):
-    """
-        Based on torch.optim.SGD implementation
-    """
+    """ Based on torch.optim.SGD implementation"""
 
     def __init__(self, nn_model_params, parameters: DLParameters, dampening=0,
                  weight_decay=0, nesterov=False):

@@ -1,10 +1,13 @@
 """
 Created by Philippenko, 26th April 2021.
+
+This file gathers all settings used to run a DL experiment.
 """
 from src.machinery.Parameters import Parameters
 
 
 class DLParameters(Parameters):
+    """Settings for DL, extend Parameters class."""
 
     def __init__(self, dataset: str, model, optimal_step_size: int, weight_decay: int, iid: str):
         super().__init__(None)

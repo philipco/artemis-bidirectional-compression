@@ -427,6 +427,7 @@ class DownCompressModelUpdate(AbstractFLUpdate):
 
         return model_param
 
+
 class FedAvgUpdate(AbstractFLUpdate):
     """This class implement the proper update of the Artemis schema.
 
