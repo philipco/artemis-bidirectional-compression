@@ -139,15 +139,11 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
     return model_descent
 
 
-def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1, stochastic: bool = True,
-                     nb_epoch: int = 250, step_size = None, compression: CompressionModel = None,
-                     use_averaging: bool = False, fraction_sampled_workers: int = 1, modify_run = None) -> None:
+def run_one_scenario(cost_models, list_algos, filename: str, experiments_settings: str, batch_size: int = 1,
+                     stochastic: bool = True, nb_epoch: int = 250, step_size = None,
+                     compression: CompressionModel = None, use_averaging: bool = False,
+                     fraction_sampled_workers: int = 1, modify_run = None) -> None:
 
-    stochasticity = 'sto' if stochastic else "full"
-    if stochastic:
-        experiments_settings = "{0}-b{1}".format(stochasticity, batch_size)
-    else:
-        experiments_settings = stochasticity
     if modify_run is None:
         all_descent = {}
         algos = list_algos
@@ -175,7 +171,8 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
                                 stochastic: bool = True, nb_epoch: int = 250, step_formula = None,
                                 compression: CompressionModel = None, scenario: str = "step") -> None:
 
-    assert scenario in ["step", "compression"], "There is two possible scenarios : to analyze by step size, or by compression operators."
+    assert scenario in ["step", "compression", "alpha"], "There is three possible scenarios : to analyze by step size," \
+                                                         " by compression operators, or by value of alpha."
 
     nb_devices_for_the_run = len(cost_models)
 
@@ -188,7 +185,7 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
 
     for param_algo in tqdm(list_algos):
         losses_by_algo, losses_avg_by_algo, norm_ef_by_algo, dist_model_by_algo = [], [], [], []
-        var_models_by_algo = []
+        h_i_to_optimal_grad_by_algo, var_models_by_algo = [], []
         descent_by_step_size = {}
         for (value, label) in zip(values, labels):
 
@@ -198,7 +195,7 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
                                                            step_formula=value, nb_epoch=nb_epoch, compression_model=compression,
                                                            logs_file=filename)
 
-            if scenario == "compression":
+            if scenario in ["compression", "alpha"]:
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
                                                            use_averaging=True, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=step_formula,
@@ -207,25 +204,27 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
 
             descent_by_step_size[label] = multiple_sg_descent
             losses_by_label, losses_avg_by_label, norm_ef_by_label, dist_model_by_label = [], [], [], []
-            var_models_by_label = []
+            h_i_to_optimal_grad_by_label, var_models_by_label = [], []
 
             # Picking the minimum values for each of the run.
-            for seq_losses, seq_losses_avg, seq_norm_ef, seq_dist_model, seq_var_models in \
+            for seq_losses, seq_losses_avg, seq_norm_ef, seq_dist_model, seq_h_i_optimal, seq_var_models in \
                     zip(multiple_sg_descent.train_losses, multiple_sg_descent.averaged_train_losses,
                         multiple_sg_descent.norm_error_feedback, multiple_sg_descent.dist_to_model,
-                        multiple_sg_descent.var_models):
+                        multiple_sg_descent.h_i_to_optimal_grad, multiple_sg_descent.var_models):
 
                 losses_by_label.append(min(seq_losses))
                 losses_avg_by_label.append(min(seq_losses_avg))
                 norm_ef_by_label.append(seq_norm_ef[-1])
                 dist_model_by_label.append(seq_dist_model[-1])
                 var_models_by_label.append(seq_var_models[-1])
+                h_i_to_optimal_grad_by_label.append(seq_h_i_optimal[-1])
 
             losses_by_algo.append(losses_by_label)
             losses_avg_by_algo.append(losses_avg_by_label)
             norm_ef_by_algo.append(norm_ef_by_label)
             dist_model_by_algo.append(dist_model_by_label)
             var_models_by_algo.append(var_models_by_label)
+            h_i_to_optimal_grad_by_algo.append(h_i_to_optimal_grad_by_label)
 
         descent_by_algo_and_step_size[param_algo.name()] = ResultsOfSeveralDescents(descent_by_step_size,
                                                                                           nb_devices_for_the_run)
@@ -243,7 +242,7 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
 
         artificial_multiple_descent = AverageOfSeveralIdenticalRun()
         artificial_multiple_descent.append_list(losses_by_algo, losses_avg_by_algo, norm_ef_by_algo, dist_model_by_algo,
-                                                var_models_by_algo)
+                                                h_i_to_optimal_grad_by_algo, var_models_by_algo)
         all_descent_various_gamma[param_algo.name()] = artificial_multiple_descent
         all_kind_of_compression_res.append(all_descent_various_gamma)
 

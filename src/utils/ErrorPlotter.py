@@ -155,7 +155,7 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
     if ylog:
         ax.yscale("log")
     if ylim:
-        ax.set_ylim(top=2)
+        ax.set_ylim(top=ylim)
     if xlog:
         ax.set_xscale("log")
     ax.tick_params(axis='both', labelsize=fontsize)
