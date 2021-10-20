@@ -22,7 +22,7 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = True, modify_run=None):
+                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=None):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
@@ -167,14 +167,17 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     if not plot_only:
         if scenario == "compression":
             run_for_different_scenarios(cost_models, list_algos[1:], values_compression, label_compression,
+                                        experiments_settings=experiments_settings,
                                         filename=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         step_formula=step_size, scenario=scenario)
         elif scenario == "step":
             run_for_different_scenarios(cost_models, list_algos, step_formula, label_step_formula,
+                                        experiments_settings=experiments_settings,
                                         filename=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
         elif scenario == "alpha":
             run_for_different_scenarios(cost_models, [Artemis(), MCM(), RandMCM()], values_alpha, label_alpha,
+                                        experiments_settings=experiments_settings,
                                         filename=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
         else:

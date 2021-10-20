@@ -167,7 +167,8 @@ def run_one_scenario(cost_models, list_algos, filename: str, experiments_setting
         res = ResultsOfSeveralDescents(all_descent, len(cost_models))
         pickle_saver(res, "{0}/descent-{1}".format(filename, experiments_settings))
 
-def run_for_different_scenarios(cost_models, list_algos, values, labels, filename: str, batch_size: int = 1,
+def run_for_different_scenarios(cost_models, list_algos, values, labels, experiments_settings: str,
+                                filename: str, batch_size: int = 1,
                                 stochastic: bool = True, nb_epoch: int = 250, step_formula = None,
                                 compression: CompressionModel = None, scenario: str = "step") -> None:
 
@@ -247,12 +248,6 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
         all_kind_of_compression_res.append(all_descent_various_gamma)
 
     res_various_gamma = ResultsOfSeveralDescents(all_descent_various_gamma, nb_devices_for_the_run)
-
-    stochasticity = 'sto' if stochastic else "full"
-    if stochastic:
-        experiments_settings = "{0}-b{1}".format(stochasticity, batch_size)
-    else:
-        experiments_settings = stochasticity
 
     pickle_saver(res_various_gamma, "{0}/{1}-{2}".format(filename, scenario, experiments_settings))
 
