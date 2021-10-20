@@ -30,7 +30,7 @@ class ResultsOfSeveralDescents:
         else:
             element = None
         if not self.all_descent[next(iter(self.all_descent))].artificial and isinstance(element, AGradientDescent):
-            self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in self.all_descent.values()]
+            # self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in self.all_descent.values()]
             self.X_number_of_bits = [desc.theoretical_nb_bits for desc in self.all_descent.values()]
             self.omega_c = [desc.omega_c for desc in self.all_descent.values()]
         elif isinstance(element, DeepLearningRun):

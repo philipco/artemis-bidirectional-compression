@@ -165,7 +165,6 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 worker.local_update.set_initial_v(self.v)
 
         self.all_delta_i = []
-        self.all_delta_i = []
 
     def get_set_of_workers(self, cost_models, all=False):
         if all:
