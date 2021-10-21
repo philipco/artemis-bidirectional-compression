@@ -19,7 +19,7 @@ quantization_levels= {"cifar10": 2**4, "mnist": 4, "fashion_mnist": 4, "femnist"
                       "quantum": 1, "mushroom": 1}
 norm_quantization = {"cifar10": 2, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "a9a": 2,
                      "phishing": 2, "quantum": 2, "mushroom": 2}
-weight_decay = {"cifar10": 0, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a":0, "phishing": 0,
+weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a":0, "phishing": 0,
                 "quantum": 0, "mushroom": 0}
 criterion = {"cifar10": nn.CrossEntropyLoss(), "mnist": nn.CrossEntropyLoss(), "fashion_mnist": nn.CrossEntropyLoss(),
              "femnist": nn.CrossEntropyLoss(), "a9a":  torch.nn.BCELoss(reduction='mean'),

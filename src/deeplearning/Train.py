@@ -190,10 +190,11 @@ def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_
         model.load_state_dict(global_model.state_dict())
 
     optimizers = [SGDGen(model.parameters(), parameters=parameters, weight_decay=parameters.weight_decay) for model in client_models]
+    schedulers = [torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200) for optimizer in optimizers]
 
     with open(parameters.log_file, 'a') as f:
-        print("Size of the clients's models: {:.2e} bits\n".format(asizeof.asizeof(client_models)), file=f)
-        print("Size of the optimizers: {:.2e} bits\n".format(asizeof.asizeof(optimizers)), file=f)
+        print("Size of the clients's models: {:.2e} bits".format(asizeof.asizeof(client_models)), file=f)
+        print("Size of the optimizers: {:.2e} bits".format(asizeof.asizeof(optimizers)), file=f)
 
     if device == 'cuda':
         global_model = torch.nn.DataParallel(global_model)
@@ -234,6 +235,7 @@ def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_
                 all_data[w_id], all_labels[w_id] = next(train_loader_iter[w_id])
                 data, target = all_data[w_id].to(device), all_labels[w_id].to(device)
                 compute_client_loss(client_models[w_id], optimizers[w_id], criterion, data, target, w_id, run, device)
+                schedulers[w_id].step()
 
             server_aggregate_gradients(global_model, client_models, device)
 
