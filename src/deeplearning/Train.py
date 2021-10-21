@@ -190,7 +190,7 @@ def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_
         model.load_state_dict(global_model.state_dict())
 
     optimizers = [SGDGen(model.parameters(), parameters=parameters, weight_decay=parameters.weight_decay) for model in client_models]
-    schedulers = [torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200) for optimizer in optimizers]
+    schedulers = [torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100, 150], last_epoch=0 - 1) for optimizer in optimizers]
 
     with open(parameters.log_file, 'a') as f:
         print("Size of the clients's models: {:.2e} bits".format(asizeof.asizeof(client_models)), file=f)
@@ -257,7 +257,7 @@ def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_
                                                                        test_loader, criterion, device)
         run.update_run(train_loss, test_loss_val, test_acc_val)
 
-        if e+1 in [1, 3, 5, 15, np.floor(epochs/4), np.floor(epochs/2), np.floor(3*epochs/4), epochs]:
+        if e+1 in [1, 3, 5, 15, 25, 50, np.floor(epochs/4), np.floor(epochs/2), np.floor(3*epochs/4), epochs]:
             with open(parameters.log_file, 'a') as f:
                 print("Epoch: {}/{}.. Training Loss: {:.5f}, Test Loss: {:.5f}, Test accuracy: {:.2f} "
                     .format(e + 1, epochs, train_loss, test_loss_val, test_acc_val), file=f)
