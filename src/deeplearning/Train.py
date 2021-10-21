@@ -134,11 +134,8 @@ def compress_model_and_combine_with_down_memory(global_model, model, optimizer, 
             # Updating down memory
             if down_learning_rate_name not in param_state:
                 # Initialisation of the memory learning rate
-                if parameters.down_compression_model.level != 0:
-                    param_state[down_learning_rate_name] = 1 / (
-                            2 * (parameters.down_compression_model.__compute_omega_c__(omega) + 1))
-                else:
-                    param_state[down_learning_rate_name] = 0
+                param_state[down_learning_rate_name] = parameters.down_compression_model.get_learning_rate(omega)
+
             if parameters.use_down_memory:
                 param_state[down_memory_name] = param_state[down_memory_name] + omega.mul(param_state[down_learning_rate_name]).detach()
 

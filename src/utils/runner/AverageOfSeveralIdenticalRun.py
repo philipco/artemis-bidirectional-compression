@@ -24,6 +24,7 @@ class AverageOfSeveralIdenticalRun:
         self.h_i_to_optimal_grad = []
         self.var_models = []
         self.theoretical_nb_bits = None
+        self.parameters = None
         self.omega_c = None
         self.artificial = False
 
@@ -46,6 +47,7 @@ class AverageOfSeveralIdenticalRun:
         self.var_models.append(new_descent.var_models)
 
     def append_from_DL(self, new_run: DeepLearningRun):
+        self.parameters = new_run.parameters
         self.train_losses.append(new_run.train_losses)
         self.test_losses.append(new_run.test_losses)
         self.test_accuracies.append(new_run.test_accuracies)

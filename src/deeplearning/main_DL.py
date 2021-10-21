@@ -12,7 +12,8 @@ from src.deeplearning.NonConvexSettings import *
 from src.deeplearning.Train import run_exp, compute_L
 from src.machinery.PredefinedParameters import *
 from src.utils.ErrorPlotter import plot_error_dist
-from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, seed_everything, create_folder_if_not_existing
+from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, seed_everything, \
+    create_folder_if_not_existing, remove_file
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
@@ -55,13 +56,15 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
         print("Step size:", optimal_steps_size[dataset])
 
     exp_name = name_of_the_experiments(dataset, stochastic)
+    pickle_file = "{0}/{1}".format(algos_pickle_path, exp_name)
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
 
     if not plot_only:
-        all_descent = {}
-        # res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
-        for type_params in list_algos:
+        if file_exist(pickle_file + ".pkl"):
+            remove_file(pickle_file  + ".pkl")
+
+        for type_params in list_algos[1:]:
             print(type_params)
             torch.cuda.empty_cache()
             params = type_params.define(cost_models=None,
@@ -98,17 +101,19 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
             with open(log_file, 'a') as f:
                 print("Time of the run: {:.2f}s".format(time.time() - start), file=f)
 
-            all_descent[type_params.name()] = multiple_descent
-            res = ResultsOfSeveralDescents(all_descent, nb_devices)
-            # res.add_descent(multiple_descent, type_params.name())
+            if file_exist(pickle_file + ".pkl"):
+                res = pickle_loader(pickle_file)
+                res.add_descent(multiple_descent, type_params.name(), deep_learning_run=True)
+            else:
+                res = ResultsOfSeveralDescents(nb_devices)
+                res.add_descent(multiple_descent, type_params.name(), deep_learning_run=True)
 
-            pickle_saver(res, "{0}/{1}".format(algos_pickle_path, exp_name))
+            pickle_saver(res, pickle_file)
 
     # obj_min_cvx = pickle_loader("{0}/obj_min".format(pickle_path))
     obj_min = 0#pickle_loader("{0}/obj_min".format(pickle_path))
 
-    res = pickle_loader("{0}/{1}".format(algos_pickle_path, exp_name))
-    # res.recompute_nb_bits()
+    res = pickle_loader(pickle_file)
 
     # obj_min = min(res.get_loss(np.array(0), in_log=False)[0])
 

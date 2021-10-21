@@ -84,6 +84,17 @@ class CompressionModel(ABC):
     def get_name(self) -> str:
         pass
 
+    def get_learning_rate(self, *args, **kwds):
+        """Compute the learning rate.
+
+        No argument if the operator already know the dimension.
+        Set as unique argument a vector ig the dimension is unknow (in the case of DL)."""
+        if self.level == 0:
+            return 0
+        if len(args) == 1:
+            return 1 / (self.constant * (self.__compute_omega_c__(args[0]) + 1))
+        return 1 / (self.constant * (self.omega_c + 1))
+
 
 class TopKSparsification(CompressionModel):
 
