@@ -180,6 +180,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                                 for i in range(self.parameters.nb_devices)]
         for (worker, cost_model) in self.get_set_of_workers(cost_models):
             randomized_omega_k[worker.ID] = self.parameters.down_compression_model.compress(self.value_to_compress[worker.ID])
+        del randomized_omega_k
         self.omega = randomized_omega_k
         self.omega_k.append(self.omega)
 

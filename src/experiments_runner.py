@@ -168,20 +168,20 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         if scenario == "compression":
             run_for_different_scenarios(cost_models, list_algos[1:], values_compression, label_compression,
                                         experiments_settings=experiments_settings,
-                                        filename=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
+                                        logs_file=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         step_formula=step_size, scenario=scenario)
         elif scenario == "step":
             run_for_different_scenarios(cost_models, list_algos, step_formula, label_step_formula,
                                         experiments_settings=experiments_settings,
-                                        filename=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
+                                        logs_file=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
         elif scenario == "alpha":
             run_for_different_scenarios(cost_models, [Artemis(), MCM(), RandMCM()], values_alpha, label_alpha,
                                         experiments_settings=experiments_settings,
-                                        filename=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
+                                        logs_file=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
         else:
-            run_one_scenario(cost_models=cost_models, list_algos=list_algos, filename=algos_pickle_path,
+            run_one_scenario(cost_models=cost_models, list_algos=list_algos, logs_file=algos_pickle_path,
                              batch_size=batch_size, experiments_settings=experiments_settings,
                              stochastic=stochastic, nb_epoch=nb_epoch, step_size=step_size,
                              use_averaging=use_averaging, compression=compression_by_default,

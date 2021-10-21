@@ -229,6 +229,9 @@ class AGradientDescent(ABC):
             print("Gradient Descent: execution time={t:.3f} seconds".format(t=elapsed_time))
             print("Final loss : {0:.5f}\n".format(self.train_losses[-1]))
 
+        del averaged_model_params
+        del current_model_param
+        del past_model
         return elapsed_time
 
     def update_gradient_descent_info(self, past_model, cost_models):

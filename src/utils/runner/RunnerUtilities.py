@@ -5,6 +5,9 @@ This file give two functions (for single or multiple runs) to carry out a full g
 """
 import gc
 import time
+import tracemalloc
+
+from pympler import asizeof
 from tqdm import tqdm
 
 from src.machinery.PredefinedParameters import *
@@ -12,11 +15,11 @@ from src.models.CompressionModel import CompressionModel
 
 from src.utils.Constants import NB_EPOCH
 from src.utils.PathDataset import get_path_to_pickle
-from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if_not_existing, pickle_loader
+from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if_not_existing, pickle_loader, file_exist, remove_file
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-NB_RUN = 5  # Number of gradient descent before averaging.
+NB_RUN = 2  # Number of gradient descent before averaging.
 
 
 def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1):
@@ -139,16 +142,18 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
     return model_descent
 
 
-def run_one_scenario(cost_models, list_algos, filename: str, experiments_settings: str, batch_size: int = 1,
+def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settings: str, batch_size: int = 1,
                      stochastic: bool = True, nb_epoch: int = 250, step_size = None,
                      compression: CompressionModel = None, use_averaging: bool = False,
                      fraction_sampled_workers: int = 1, modify_run = None) -> None:
 
+    pickle_file = "{0}/descent-{1}".format(logs_file, experiments_settings)
+
     if modify_run is None:
-        all_descent = {}
+        if file_exist(pickle_file + ".pkl"):
+            remove_file(pickle_file  + ".pkl")
         algos = list_algos
     else:
-        res = pickle_loader("{0}/descent-{1}".format(filename, experiments_settings))
         algos = [list_algos[i] for i in modify_run]
     for type_params in tqdm(algos):
         multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models,
@@ -158,14 +163,23 @@ def run_one_scenario(cost_models, list_algos, filename: str, experiments_setting
                                                    nb_epoch=nb_epoch,
                                                    step_formula=step_size,
                                                    batch_size=batch_size,
-                                                   logs_file=filename,
+                                                   logs_file=logs_file,
                                                    fraction_sampled_workers=fraction_sampled_workers)
 
-        if modify_run is not None:
-            all_descent = res.all_descent
-        all_descent[type_params.name()] = multiple_sg_descent
-        res = ResultsOfSeveralDescents(all_descent, len(cost_models))
-        pickle_saver(res, "{0}/descent-{1}".format(filename, experiments_settings))
+        if logs_file:
+            logs = open("{0}/logs.txt".format(logs_file), "a+")
+            logs.write("{0} size of the multiple SG descent: {1:.2e} bits\n".format(type_params.name(), asizeof.asizeof(multiple_sg_descent, clip=6)))
+            logs.close()
+
+        if file_exist(pickle_file + ".pkl"):
+            res = pickle_loader(pickle_file)
+            res.add_descent(multiple_sg_descent, type_params.name(), deep_learning_run=False)
+        else:
+            res = ResultsOfSeveralDescents(multiple_sg_descent, type_params.name(), len(cost_models), deep_learning_run=False)
+        pickle_saver(res, pickle_file)
+        del res
+        del multiple_sg_descent
+
 
 def run_for_different_scenarios(cost_models, list_algos, values, labels, experiments_settings: str,
                                 filename: str, batch_size: int = 1,

@@ -3,6 +3,7 @@ Created by Philippenko, 8th June 2020.
 """
 from src.deeplearning import DeepLearningRun
 from src.machinery import GradientDescent
+from src.machinery.GradientDescent import AGradientDescent
 
 from src.utils.Utilities import compute_number_of_bits
 
@@ -16,7 +17,6 @@ class AverageOfSeveralIdenticalRun:
     """
 
     def __init__(self):
-        self.multiple_descent = []
         self.train_losses = []
         self.averaged_train_losses = []
         self.norm_error_feedback = []
@@ -31,27 +31,24 @@ class AverageOfSeveralIdenticalRun:
         self.test_losses = []
         self.test_accuracies = []
 
-    def get_last(self):
-        return self.multiple_descent[-1]
-
-    def append(self, new_descent: GradientDescent):
+    def append(self, new_descent: AGradientDescent):
+        self.parameters = new_descent.parameters
         if self.theoretical_nb_bits is None:
             compress_model = True if new_descent.get_name() == "DwnComprModel" else False
             self.theoretical_nb_bits = compute_number_of_bits(new_descent.parameters, len(new_descent.train_losses), compress_model)
             self.omega_c = new_descent.parameters.up_compression_model.omega_c
-        self.multiple_descent.append(new_descent)
-        self.train_losses = [d.train_losses for d in self.multiple_descent]
-        self.averaged_train_losses = [d.averaged_train_losses for d in self.multiple_descent]
-        self.norm_error_feedback = [d.norm_error_feedback for d in self.multiple_descent]
-        self.dist_to_model = [d.dist_to_model for d in self.multiple_descent]
-        self.h_i_to_optimal_grad = [d.h_i_to_optimal_grad for d in self.multiple_descent]
-        self.var_models = [d.var_models for d in self.multiple_descent]
+
+        self.train_losses.append(new_descent.train_losses)
+        self.averaged_train_losses.append(new_descent.averaged_train_losses)
+        self.norm_error_feedback.append(new_descent.norm_error_feedback)
+        self.dist_to_model.append(new_descent.dist_to_model)
+        self.h_i_to_optimal_grad.append(new_descent.h_i_to_optimal_grad)
+        self.var_models.append(new_descent.var_models)
 
     def append_from_DL(self, new_run: DeepLearningRun):
-        self.multiple_descent.append(new_run)
-        self.train_losses = [d.train_losses for d in self.multiple_descent]
-        self.test_losses = [d.test_losses for d in self.multiple_descent]
-        self.test_accuracies = [d.test_accuracies for d in self.multiple_descent]
+        self.train_losses.append(new_run.train_losses)
+        self.test_losses.append(new_run.test_losses)
+        self.test_accuracies.append(new_run.test_accuracies)
 
     def append_list(self, my_list, my_list_averaged, my_list_norm_ef, my_list_dist_model, my_list_h_i_to_optimal_grad,
                     my_list_var_models):
