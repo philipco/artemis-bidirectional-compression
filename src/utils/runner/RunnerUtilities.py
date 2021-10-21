@@ -168,7 +168,7 @@ def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settin
 
         if logs_file:
             logs = open("{0}/logs.txt".format(logs_file), "a+")
-            logs.write("{0} size of the multiple SG descent: {1:.2e} bits\n".format(type_params.name(), asizeof.asizeof(multiple_sg_descent, clip=6)))
+            logs.write("{0} size of the multiple SG descent: {1:.2e} bits\n".format(type_params.name(), asizeof.asizeof(multiple_sg_descent)))
             logs.close()
 
         if file_exist(pickle_file + ".pkl"):

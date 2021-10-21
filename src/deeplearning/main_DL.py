@@ -6,6 +6,8 @@ import sys
 import logging
 import time
 
+from pympler import asizeof
+
 from src.deeplearning.DLParameters import cast_to_DL
 from src.deeplearning.NnDataPreparation import create_loaders
 from src.deeplearning.NonConvexSettings import *
@@ -64,7 +66,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
         if file_exist(pickle_file + ".pkl"):
             remove_file(pickle_file  + ".pkl")
 
-        for type_params in list_algos[1:]:
+        for type_params in list_algos:
             print(type_params)
             torch.cuda.empty_cache()
             params = type_params.define(cost_models=None,
@@ -100,6 +102,11 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
                     continue
             with open(log_file, 'a') as f:
                 print("Time of the run: {:.2f}s".format(time.time() - start), file=f)
+
+            with open(params.log_file, 'a') as f:
+                print("{0} size of the multiple SG descent: {1:.2e} bits\n".format(type_params.name(),
+                                                                                        asizeof.asizeof(multiple_descent)),
+                           file=f)
 
             if file_exist(pickle_file + ".pkl"):
                 res = pickle_loader(pickle_file)

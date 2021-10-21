@@ -10,6 +10,7 @@ import copy
 import torch
 import numpy as np
 import torch.backends.cudnn as cudnn
+from pympler import asizeof
 
 from src.deeplearning.DLParameters import DLParameters
 from src.deeplearning.DeepLearningRun import DeepLearningRun
@@ -189,6 +190,10 @@ def train_workers(criterion, epochs, train_loader_workers, train_loader_workers_
         model.load_state_dict(global_model.state_dict())
 
     optimizers = [SGDGen(model.parameters(), parameters=parameters, weight_decay=parameters.weight_decay) for model in client_models]
+
+    with open(parameters.log_file, 'a') as f:
+        print("Size of the clients's models: {:.2e} bits\n".format(asizeof.asizeof(client_models)), file=f)
+        print("Size of the optimizers: {:.2e} bits\n".format(asizeof.asizeof(optimizers)), file=f)
 
     if device == 'cuda':
         global_model = torch.nn.DataParallel(global_model)
