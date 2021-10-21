@@ -19,10 +19,9 @@ class ResultsOfSeveralDescents:
     The class provides method (in log scale or not) to compute the mean and the standard deviation of the nested sequence.
     """
 
-    def __init__(self, descent: AverageOfSeveralIdenticalRun, name: str, nb_devices_for_the_run: int, deep_learning_run: bool = False):
+    def __init__(self, nb_devices_for_the_run: int):
 
         self.X_number_of_bits = []
-        self.omega_c = []
         self.names = []
 
         # Information to plot
@@ -39,15 +38,18 @@ class ResultsOfSeveralDescents:
         self.all_test_accuracies = []
 
         self.nb_devices = nb_devices_for_the_run
-        # for desc in all_descent.values():
-        self.add_descent(descent=descent, name=name, deep_learning_run=deep_learning_run)
+
+    def add_dict_of_descent(self, dict_of_descent, deep_learning_run: bool = False):
+        for name, descent in dict_of_descent.items():
+            self.add_descent(descent=descent, name=name, deep_learning_run=deep_learning_run)
 
     def add_descent(self, descent: AverageOfSeveralIdenticalRun, name: str, deep_learning_run: bool = False):
         # If its not an artificial descent:
         if not descent.artificial and not deep_learning_run:
             # self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in all_descent.values()]
             self.X_number_of_bits.append(descent.theoretical_nb_bits)
-            self.omega_c.append(descent.omega_c)
+            self.omega_c = descent.omega_c
+            print(self.omega_c)
         elif deep_learning_run:
             compress_model = True if 'MCM' in name else False
             params = descent.parameters
