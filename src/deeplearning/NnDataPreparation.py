@@ -51,10 +51,6 @@ def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, sto
     np.random.seed(seed)
     indices = np.arange(size_dataset)
 
-    n_val = np.int(np.floor(0.1 * size_dataset))
-    val_data = Subset(train_data, indices=indices[:n_val])
-
-    # indices = indices[n_val:]
     size_dataset = len(indices)
     size_dataset_worker = np.int(np.floor(size_dataset / nb_devices))
 
@@ -71,22 +67,18 @@ def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, sto
 
     pin_memory = True if torch.cuda.is_available() else False
 
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False, pin_memory = pin_memory)
-    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False, pin_memory = pin_memory)
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False, pin_memory = pin_memory, num_workers=4)
 
     b = 0
     for ind in split:
-        train_loader_workers_full[b] = DataLoader(Subset(train_data, ind), batch_size=len(ind),
+        train_loader_workers_full[b] = DataLoader(Subset(train_data, ind), batch_size=len(ind), num_workers=4,
                                                   shuffle=False, pin_memory = pin_memory)
         rand_sampler = RandomSampler(Subset(train_data, ind), replacement=True)
-        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=batch_size,
+        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=batch_size, num_workers=4,
                                              sampler=rand_sampler, pin_memory = pin_memory)
         b = b + 1
 
-    if stochastic:
-        return train_loader_workers, train_loader_workers_full, val_loader, test_loader
-    else:
-        return train_loader_workers_full, train_loader_workers_full, val_loader, test_loader
+    return train_loader_workers, train_loader_workers_full, test_loader
 
 
 def load_data(dataset: str, iid: str):

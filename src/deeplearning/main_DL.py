@@ -11,7 +11,7 @@ from pympler import asizeof
 from src.deeplearning.DLParameters import cast_to_DL
 from src.deeplearning.NnDataPreparation import create_loaders
 from src.deeplearning.NonConvexSettings import *
-from src.deeplearning.Train import run_exp, compute_L
+from src.deeplearning.Train import Train, compute_L
 from src.machinery.PredefinedParameters import *
 from src.utils.ErrorPlotter import plot_error_dist
 from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, seed_everything, \
@@ -50,7 +50,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     default_down_compression = SQuantization(quantization_levels[dataset], norm=norm_quantization[dataset])
 
     loaders = create_loaders(dataset, iid, nb_devices, batch_size, stochastic)
-    _, train_loader_workers_full, _, _ = loaders
+    _, train_loader_workers_full, _ = loaders
     dim = next(iter(train_loader_workers_full[0]))[0].shape[1]
     if optimal_steps_size[dataset] is None:
         L = compute_L(train_loader_workers_full)
@@ -96,7 +96,8 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
                 print('Run {:3d}/{:3d}:'.format(i + 1, NB_RUN))
                 fixed_params = copy.deepcopy(params)
                 try:
-                    multiple_descent.append_from_DL(run_exp(fixed_params, loaders))
+                    training = Train(loaders, fixed_params)
+                    multiple_descent.append_from_DL(training.run_training())
                 except ValueError as err:
                     print(err)
                     continue
