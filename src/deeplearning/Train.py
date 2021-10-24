@@ -60,7 +60,7 @@ class Train():
 
         self.criterion = self.parameters.criterion.to(self.device)
 
-        self.train_loader_workers, _, self.test_loader = loaders
+        self.train_loader_workers, self.train_loader_workers_full, self.test_loader = loaders
 
     def server_compress_gradient(self, client0_model, optimizer0):
         """Compression of the global model.
@@ -231,7 +231,7 @@ class Train():
         iter_steps = min([len(train_loader) for train_loader in train_loader_iter])
 
         losses = 0
-        for _ in range(int(iter_steps/4)):
+        for _ in range(int(iter_steps)):
 
             active_worker = self.get_active_worker()
 
@@ -264,18 +264,20 @@ class Train():
     def run_training(self):
         """Run the training over all the workers."""
     
-        train_loss, test_loss, test_accuracy = np.inf, np.inf, 0
-    
-        test_loss, test_accuracy = self.accuracy_and_loss()
+        train_loss = self.compute_train_loss()
+        test_loss, test_accuracy = self.compute_test_accuracy_and_loss()
         print("Test loss: {0}\t Test accuracy:{1}".format(test_loss, test_accuracy))
         self.run.update_run(train_loss, test_loss, test_accuracy)
 
         nb_epoch = self.parameters.nb_epoch
         for e in range(nb_epoch):
-    
+
+            # Warning : here the train loss is the average loss of all the iteration within one epoch and not the loss
+            # computed on the whole dataset computed at the end of the epoch with the same model.
             train_loss = self.train_one_epoch()
-    
-            test_loss, test_accuracy = self.accuracy_and_loss()
+
+            # train_loss = self.compute_train_loss()
+            test_loss, test_accuracy = self.compute_test_accuracy_and_loss()
             self.run.update_run(train_loss, test_loss, test_accuracy)
     
             if e + 1 in [1, 2, 3, 5, 15, 25, 50, np.floor(nb_epoch / 4), np.floor(nb_epoch / 2), np.floor(3 * nb_epoch / 4), nb_epoch]:
@@ -285,7 +287,22 @@ class Train():
 
         return self.run
 
-    def accuracy_and_loss(self, ):
+    def compute_train_loss(self):
+        train_loader_iter = [iter(self.train_loader_workers[w]) for w in range(self.parameters.nb_devices)]
+        running_loss = 0
+        for w_id in range(self.parameters.nb_devices):
+            self.global_model.eval()
+            for data, target in train_loader_iter[w_id]:
+                data, target = data.to(self.device), target.to(self.device)
+                output = self.global_model(data)
+                if torch.isnan(output).any():
+                    raise ValueError("There is NaN in output values, stopping.")
+                loss =self.criterion(output, target)
+                running_loss += loss.item()
+        train_loss = running_loss / (self.parameters.nb_devices * len(train_loader_iter[w_id]))
+        return train_loss
+
+    def compute_test_accuracy_and_loss(self):
         correct = 0
         test_loss = 0
         total = 0
@@ -311,11 +328,6 @@ class Train():
 
         accuracy = 100. * correct / total
         test_loss = test_loss / len(loader)
-        print("len loaders: ", len(loader))
-        print("total:", total)
-        print("correct:", correct)
-        print("cpt", cpt)
-
         return test_loss, accuracy
 
     def get_active_worker(self):

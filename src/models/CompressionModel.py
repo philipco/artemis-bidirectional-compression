@@ -104,21 +104,15 @@ class TopKSparsification(CompressionModel):
             assert 0 <= level < dim, "k must be inferior to the number of dimension and superior to zero."
         self.biased = True
 
-    def compress(self, vector: torch.FloatTensor, dim: int = None):
-        if self.level == 0:
-            return vector
-        vector, dim, flat_dim = prep_grad(vector)
-
+    def __compress__(self, vector: torch.FloatTensor):
         values, indices = torch.topk(abs(vector), self.level)
         compression = torch.zeros_like(vector)
         for i in indices:
             compression[i.item()] = vector[i.item()]
-        return compression.reshape(dim)
+        return compression
 
-    def __compute_omega_c__(self, vector: torch.FloatTensor = None, flat_dim: int =None):
-        if self.level == 0:
-            return 0
-        proba = self.level / self.dim
+    def __omega_c_formula__(self, dim_to_use: int):
+        proba = self.level
         return 1 - proba
 
     def get_name(self) -> str:
