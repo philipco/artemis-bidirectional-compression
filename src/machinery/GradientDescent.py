@@ -59,8 +59,6 @@ class AGradientDescent(ABC):
         self.dist_to_model = [torch.tensor(0.)]
         self.h_i_to_optimal_grad = []
         self.var_models = [torch.tensor(0.)]
-        self.model_params = []
-        self.averaged_model_params = []
         self.averaged_train_losses = []
         self.memory_info = None
         if algos_pickle_path is not None:
@@ -72,11 +70,11 @@ class AGradientDescent(ABC):
             self.optimal_grad = None
 
         if self.parameters.use_up_memory and self.parameters.up_compression_model.omega_c != 0 and self.parameters.up_learning_rate is None:
-            self.parameters.up_learning_rate = 1 / (2 * (self.parameters.up_compression_model.omega_c + 1))
+            self.parameters.up_learning_rate = self.parameters.up_compression_model.get_learning_rate()
         elif not self.parameters.use_up_memory or self.parameters.up_compression_model.omega_c == 0:
             self.parameters.up_learning_rate = 0
         if self.parameters.use_down_memory and self.parameters.down_compression_model.omega_c != 0 and self.parameters.down_learning_rate is None:
-            self.parameters.down_learning_rate = 1 / (2 * (self.parameters.down_compression_model.omega_c + 1))
+            self.parameters.down_learning_rate = self.parameters.down_compression_model.get_learning_rate()
         elif not self.parameters.use_down_memory or self.parameters.down_compression_model.omega_c == 0:
             self.parameters.down_learning_rate = 0
 
@@ -135,11 +133,11 @@ class AGradientDescent(ABC):
             [0 for i in range(self.parameters.n_dimensions)])\
             .to(dtype=torch.float64)
 
-        self.model_params.append(current_model_param)
+        # self.model_params.append(current_model_param)
         self.train_losses.append(self.update.compute_cost(current_model_param, cost_models))
 
         if self.parameters.use_averaging:
-            self.averaged_model_params.append(self.model_params[-1])
+            averaged_model_params = current_model_param
             self.averaged_train_losses.append(self.train_losses[-1])
 
         full_nb_iterations = 0
@@ -174,8 +172,9 @@ class AGradientDescent(ABC):
 
             start_averaging_time = time.time()
             if self.parameters.use_averaging:
-                self.averaged_model_params.append(torch.mean(torch.stack(self.model_params), 0))
-                self.averaged_train_losses.append(self.update.compute_cost(self.averaged_model_params[-1], cost_models))
+                # Divion by (full_nb_iterations + 1) because this variable is initiliazed to 0.
+                averaged_model_params = averaged_model_params + (current_model_param - averaged_model_params) / (full_nb_iterations + 1)
+                self.averaged_train_losses.append(self.update.compute_cost(averaged_model_params, cost_models))
             averaging_time += time.time() - start_averaging_time
 
             if self.parameters.verbose:
@@ -230,16 +229,18 @@ class AGradientDescent(ABC):
             print("Gradient Descent: execution time={t:.3f} seconds".format(t=elapsed_time))
             print("Final loss : {0:.5f}\n".format(self.train_losses[-1]))
 
+        del averaged_model_params
+        del current_model_param
+        del past_model
         return elapsed_time
 
     def update_gradient_descent_info(self, past_model, cost_models):
-        self.model_params.append(past_model)
-        self.train_losses.append(self.update.compute_cost(self.model_params[-1], cost_models))
+        self.train_losses.append(self.update.compute_cost(past_model, cost_models))
         if self.parameters.randomized:
             self.norm_error_feedback.append(
                 torch.norm(torch.mean(torch.stack(self.update.all_error_i[-1]), dim=0), p=2))
             self.dist_to_model.append(np.mean(
-                [torch.norm(self.model_params[-1] - w.local_update.model_param) ** 2 for w in self.workers]
+                [torch.norm(past_model - w.local_update.model_param) ** 2 for w in self.workers]
             ))
             self.var_models.append(torch.mean(
                 torch.var(torch.stack([w.local_update.model_param for w in self.workers]))
@@ -249,14 +250,14 @@ class AGradientDescent(ABC):
             self.norm_error_feedback.append(torch.norm(self.update.all_error_i[-1], p=2))
 
         self.dist_to_model.append(np.mean(
-            [torch.norm(self.model_params[-1] - w.local_update.model_param) ** 2 for w in self.workers]
+            [torch.norm(past_model - w.local_update.model_param) ** 2 for w in self.workers]
         ))
         if self.optimal_grad is not None:
             self.h_i_to_optimal_grad.append(np.mean(
                 [torch.norm(self.workers[i].local_update.h_i - self.optimal_grad[i]) ** 2 for i in range(len(self.workers))]
             ))
         # if (not self.parameters.randomized):
-        #     assert torch.all(torch.norm(self.model_params[-1] - self.workers[0].local_update.model_param) ** 2 == torch.tensor(0.0)), \
+        #     assert torch.all(torch.norm(past_model - self.workers[0].local_update.model_param) ** 2 == torch.tensor(0.0)), \
         #         "The distance from central server and remote nodes is not null."
         self.var_models.append(torch.mean(
             torch.var(torch.stack([w.local_update.model_param for w in self.workers]))

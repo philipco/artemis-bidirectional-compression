@@ -15,3 +15,4 @@ seaborn
 tqdm
 joblib
 pympler
+guppy3 # to profile memory

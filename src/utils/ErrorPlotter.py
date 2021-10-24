@@ -21,7 +21,7 @@ markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
 markersize = 1
 curve_size=4
 fontsize=35
-fontsize_legend=15
+fontsize_legend=19
 # figsize=(15,7)
 figsize=(8,7)
 fourfigsize=(13, 8)
@@ -155,7 +155,7 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
     if ylog:
         ax.yscale("log")
     if ylim:
-        ax.set_ylim(top=2)
+        ax.set_ylim(top=ylim)
     if xlog:
         ax.set_xscale("log")
     ax.tick_params(axis='both', labelsize=fontsize)

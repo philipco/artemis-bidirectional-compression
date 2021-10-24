@@ -46,3 +46,6 @@ class VGG(nn.Module):
 def VGG11(input_size):
     return VGG('VGG11')
 
+def VGG19(input_size):
+    return VGG('VGG19')
+

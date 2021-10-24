@@ -118,6 +118,9 @@ def create_folder_if_not_existing(folder):
 def file_exist(filename: str):
     return os.path.isfile(filename)
 
+def remove_file(filename: str):
+    os.remove(filename)
+
 
 def check_memory_usage():
 

@@ -165,7 +165,6 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 worker.local_update.set_initial_v(self.v)
 
         self.all_delta_i = []
-        self.all_delta_i = []
 
     def get_set_of_workers(self, cost_models, all=False):
         if all:
@@ -181,6 +180,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                                 for i in range(self.parameters.nb_devices)]
         for (worker, cost_model) in self.get_set_of_workers(cost_models):
             randomized_omega_k[worker.ID] = self.parameters.down_compression_model.compress(self.value_to_compress[worker.ID])
+        del randomized_omega_k
         self.omega = randomized_omega_k
         self.omega_k.append(self.omega)
 
@@ -426,6 +426,7 @@ class DownCompressModelUpdate(AbstractFLUpdate):
         self.perform_down_compression(model_param, cost_models)
 
         return model_param
+
 
 class FedAvgUpdate(AbstractFLUpdate):
     """This class implement the proper update of the Artemis schema.

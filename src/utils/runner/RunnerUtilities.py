@@ -5,6 +5,9 @@ This file give two functions (for single or multiple runs) to carry out a full g
 """
 import gc
 import time
+import tracemalloc
+
+from pympler import asizeof
 from tqdm import tqdm
 
 from src.machinery.PredefinedParameters import *
@@ -12,7 +15,7 @@ from src.models.CompressionModel import CompressionModel
 
 from src.utils.Constants import NB_EPOCH
 from src.utils.PathDataset import get_path_to_pickle
-from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if_not_existing, pickle_loader
+from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if_not_existing, pickle_loader, file_exist, remove_file
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
@@ -139,20 +142,18 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
     return model_descent
 
 
-def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1, stochastic: bool = True,
-                     nb_epoch: int = 250, step_size = None, compression: CompressionModel = None,
-                     use_averaging: bool = False, fraction_sampled_workers: int = 1, modify_run = None) -> None:
+def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settings: str, batch_size: int = 1,
+                     stochastic: bool = True, nb_epoch: int = 250, step_size = None,
+                     compression: CompressionModel = None, use_averaging: bool = False,
+                     fraction_sampled_workers: int = 1, modify_run = None) -> None:
 
-    stochasticity = 'sto' if stochastic else "full"
-    if stochastic:
-        experiments_settings = "{0}-b{1}".format(stochasticity, batch_size)
-    else:
-        experiments_settings = stochasticity
+    pickle_file = "{0}/descent-{1}".format(logs_file, experiments_settings)
+
     if modify_run is None:
-        all_descent = {}
+        if file_exist(pickle_file + ".pkl"):
+            remove_file(pickle_file  + ".pkl")
         algos = list_algos
     else:
-        res = pickle_loader("{0}/descent-{1}".format(filename, experiments_settings))
         algos = [list_algos[i] for i in modify_run]
     for type_params in tqdm(algos):
         multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models,
@@ -162,20 +163,33 @@ def run_one_scenario(cost_models, list_algos, filename: str, batch_size: int = 1
                                                    nb_epoch=nb_epoch,
                                                    step_formula=step_size,
                                                    batch_size=batch_size,
-                                                   logs_file=filename,
+                                                   logs_file=logs_file,
                                                    fraction_sampled_workers=fraction_sampled_workers)
 
-        if modify_run is not None:
-            all_descent = res.all_descent
-        all_descent[type_params.name()] = multiple_sg_descent
-        res = ResultsOfSeveralDescents(all_descent, len(cost_models))
-        pickle_saver(res, "{0}/descent-{1}".format(filename, experiments_settings))
+        if logs_file:
+            logs = open("{0}/logs.txt".format(logs_file), "a+")
+            logs.write("{0} size of the multiple SG descent: {1:.2e} bits\n".format(type_params.name(), asizeof.asizeof(multiple_sg_descent)))
+            logs.close()
 
-def run_for_different_scenarios(cost_models, list_algos, values, labels, filename: str, batch_size: int = 1,
+        if file_exist(pickle_file + ".pkl"):
+            res = pickle_loader(pickle_file)
+            res.add_descent(multiple_sg_descent, type_params.name(), deep_learning_run=False)
+        else:
+            res = ResultsOfSeveralDescents(len(cost_models))
+            res.add_descent(multiple_sg_descent, type_params.name(), deep_learning_run=False)
+
+        pickle_saver(res, pickle_file)
+        del res
+        del multiple_sg_descent
+
+
+def run_for_different_scenarios(cost_models, list_algos, values, labels, experiments_settings: str,
+                                logs_file: str, batch_size: int = 1,
                                 stochastic: bool = True, nb_epoch: int = 250, step_formula = None,
                                 compression: CompressionModel = None, scenario: str = "step") -> None:
 
-    assert scenario in ["step", "compression"], "There is two possible scenarios : to analyze by step size, or by compression operators."
+    assert scenario in ["step", "compression", "alpha"], "There is three possible scenarios : to analyze by step size," \
+                                                         " by compression operators, or by value of alpha."
 
     nb_devices_for_the_run = len(cost_models)
 
@@ -188,7 +202,7 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
 
     for param_algo in tqdm(list_algos):
         losses_by_algo, losses_avg_by_algo, norm_ef_by_algo, dist_model_by_algo = [], [], [], []
-        var_models_by_algo = []
+        h_i_to_optimal_grad_by_algo, var_models_by_algo = [], []
         descent_by_step_size = {}
         for (value, label) in zip(values, labels):
 
@@ -196,39 +210,42 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
                                                            use_averaging=True, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=value, nb_epoch=nb_epoch, compression_model=compression,
-                                                           logs_file=filename)
+                                                           logs_file=logs_file)
 
-            if scenario == "compression":
+            if scenario in ["compression", "alpha"]:
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
                                                            use_averaging=True, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=step_formula,
                                                            compression_model=value, nb_epoch=nb_epoch,
-                                                           logs_file=filename)
+                                                           logs_file=logs_file)
 
             descent_by_step_size[label] = multiple_sg_descent
             losses_by_label, losses_avg_by_label, norm_ef_by_label, dist_model_by_label = [], [], [], []
-            var_models_by_label = []
+            h_i_to_optimal_grad_by_label, var_models_by_label = [], []
 
             # Picking the minimum values for each of the run.
-            for seq_losses, seq_losses_avg, seq_norm_ef, seq_dist_model, seq_var_models in \
+            for seq_losses, seq_losses_avg, seq_norm_ef, seq_dist_model, seq_h_i_optimal, seq_var_models in \
                     zip(multiple_sg_descent.train_losses, multiple_sg_descent.averaged_train_losses,
                         multiple_sg_descent.norm_error_feedback, multiple_sg_descent.dist_to_model,
-                        multiple_sg_descent.var_models):
+                        multiple_sg_descent.h_i_to_optimal_grad, multiple_sg_descent.var_models):
 
                 losses_by_label.append(min(seq_losses))
                 losses_avg_by_label.append(min(seq_losses_avg))
                 norm_ef_by_label.append(seq_norm_ef[-1])
                 dist_model_by_label.append(seq_dist_model[-1])
                 var_models_by_label.append(seq_var_models[-1])
+                h_i_to_optimal_grad_by_label.append(seq_h_i_optimal[-1])
 
             losses_by_algo.append(losses_by_label)
             losses_avg_by_algo.append(losses_avg_by_label)
             norm_ef_by_algo.append(norm_ef_by_label)
             dist_model_by_algo.append(dist_model_by_label)
             var_models_by_algo.append(var_models_by_label)
+            h_i_to_optimal_grad_by_algo.append(h_i_to_optimal_grad_by_label)
 
-        descent_by_algo_and_step_size[param_algo.name()] = ResultsOfSeveralDescents(descent_by_step_size,
-                                                                                          nb_devices_for_the_run)
+        res_by_algo_and_step_size = ResultsOfSeveralDescents(nb_devices_for_the_run)
+        res_by_algo_and_step_size.add_dict_of_descent(descent_by_step_size)
+        descent_by_algo_and_step_size[param_algo.name()] = res_by_algo_and_step_size
 
         # Find optimal descent for the algo:
         min_loss_desc = 10e12
@@ -243,22 +260,19 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, filenam
 
         artificial_multiple_descent = AverageOfSeveralIdenticalRun()
         artificial_multiple_descent.append_list(losses_by_algo, losses_avg_by_algo, norm_ef_by_algo, dist_model_by_algo,
-                                                var_models_by_algo)
+                                                h_i_to_optimal_grad_by_algo, var_models_by_algo)
         all_descent_various_gamma[param_algo.name()] = artificial_multiple_descent
         all_kind_of_compression_res.append(all_descent_various_gamma)
 
-    res_various_gamma = ResultsOfSeveralDescents(all_descent_various_gamma, nb_devices_for_the_run)
+    res_various_gamma = ResultsOfSeveralDescents(nb_devices_for_the_run)
+    res_various_gamma.add_dict_of_descent(all_descent_various_gamma, deep_learning_run=False)
 
-    stochasticity = 'sto' if stochastic else "full"
-    if stochastic:
-        experiments_settings = "{0}-b{1}".format(stochasticity, batch_size)
-    else:
-        experiments_settings = stochasticity
+    pickle_saver(res_various_gamma, "{0}/{1}-{2}".format(logs_file, scenario, experiments_settings))
 
-    pickle_saver(res_various_gamma, "{0}/{1}-{2}".format(filename, scenario, experiments_settings))
+    res_opt_gamma = ResultsOfSeveralDescents(nb_devices_for_the_run)
+    res_opt_gamma.add_dict_of_descent(optimal_descents, deep_learning_run=False)
 
-    res_opt_gamma = ResultsOfSeveralDescents(optimal_descents, nb_devices_for_the_run)
-    pickle_saver(res_opt_gamma, "{0}/{1}-optimal-{2}".format(filename, scenario, experiments_settings))
+    pickle_saver(res_opt_gamma, "{0}/{1}-optimal-{2}".format(logs_file, scenario, experiments_settings))
 
     pickle_saver(descent_by_algo_and_step_size, "{0}/{1}-descent_by_algo-{2}"
-                 .format(filename, scenario, experiments_settings))
+                 .format(logs_file, scenario, experiments_settings))

@@ -10,9 +10,7 @@ from src.deeplearning.DLParameters import DLParameters
 
 
 class SGDGen(Optimizer):
-    """
-        Based on torch.optim.SGD implementation
-    """
+    """ Based on torch.optim.SGD implementation"""
 
     def __init__(self, nn_model_params, parameters: DLParameters, dampening=0,
                  weight_decay=0, nesterov=False):
@@ -72,11 +70,7 @@ class SGDGen(Optimizer):
                     else:
                         param_state[up_local_memory_name] = torch.zeros_like(p)
                 if up_learning_rate_name not in param_state:
-                    if self.parameters.up_compression_model.level != 0:
-                        param_state[up_learning_rate_name] = 1 / (
-                                2 * (self.parameters.up_compression_model.__compute_omega_c__(loc_grad) + 1))
-                    else:
-                        param_state[up_learning_rate_name] = 0
+                    param_state[up_learning_rate_name] = self.parameters.up_compression_model.get_learning_rate(loc_grad)
 
                 if up_error_feedback_name in param_state:
                     loc_grad = loc_grad + param_state[up_error_feedback_name].mul(self.parameters.optimal_step_size)  # TODO : multiplier par un coef ?
