@@ -1,5 +1,7 @@
 """
 Created by Philippenko, 2th April 2021.
+
+Main class to run experiments in deep learning.
 """
 import copy
 import sys
@@ -24,8 +26,12 @@ from src.utils.runner.RunnerUtilities import create_path_and_folders, NB_RUN, ch
 logging.basicConfig(level=logging.INFO)
 
 
-def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
+def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False) -> None:
+    """Runs and plots experiments for a given dataset using an appropriate neural network.
 
+    :param dataset: Name of the dataset
+    :param plot_only: True if the goal is not to rerun all experiments but only to regenerate figures.
+    """
     fraction_sampled_workers = 1
     batch_size = batch_sizes[dataset]
     nb_devices = 20
@@ -129,18 +135,17 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False):
     print("Obj min in dl:", obj_min)
 
     # Plotting
-    plot_error_dist(res.get_loss(np.array(obj_min)), res.names, res.nb_devices, batch_size=batch_size,
-                    all_error=res.get_std(np.array(obj_min)), x_legend="Number of passes on data", ylegends="train_loss",
+    plot_error_dist(res.get_loss(np.array(obj_min)), res.names, all_error=res.get_std(np.array(obj_min)),
+                    x_legend="Number of passes on data", ylegends="train_loss",
                     picture_name="{0}/{1}_train_losses".format(picture_path, exp_name))
-    plot_error_dist(res.get_loss(np.array(obj_min)), res.names, res.nb_devices,
-                    batch_size=batch_size, x_points=res.X_number_of_bits, ylegends="train_loss",
+    plot_error_dist(res.get_loss(np.array(obj_min)), res.names, x_points=res.X_number_of_bits, ylegends="train_loss",
                     all_error=res.get_std(np.array(obj_min)), x_legend="Communicated bits",
                     picture_name="{0}/{1}_train_losses_bits".format(picture_path, exp_name))
-    plot_error_dist(res.get_test_accuracies(), res.names, res.nb_devices, ylegends="accuracy",
-                    all_error=res.get_test_accuracies_std(), x_legend="Number of passes on data", batch_size=batch_size,
+    plot_error_dist(res.get_test_accuracies(), res.names, ylegends="accuracy", all_error=res.get_test_accuracies_std(),
+                    x_legend="Number of passes on data",
                     picture_name="{0}/{1}_test_accuracies".format(picture_path, exp_name))
-    plot_error_dist(res.get_test_losses(in_log=True), res.names, res.nb_devices, batch_size=batch_size,
-                    all_error=res.get_test_losses_std(in_log=True), x_legend="Number of passes on data", ylegends="test_loss",
+    plot_error_dist(res.get_test_losses(in_log=True), res.names, all_error=res.get_test_losses_std(in_log=True),
+                    x_legend="Number of passes on data", ylegends="test_loss",
                     picture_name="{0}/{1}_test_losses".format(picture_path, exp_name))
 
 if __name__ == '__main__':

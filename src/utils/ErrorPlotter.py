@@ -38,9 +38,8 @@ Y_LEGENDS = {"loss": r"$\log_{10}(F(w_k) - F(w_*))$",
 nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 
-def plot_error_dist(all_losses, legend, nb_devices, nb_dim=None, batch_size=None, all_error=None,
-                    x_points=None, x_legend=None, one_on_two_points=True, xlabels=None,
-                    ylegends="loss", ylim=False, omega_c = None, picture_name=None, zoom = None):
+def plot_error_dist(all_losses, legend, all_error=None, x_points=None, x_legend=None, one_on_two_points=True,
+                    xlabels=None, ylegends="loss", ylim=False, omega_c = None, picture_name=None, zoom = None):
 
     assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
 

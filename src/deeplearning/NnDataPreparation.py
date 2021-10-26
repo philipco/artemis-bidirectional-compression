@@ -16,6 +16,7 @@ from src.utils.PathDataset import get_path_to_datasets
 
 
 def non_iid_split(train_data, nb_devices):
+    """Splits the training data by target values (leads to a highly non-iid data distribution)."""
     unique_values = {}
     targets = train_data.targets
     n = len(targets)
@@ -40,6 +41,8 @@ def non_iid_split(train_data, nb_devices):
 
 
 def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, stochastic: bool, seed: int = 42):
+    """Returns dataloader."""
+
     train_data, test_data = load_data(dataset, iid)
 
     train_loader_workers = dict()
@@ -82,6 +85,12 @@ def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, sto
 
 
 def load_data(dataset: str, iid: str):
+    """Loads a dataset.
+
+    :param dataset: Name of the dataset
+    :param iid: True if the dataset must not be splitted by target value
+    :return: Train dataset, test dataset
+    """
     path_to_dataset = '{0}/dataset/'.format(get_path_to_datasets())
     if dataset == "fake":
 

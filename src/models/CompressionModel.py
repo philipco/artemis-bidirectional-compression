@@ -19,9 +19,13 @@ def prep_grad(vector):
 
 
 class CompressionModel(ABC):
-    """Abstract class"""
+    """
+    The CompressionModel class declares the factory methods while subclasses provide the implementation of this methods.
+
+    This class defines the operators of compression.
+    """
     
-    def __init__(self, level: int, dim: int = None, norm: int = 2, constant: int = 2):
+    def __init__(self, level: int, dim: int = None, norm: int = 2, constant: int = 1):
         self.level = level
         self.dim = dim
         self.norm = norm
@@ -34,17 +38,14 @@ class CompressionModel(ABC):
 
     @abstractmethod
     def __compress__(self, vector: torch.FloatTensor, dim_to_use: int):
+        """Compresses a vector with the mechanism of the operator of compression."""
         pass
 
-    def compress(self, vector: torch.FloatTensor, dim: str = None) -> torch.FloatTensor:
-        """Implement the s-quantization
+    def compress(self, vector: torch.FloatTensor) -> torch.FloatTensor:
+        """Prepare a vector for compression, and compresses it.
 
-        Args:
-            x: the tensor to be quantized.
-            s: the parameter of quantization.
-
-        Returns:
-            The quantizated tensor.
+        :param vector: The vector to be compressed.
+        :return: The compressed vector
         """
 
         if self.level == 0:
@@ -63,10 +64,12 @@ class CompressionModel(ABC):
 
     @abstractmethod
     def __omega_c_formula__(self, dim_to_use: int):
+        """Proper implementation of the formula to compute omega_c.
+        This formula is unique for each operator of compression."""
         pass
 
     def __compute_omega_c__(self, vector: torch.FloatTensor = None, flat_dim: int = None):
-        """Return the value of omega_c (involved in variance) of the s-quantization."""
+        """Compute the value of omega_c."""
         # If s==0, it means that there is no compression.
         # But for the need of experiments, we may need to compute the quantization constant associated with s=1.
         if flat_dim is None and vector is None:
@@ -82,6 +85,7 @@ class CompressionModel(ABC):
 
     @abstractmethod
     def get_name(self) -> str:
+        """Returns the name of the operator of compression."""
         pass
 
     def get_learning_rate(self, *args, **kwds):

@@ -1,7 +1,7 @@
 """
 Created by Philippenko, 10 January 2020.
 
-This class prepare the real dataset for usage.
+This class prepares a9a, phishing, quantum, superconduct, w8a, ...
 """
 import numpy as np
 import pandas as pd

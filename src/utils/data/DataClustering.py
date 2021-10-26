@@ -22,6 +22,7 @@ def palette(nb_cluster: int = 10):
 
 
 def tsne(data):
+    """Compute the TSNE representation of a dataset."""
     np.random.seed(25)
     tsne = TSNE()
     X_embedded = tsne.fit_transform(data)
@@ -31,6 +32,7 @@ def tsne(data):
 
 
 def find_cluster(embedded_data, tsne_cluster_file, nb_cluster: int = 10):
+    """Find cluster in a dataset."""
     np.random.seed(25)
     clustering = GaussianMixture(n_components=nb_cluster, random_state=0, tol=1e-6, n_init=4, max_iter=2000)\
         .fit(embedded_data)
@@ -83,6 +85,7 @@ def clustering_data(data, predicted_cluster, column_name: str, nb_cluster: int =
 
 
 def rebalancing_clusters(X_origin, Y_origin):
+    """If the clusters are too unbalanced w.r.t. the number of elements, rebalance clusters."""
     X, Y = deepcopy(X_origin), deepcopy(Y_origin)
     do = True
     cpt = 0

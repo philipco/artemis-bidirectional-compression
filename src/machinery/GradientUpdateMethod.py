@@ -1,8 +1,8 @@
 """
 Created by Philippenko, 6 January 2020.
 
-This class defines the update methods which will be used during the gradient descent. It aim to implement the update
-scheme used on the central server.
+This class defines the global update methods which will be used during the gradient descent.
+It aims to implement the update scheme used on the central server.
 
 To add a new update scheme, just extend the abstract class AbstractGradientUpdate which contains methods:
 1. to compute the cost at present model's parameters
@@ -24,7 +24,9 @@ from src.machinery.Parameters import Parameters
 
 class AbstractGradientUpdate(ABC):
     """
-    The  interface declares the operations that all concrete products of AGradient Descent must implement.
+    The AbstractGradientUpdate class declares the factory methods while subclasses provide the implementation of this methods.
+
+    This class carries out the update of the global model held on the central server.
     """
 
     time_sample = 0
@@ -43,8 +45,7 @@ class AbstractGradientUpdate(ABC):
     @abstractmethod
     def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
-        """
-        Compute the model's update.
+        """Compute the model's update.
 
         :param full_nb_iterations: total number of computed iteration.
         """
@@ -60,6 +61,7 @@ class AbstractGradientUpdate(ABC):
 
 
 class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
+    """An abstract class common to all algorithm using a FL paradigm."""
 
     def __init__(self, parameters: Parameters, workers) -> None:
         super().__init__(parameters)
@@ -106,10 +108,12 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             self.H = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def update_model(self, model_param):
+        """Updates the central model."""
         self.v = self.parameters.momentum * self.v + self.g
         return model_param - self.step * self.v
 
     def compute_aggregation(self, local_information_to_aggregate):
+        """Aggregates all gradientds/models received from remote workers."""
         # In Artemis there is no weight associated with the aggregation, all nodes must have the same weight equal
         # to 1 / len(workers), this is why, an average is enough.
         true_mean = torch.stack(local_information_to_aggregate).mean(0)
@@ -121,12 +125,14 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         return approximate_mean
 
     def compute_full_gradients(self, model_param):
+        """Compute the gradient by using the full dataset held by each worker."""
         grad = 0
         for worker in self.workers:
             grad = grad + worker.cost_model.grad(model_param)
         return grad / len(self.workers)
 
     def compute_cost(self, model_param, cost_models):
+        """Compute the loss by iterating over all worker."""
         all_loss_i = []
         for worker, cost_model in zip(self.workers, cost_models):
             loss_i, _ = cost_model.cost(model_param)
@@ -134,6 +140,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         return np.mean(all_loss_i)
 
     def sampling_devices(self, cost_models):
+        """Samples devices that will be active at this round."""
         self.workers_sub_set = []
         # Sampling workers until there is at least one in the subset.
         if self.parameters.fraction_sampled_workers == 1:
@@ -146,6 +153,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                                         for i in range(self.parameters.nb_devices) if s[i]]
 
     def initialization(self, nb_it: int, model_param: torch.FloatTensor, L: float, cost_models):
+        """Initialize a new round of communication."""
 
         self.sampling_devices(cost_models)
 
@@ -167,6 +175,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         self.all_delta_i = []
 
     def get_set_of_workers(self, cost_models, all=False):
+        """Get the set of active workers."""
         if all:
             result = list(zip(self.workers, cost_models))
         else:
@@ -176,6 +185,8 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         return result
 
     def build_randomized_omega(self, cost_models):
+        """Build omega in a context of a randomized algorithm (like Rand-MCM).
+         Omega is the vector that sent to remote workers"""
         randomized_omega_k = [torch.zeros(self.parameters.n_dimensions, dtype=np.float)
                                 for i in range(self.parameters.nb_devices)]
         for (worker, cost_model) in self.get_set_of_workers(cost_models):
@@ -185,10 +196,12 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         self.omega_k.append(self.omega)
 
     def build_omega(self):
+        """Build omega, the vector that is sent to remote workers"""
         self.omega = self.parameters.down_compression_model.compress(self.value_to_compress)
         self.omega_k.append(self.omega)
 
     def perform_down_compression(self, value_to_consider, cost_models):
+        """Perfoms down compression."""
 
         # We combine with EF and memory to obtain the proper value that will be compressed
         if self.parameters.randomized and not self.parameters.use_unique_down_memory:
@@ -231,6 +244,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             worker.idx_last_update = len(self.omega_k)
             
     def receive_all_delta(self, cost_models, full_nb_iterations: int):
+        """Retrieve all deltas, which are the vectors sent by all remote workers."""
 
         # Warning, if one wants to run the case when subset are updating, but then al devices are updated,
         # the following lines must be changed.
@@ -311,7 +325,8 @@ class ArtemisUpdate(AbstractFLUpdate):
             self.H = self.H + self.parameters.down_learning_rate * self.omega
         return model_param
 
-class SympaUpdate(AbstractFLUpdate):
+
+class GhostUpdate(AbstractFLUpdate):
 
     def __init__(self, parameters: Parameters, workers) -> None:
         super().__init__(parameters, workers)

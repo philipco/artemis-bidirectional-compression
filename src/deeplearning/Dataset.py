@@ -117,12 +117,8 @@ class QuantumDataset(Dataset):
 
         # Warning: Here the goal is to obtain the same result as without Neural Network.
         # Thus, the train set contains the whole dataset. The test set is included into the train set.
-
         test_idx = random.sample(range(len(X_train)), n)
-        # train_idx = [e for e in list(range(len(X_train))) if e not in test_idx]
-
         X_test, Y_test = X_train[test_idx], Y_train[test_idx]
-        # X_train, Y_train = X_train[train_idx], Y_train[train_idx]
         
         self.train = train
         if self.train:
@@ -162,9 +158,10 @@ class PhishingDataset(Dataset):
 
         n = int(len(X_train) * 10 / 100)
 
+        # Warning: Here the goal is to obtain the same result as without Neural Network.
+        # Thus, the train set contains the whole dataset. The test set is included into the train set.
         test_data = X_train[:n]
         test_labels = Y_train[:n]
-        # X, Y = X[n:], Y[n:]
 
         self.train = train
         if self.train:
@@ -258,6 +255,8 @@ class MushroomDataset(Dataset):
 
         n = int(len(X_train) * 10 / 100)
 
+        # Warning: Here the goal is to obtain the same result as without Neural Network.
+        # Thus, the train set contains the whole dataset. The test set is included into the train set.
         test_data = X_train[:n]
         test_labels = Y_train[:n]
 

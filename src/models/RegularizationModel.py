@@ -47,6 +47,7 @@ class ARegularizationModel(ABC):
         """
         pass
 
+
 class NoRegularization(ARegularizationModel):
     """Regularization model to use when no regularization is required by the problem to solve.
 
