@@ -45,7 +45,7 @@ class AbstractLocalUpdate(ABC):
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
         pass
 
-    def compute_local_gradient(self, cost_model: ACostModel, full_nb_iterations: int):
+    def compute_local_gradient(self, cost_model: ACostModel, full_nb_iterations: int) -> None:
         if self.parameters.stochastic:
             # If batch size is bigger than number of sample of the device, we only take all its points.
             if self.parameters.batch_size > cost_model.X.shape[0]:
@@ -69,8 +69,12 @@ class AbstractLocalUpdate(ABC):
                 self.h_i = self.g_i
 
     @abstractmethod
-    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float):
-        """
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None)\
+            -> torch.FloatTensor:
+        """Computes local gradient and return the delta vectors (what is sent to central server).
+        
+        Delta vectors is the vector computed on a worker and sent to the central server. It is either the gradient, 
+        either its compressed version.
 
         :param full_nb_iterations: total number of computed iteration
         :return:
@@ -80,7 +84,8 @@ class AbstractLocalUpdate(ABC):
 
 class LocalGradientVanillaUpdate(AbstractLocalUpdate):
 
-    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None) \
+            -> torch.FloatTensor:
         self.compute_local_gradient(cost_model, full_nb_iterations)
 
         self.delta_i = self.g_i - self.h_i
@@ -101,7 +106,8 @@ class LocalDianaUpdate(AbstractLocalUpdate):
             self.v = deepcopy(self.parameters.momentum * self.v + tensor)
             self.model_param = deepcopy(self.model_param - step * self.v)
 
-    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None) \
+            -> torch.FloatTensor:
         self.compute_local_gradient(cost_model, full_nb_iterations)
         if self.g_i is None:
             return None
@@ -140,7 +146,8 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
-    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None)\
+            -> torch.FloatTensor:
         self.compute_local_gradient(cost_model, full_nb_iterations)
         if self.g_i is None:
             return None
@@ -158,7 +165,8 @@ class LocalFedAvgUpdate(AbstractLocalUpdate):
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
         self.model_param = copy(tensor_sent)
 
-    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float):
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None) \
+            -> torch.FloatTensor:
         original_model_param = copy(self.model_param)
         for local_iteration in range (self.parameters.nb_local_update):
             self.compute_local_gradient(cost_model, full_nb_iterations)
@@ -167,6 +175,7 @@ class LocalFedAvgUpdate(AbstractLocalUpdate):
 
 
 class LocalDownCompressModelUpdate(AbstractLocalUpdate):
+    """This class carry out the local update of MCM."""
 
     def __init__(self, parameters: Parameters) -> None:
         super().__init__(parameters)
@@ -192,7 +201,8 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
             assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
-    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None):
+    def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None) \
+            -> torch.FloatTensor:
         self.compute_local_gradient(cost_model, full_nb_iterations)
         if self.g_i is None:
             return None
@@ -204,8 +214,8 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
         return quantized_delta_i
 
 
-class LocalSympaUpdate(LocalArtemisUpdate):
-    """This class carry out the local update of the Artemis algorithm."""
+class LocalGhostUpdate(LocalArtemisUpdate):
+    """This class carry out the local update of the Ghost algorithm."""
 
     def send_global_informations_and_update_local_param(self, tuple_sent: torch.FloatTensor, step: float):
 

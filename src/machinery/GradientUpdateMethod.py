@@ -1,8 +1,8 @@
 """
 Created by Philippenko, 6 January 2020.
 
-This class defines the update methods which will be used during the gradient descent. It aim to implement the update
-scheme used on the central server.
+This class defines the global update methods which will be used during the gradient descent.
+It aims to implement the update scheme used on the central server.
 
 To add a new update scheme, just extend the abstract class AbstractGradientUpdate which contains methods:
 1. to compute the cost at present model's parameters
@@ -24,7 +24,9 @@ from src.machinery.Parameters import Parameters
 
 class AbstractGradientUpdate(ABC):
     """
-    The  interface declares the operations that all concrete products of AGradient Descent must implement.
+    The AbstractGradientUpdate class declares the factory methods while subclasses provide the implementation of this methods.
+
+    This class carry out the update of the global model held on the central server.
     """
 
     time_sample = 0
@@ -43,8 +45,7 @@ class AbstractGradientUpdate(ABC):
     @abstractmethod
     def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
-        """
-        Compute the model's update.
+        """Compute the model's update.
 
         :param full_nb_iterations: total number of computed iteration.
         """
@@ -311,7 +312,7 @@ class ArtemisUpdate(AbstractFLUpdate):
             self.H = self.H + self.parameters.down_learning_rate * self.omega
         return model_param
 
-class SympaUpdate(AbstractFLUpdate):
+class GhostUpdate(AbstractFLUpdate):
 
     def __init__(self, parameters: Parameters, workers) -> None:
         super().__init__(parameters, workers)

@@ -2,7 +2,7 @@
 Created by Philippenko, 7th July 2020.
 """
 
-from src.machinery.GradientDescent import ArtemisDescent, SGD_Descent, DianaDescent, AGradientDescent, SympaDescent, \
+from src.machinery.GradientDescent import ArtemisDescent, SGD_Descent, DianaDescent, AGradientDescent, GhostDescent, \
     DownCompressModelDescent, FedAvgDescent
 from src.machinery.Parameters import Parameters
 from src.models.CompressionModel import *
@@ -254,7 +254,7 @@ class Sympa(Artemis):
         return "Sympa"
 
     def type_FL(self):
-        return SympaDescent
+        return GhostDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
