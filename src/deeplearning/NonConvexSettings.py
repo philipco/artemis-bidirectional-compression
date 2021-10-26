@@ -10,18 +10,18 @@ from src.models.CompressionModel import SQuantization
 
 batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 128,
           "a9a": 50, "phishing": 50, "quantum": 400, "mushroom": 4}
-models = {"cifar10": resnet32, "mnist": MNIST_CNN, "fashion_mnist": FashionSimpleNet, "femnist": MNIST_CNN,
+models = {"cifar10": LeNet, "mnist": MNIST_CNN, "fashion_mnist": FashionSimpleNet, "femnist": MNIST_CNN,
           "a9a": LogisticReg, "phishing": LogisticReg, "quantum": LogisticReg,
           "mushroom": LogisticReg}
 momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a": 0, "phishing": 0,
              "quantum": 0, "mushroom": 0}
 optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a": None,
                       "phishing": None, "quantum": None, "mushroom": None}
-quantization_levels= {"cifar10": 2**8, "mnist": 4, "fashion_mnist": 4, "femnist": 4, "a9a":1, "phishing": 1,
+quantization_levels= {"cifar10": 2**4, "mnist": 4, "fashion_mnist": 4, "femnist": 4, "a9a":1, "phishing": 1,
                       "quantum": 1, "mushroom": 1}
 norm_quantization = {"cifar10": 2, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "a9a": 2,
                      "phishing": 2, "quantum": 2, "mushroom": 2}
-weight_decay = {"cifar10": 5e-4, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a":0, "phishing": 0,
+weight_decay = {"cifar10": 0, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a":0, "phishing": 0,
                 "quantum": 0, "mushroom": 0}
 criterion = {"cifar10": nn.CrossEntropyLoss(), "mnist": nn.CrossEntropyLoss(), "fashion_mnist": nn.CrossEntropyLoss(),
              "femnist": nn.CrossEntropyLoss(), "a9a":  torch.nn.BCELoss(reduction='mean'),

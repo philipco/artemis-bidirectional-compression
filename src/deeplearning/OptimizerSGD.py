@@ -1,5 +1,10 @@
 """
 Created by Philippenko, 26th April 2021.
+
+The SGD optimizer.
+Warning: Does NOT update the model as usually done in Pytorch class. This allows to implement MCM which send to each
+worker a compression of the central server's model. This is why, it makes no sense to update the model directly after
+the backward step on the remotes workers.
 """
 import copy
 
@@ -38,10 +43,9 @@ class SGDGen(Optimizer):
     def step_local_global(self, w_id, closure=None):
         """Performs a single optimization step. Does NOT update the model !
 
-        Arguments:
-            w_id: integer, id of the worker
-            closure (callable, optional): A closure that reevaluates the model
-                and returns the loss.
+        :param w_id: integer, id of the worker
+        :param closure (callable, optional): A closure that reevaluates the model and returns the loss.
+        :return: the loss
         """
         loss = None
         if closure is not None:

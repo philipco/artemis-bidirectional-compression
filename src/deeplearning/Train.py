@@ -1,7 +1,7 @@
 """
 Created by Philippenko, 26th April 2021.
 
-All function requires to carry out a DL training.
+A class that carry out the DL training.
 
 Warnings: we have not implemented PP in deep learning, but it is straightforward.
 """
@@ -20,9 +20,16 @@ down_ef_name = 'down_ef'
 down_memory_name = 'down_memory'
 down_learning_rate_name = 'down_learning_rate'
 
-class Train():
+
+class Train:
+    """Implements all functions required to train a DL model using either MCM paradigm, either Artemis paradigm."""
 
     def __init__(self, loaders, parameters: DLParameters) -> None:
+        """Initialization of the global model, clients models, optimizers, schedulers, loss criterion ...
+
+        :param loaders: Data loader
+        :param parameters: Parameters for the DL run
+        """
         super().__init__()
 
         self.parameters = parameters
@@ -62,7 +69,7 @@ class Train():
 
         self.train_loader_workers, self.train_loader_workers_full, self.test_loader = loaders
 
-    def server_compress_gradient(self, client0_model, optimizer0):
+    def __server_compress_gradient__(self, client0_model, optimizer0) -> None:
         """Compression of the global model.
 
         :param global_model: model hold on the central server
@@ -80,7 +87,7 @@ class Train():
                     param_state[down_ef_name] = value_to_compress - omega
                 global_p.grad.copy_(omega)
 
-    def compute_client_loss(self, model, optimizer, data, target, w_id):
+    def __compute_client_loss__(self, model, optimizer, data, target, w_id) -> int:
         """Compute the local loss that corresponds to a given client."""
         # Clear the gradients of all optimized variables
         optimizer.zero_grad()
@@ -93,8 +100,7 @@ class Train():
         optimizer.step_local_global(w_id)
         return loss.item()
 
-
-    def initialize_gradients_to_zeros(self):
+    def __initialize_gradients_to_zeros__(self) -> None:
         """Intialization of all gradient. Required because at first call, gradients do not exist.
 
         :param global_model: model hold on the central server
@@ -107,8 +113,7 @@ class Train():
             for shape, global_p in zip(shapes, self.global_model.parameters()):
                 global_p.grad = torch.zeros(shape).to(self.device)
 
-
-    def server_aggregate_gradients(self):
+    def __server_aggregate_gradients__(self) -> None:
         """Aggregation of all clients' model.
 
         :param global_model: model hold on the central server
@@ -116,7 +121,7 @@ class Train():
         :param device: 'cpu' or 'cuda'
         :return: nothing
         """
-        self.initialize_gradients_to_zeros()
+        self.__initialize_gradients_to_zeros__()
 
         nb_devices = len(self.client_models)
         with torch.no_grad():
@@ -125,15 +130,14 @@ class Train():
                     # Adding the client gradient to the global one.
                     global_p.grad.copy_(global_p.grad + client_p.grad / nb_devices)
 
-    def server_update_model(self):
+    def __server_update_model__(self) -> None:
         """Updates the central server models using the gradient it holds."""
         with torch.no_grad():
             for global_p in self.global_model.parameters():
                 update_model = global_p - global_p.grad.mul(self.parameters.optimal_step_size)
                 global_p.copy_(update_model)
-
     
-    def compress_model_and_combine_with_down_memory(self, model, optimizer):
+    def __compress_model_and_combine_with_down_memory__(self, model, optimizer) -> None:
         """Compress the model hold on the central server using memory and error-feedback if required."""
     
         # We need the client mode/optimizer to get its state and thus, to get the associated memory.
@@ -182,8 +186,7 @@ class Train():
                     param_state[down_memory_name] = param_state[down_memory_name] + omega.mul(
                         param_state[down_learning_rate_name]).detach()
 
-
-    def server_send_models_to_clients(self):
+    def __server_send_models_to_clients__(self) -> None:
         """Sends the model hold by the central server to each clients.
 
         :param global_model: model hold on the central server
@@ -194,7 +197,7 @@ class Train():
             model.load_state_dict(self.global_model.state_dict())
 
 
-    def server_compress_model_and_send_to_clients(self):
+    def __server_compress_model_and_send_to_clients__(self) -> None:
         """Compresses and sends the model hold by the central server to each clients. Uses randomization if required.
 
         :param global_model: model hold on the central server
@@ -208,17 +211,17 @@ class Train():
             if self.parameters.randomized:
                 for (model, optimizer) in zip(self.client_models, self.optimizers):
                     # There is new compression for each client
-                    self.compress_model_and_combine_with_down_memory(model, optimizer)
+                    self.__compress_model_and_combine_with_down_memory__(model, optimizer)
             else:
                 model, optimizer = self.client_models[0], self.optimizers[0]
-                self.compress_model_and_combine_with_down_memory(model, optimizer)
+                self.__compress_model_and_combine_with_down_memory__(model, optimizer)
                 # Every model has the same compression !
                 for other_model in self.client_models[1:]:
                     other_model.load_state_dict(model.state_dict())  # TODO : check that this is correct !
 
 
-    def train_one_epoch(self):
-        
+    def __train_one_epoch__(self) -> int:
+        """Run one epoch. During one epoch, the whole dataset is browsed."""
         #  Set all clients in train mode
         for model in self.client_models:
             model.train()
@@ -228,10 +231,10 @@ class Train():
         # Devices may have different number of points. Thus to reach an equal weight of participation,
         # we choose that an epoch is constituted of N rounds of communication with the central server,
         # where N is the minimum size of the dataset hold by the different devices.
-        iter_steps = min([len(train_loader) for train_loader in train_loader_iter])
+        nb_inner_iterations = min([len(train_loader) for train_loader in train_loader_iter])
 
         losses = 0
-        for _ in range(int(iter_steps)):
+        for _ in range(int(nb_inner_iterations)):
 
             active_worker = self.get_active_worker()
 
@@ -242,29 +245,31 @@ class Train():
             for w_id in active_worker:
                 all_data[w_id], all_labels[w_id] = next(train_loader_iter[w_id])
                 data, target = all_data[w_id].to(self.device), all_labels[w_id].to(self.device)
-                loss = self.compute_client_loss(self.client_models[w_id], self.optimizers[w_id], data, target, w_id)
+                loss = self.__compute_client_loss__(self.client_models[w_id], self.optimizers[w_id], data, target, w_id)
                 losses += loss
                 self.schedulers[w_id].step()
-            print("i: {0}\tloss: {1}".format(_, loss))
 
-            self.server_aggregate_gradients()
+            self.__server_aggregate_gradients__()
 
             if not self.parameters.non_degraded and self.parameters.down_compression_model is not None:
-                self.server_compress_gradient(self.client_models[0], self.optimizers[0])
+                self.__server_compress_gradient__(self.client_models[0], self.optimizers[0])
 
-            self.server_update_model()
+            self.__server_update_model__()
 
             if self.parameters.non_degraded:
-                self.server_compress_model_and_send_to_clients()
+                self.__server_compress_model_and_send_to_clients__()
             else:
-                self.server_send_models_to_clients()
+                self.__server_send_models_to_clients__()
 
-        return losses / (self.parameters.nb_devices * iter_steps)
+        return losses / (self.parameters.nb_devices * nb_inner_iterations)
 
-    def run_training(self):
-        """Run the training over all the workers."""
+    def run_training(self) -> DeepLearningRun:
+        """Run the whole training process over all the workers.
+
+        :return: DeepLearningRun, a class that gather all important information for plotting.
+        """
     
-        train_loss = self.compute_train_loss()
+        train_loss = self.__compute_train_loss__()
         test_loss, test_accuracy = self.compute_test_accuracy_and_loss()
         print("Test loss: {0}\t Test accuracy:{1}".format(test_loss, test_accuracy))
         self.run.update_run(train_loss, test_loss, test_accuracy)
@@ -274,7 +279,7 @@ class Train():
 
             # Warning : here the train loss is the average loss of all the iteration within one epoch and not the loss
             # computed on the whole dataset computed at the end of the epoch with the same model.
-            train_loss = self.train_one_epoch()
+            train_loss = self.__train_one_epoch__()
 
             # train_loss = self.compute_train_loss()
             test_loss, test_accuracy = self.compute_test_accuracy_and_loss()
@@ -287,7 +292,15 @@ class Train():
 
         return self.run
 
-    def compute_train_loss(self):
+    def __compute_train_loss__(self) -> int:
+        """Compute train loss by iterating over the whole dataset held by each worker.
+
+        Warning: Used only for loss initialization and not at the end of each epoch. The loss at the end of each epoch
+        is the average of the losses computed at each step of the inner iterations. This allows to reduce by around 15%
+        the computation time.
+
+        :return: the loss
+        """
         train_loader_iter = [iter(self.train_loader_workers[w]) for w in range(self.parameters.nb_devices)]
         running_loss = 0
         for w_id in range(self.parameters.nb_devices):
@@ -302,7 +315,11 @@ class Train():
         train_loss = running_loss / (self.parameters.nb_devices * len(train_loader_iter[w_id]))
         return train_loss
 
-    def compute_test_accuracy_and_loss(self):
+    def compute_test_accuracy_and_loss(self) -> (int, int):
+        """Compute test loss/accuracy.
+
+        :return: a tuple (test loss, test accuracy)
+        """
         correct = 0
         test_loss = 0
         total = 0
@@ -331,7 +348,10 @@ class Train():
         return test_loss, accuracy
 
     def get_active_worker(self):
-        """Returns the active workers during the present round."""
+        """Returns the active workers during the present round.
+
+        Warning: Presently only full participation has been implemented.
+        """
         active_worker = []
         # Sampling workers until there is at least one in the subset.
         if self.parameters.fraction_sampled_workers == 1:
@@ -342,7 +362,7 @@ class Train():
         return active_worker
 
 
-def compute_L(train_loader_workers_full):
+def compute_L(train_loader_workers_full) -> int:
     """Compute the lipschitz constant."""
     L, n_workers = 0, len(train_loader_workers_full)
     train_loader_iter = [iter(train_loader_workers_full[w]) for w in range(n_workers)]

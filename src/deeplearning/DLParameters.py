@@ -41,7 +41,9 @@ class DLParameters(Parameters):
             print("Criterion: {0}".format(self.criterion.__class__.__name__))
 
 
-def cast_to_DL(parameters: Parameters, dataset: str, model, optimal_step_size: int, weight_decay: int, iid: str) -> DLParameters:
+def cast_to_DL(parameters: Parameters, dataset: str, model, optimal_step_size: int, weight_decay: int, iid: str) \
+        -> DLParameters:
+    """Casts a Parameters class in a DLParameters class which is the specific format for deep learning."""
     parameters.__class__ = DLParameters
     parameters.initialize_DL_params(dataset, model, optimal_step_size, weight_decay, iid)
     return parameters

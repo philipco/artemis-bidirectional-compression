@@ -1,7 +1,7 @@
 """
 Created by Philippenko, 27th April 2021.
 
-This class gathers all important information compute during a Deep Learning run. These informations are later required
+This class gathers all important information compute during a Deep Learning run. These information are later required
 for plotting.
 """
 import numpy as np
