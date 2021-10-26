@@ -39,7 +39,7 @@ class AGradientDescent(ABC):
     """
     The AGradientDescent class declares the factory methods while subclasses provide the implementation of this methods.
 
-    This class carry out the whole gradient descent process.
+    This class carries out the whole gradient descent process.
     """
     # __slots__ = ('parameters', 'losses', 'model_params', 'model_params', 'averaged_model_params', 'averaged_losses',
     #              'workers', 'memory_info')
@@ -405,7 +405,7 @@ class GhostDescent(AGradientDescent):
     This algorithm is impossible to implement in real life.
 
     Paradigm of Ghost: uplink compression of gradient, downlink compression of model, with or without memories,
-    preserve the central model.
+    preserve the central model. Ghost updates the local model using the global model (which is impossible in practice).
     """
 
     def __local_update__(self) -> AbstractLocalUpdate:

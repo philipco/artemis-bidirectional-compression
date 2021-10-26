@@ -18,6 +18,12 @@ from abc import ABC, abstractmethod
 
 
 class AbstractLocalUpdate(ABC):
+    """
+    The AbstractLocalUpdate class declares the factory methods while subclasses provide the implementation of this 
+    methods.
+
+    This class carries out the local update on each worker.
+    """
 
     def __init__(self, parameters: Parameters) -> None:
         super().__init__()
@@ -39,13 +45,16 @@ class AbstractLocalUpdate(ABC):
         self.error_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def set_initial_v(self, v):
+        """Initialize v (gradient-like, updated using previous gradients, required to use a momentum)"""
         self.v = v
 
     @abstractmethod
-    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float) -> None:
+        """Send the global model to the local worker and update its model."""
         pass
 
     def compute_local_gradient(self, cost_model: ACostModel, full_nb_iterations: int) -> None:
+        """Compute the local gradient of the worker."""
         if self.parameters.stochastic:
             # If batch size is bigger than number of sample of the device, we only take all its points.
             if self.parameters.batch_size > cost_model.X.shape[0]:
@@ -71,7 +80,7 @@ class AbstractLocalUpdate(ABC):
     @abstractmethod
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None)\
             -> torch.FloatTensor:
-        """Computes local gradient and return the delta vectors (what is sent to central server).
+        """Computes local gradient and then returns the delta vectors (what is sent to central server).
         
         Delta vectors is the vector computed on a worker and sent to the central server. It is either the gradient, 
         either its compressed version.
@@ -83,6 +92,10 @@ class AbstractLocalUpdate(ABC):
 
 
 class LocalGradientVanillaUpdate(AbstractLocalUpdate):
+    """Implementation of the vanilla Stochastic Gradient local update.
+
+    Paradigm of SGD: no compression, shares gardients.
+    """
 
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None) \
             -> torch.FloatTensor:
@@ -93,15 +106,19 @@ class LocalGradientVanillaUpdate(AbstractLocalUpdate):
             self.h_i = self.h_i + self.parameters.up_learning_rate * self.delta_i
         return self.delta_i
 
-    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float) -> None:
         for tensor in tensor_sent:
             self.v = deepcopy(self.parameters.momentum * self.v + tensor)
             self.model_param = deepcopy(self.model_param - step * self.v)
 
 
 class LocalDianaUpdate(AbstractLocalUpdate):
+    """Implementation of the Diana local update.
 
-    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+    Paradigm of Diana: uplink compression, shares gardients, with or without up memories.
+    """
+
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float) -> None:
         for tensor in tensor_sent:
             self.v = deepcopy(self.parameters.momentum * self.v + tensor)
             self.model_param = deepcopy(self.model_param - step * self.v)
@@ -120,7 +137,10 @@ class LocalDianaUpdate(AbstractLocalUpdate):
 
 
 class LocalArtemisUpdate(AbstractLocalUpdate):
-    """This class carry out the local update of the Artemis algorithm."""
+    """Implementation of the Artemis local update.
+
+    Paradigm of Artemis: uplink/downlink compression, shares gardients, with or without up memories.
+    """
 
     def __init__(self, parameters: Parameters) -> None:
         super().__init__(parameters)
@@ -128,7 +148,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         # For bidirectional compression :
         self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
-    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float) -> None:
 
         for tensor in tensor_sent:
 
@@ -161,8 +181,12 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         return quantized_delta_i
 
 class LocalFedAvgUpdate(AbstractLocalUpdate):
+    """Implementation of the FedAvg local update.
 
-    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float):
+    Paradigm of FedAvg: uplink compression (or not), receive a model from the central server, no memory.
+    """
+
+    def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float) -> None:
         self.model_param = copy(tensor_sent)
 
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None) \
@@ -175,7 +199,11 @@ class LocalFedAvgUpdate(AbstractLocalUpdate):
 
 
 class LocalDownCompressModelUpdate(AbstractLocalUpdate):
-    """This class carry out the local update of MCM."""
+    """Implementation of the MCM-like algorithms local update.
+
+    Paradigm of MCM: uplink compression of gradients, downlink compression of model, preserve central model,
+    use up/down memories.
+    """
 
     def __init__(self, parameters: Parameters) -> None:
         super().__init__(parameters)
@@ -215,7 +243,12 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
 
 
 class LocalGhostUpdate(LocalArtemisUpdate):
-    """This class carry out the local update of the Ghost algorithm."""
+    """Implementation of Ghost local update.
+    This algorithm is impossible to implement in real life.
+
+    Paradigm of Ghost: uplink compression of gradient, downlink compression of model, with or without memories,
+    preserve the central model. Ghost updates the local model using the global model (which is impossible in practice).
+    """
 
     def send_global_informations_and_update_local_param(self, tuple_sent: torch.FloatTensor, step: float):
 

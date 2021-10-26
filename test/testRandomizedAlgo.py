@@ -49,6 +49,7 @@ class TestRandomizedAlgo(unittest.TestCase):
         cls.params = RandMCM().define(n_dimensions=dim,
                                       nb_devices=number_of_device,
                                       up_compression_model=SQuantization(1, dim),
+                                      down_compression_model=SQuantization(1, dim),
                                       nb_epoch=1,
                                       cost_models=cls.cost_models,
                                       step_formula=constant_step_size)

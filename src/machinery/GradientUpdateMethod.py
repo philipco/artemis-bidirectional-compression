@@ -26,7 +26,7 @@ class AbstractGradientUpdate(ABC):
     """
     The AbstractGradientUpdate class declares the factory methods while subclasses provide the implementation of this methods.
 
-    This class carry out the update of the global model held on the central server.
+    This class carries out the update of the global model held on the central server.
     """
 
     time_sample = 0
