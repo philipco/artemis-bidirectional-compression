@@ -28,9 +28,12 @@ fourfigsize=(13, 8)
 sixfigsize=(13, 11)
 
 Y_LEGENDS = {"loss": r"$\log_{10}(F(w_k) - F(w_*))$",
-             "ef": r"$\log_{10}(\| \| EF_k \| \|)$",
-             "rand_dist": r"$\log_{10}(\mathbb{E} \| \| w_k - w_k^i \| \|^2)$",
-             "rand_var": r"$\log_{10}( \| \| \mathbb{V}~[w_k^i] \| \| )$",
+             "ef": r"$\log_{10}( \| EF_k \|)$",
+             "rand_dist": r"$\log_{10}(\mathbb{E} \| w_k - w_k^i \|^2)$",
+             "h_i_dist": r"$\log_{10}(1 / N \sum \| h_k^i - h_k^* \|^2)$",
+             "avg_h_i_dist": r"$\log_{10}(1 / N \sum \| \overline{h_k^i} - h_k^* \|^2)$",
+             "tail_avg_h_i_dist": r"$\log_{10}(1 / N \sum \| \overline{h_k^i}^T - h_k^* \|^2)$",
+             "rand_var": r"$\log_{10}( \| \mathbb{V}~[w_k^i] \| )$",
              "train_loss": r"$\log($Train loss$)$",
              "test_loss": r"$\log($Test loss$)$",
              "accuracy": "Accuracy",}

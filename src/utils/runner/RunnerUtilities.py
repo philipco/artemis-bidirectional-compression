@@ -7,6 +7,7 @@ import gc
 import time
 import tracemalloc
 
+import numpy as np
 from pympler import asizeof
 from tqdm import tqdm
 
@@ -19,12 +20,12 @@ from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-NB_RUN = 5  # Number of gradient descent before averaging.
+NB_RUN = 2  # Number of gradient descent before averaging.
 
 
 def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1):
     assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-1-mem", "mcm-one-way",
-                     "mcm-other-options", "artemis-vs-existing", "artemis-and-ef"], \
+                     "mcm-other-options", "artemis-vs-existing", "artemis-and-ef", "memories"], \
         "The possible choice of algorithms are : " \
         "uni-vs-bi (to compare uni-compression with bi-compression), " \
         "with-without-ef (to compare algorithms using or not error-feedback), " \
@@ -57,6 +58,8 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
             list_algos = [VanillaSGD(), FedAvg(), FedPAQ(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
         else:
             list_algos = [VanillaSGD(), FedSGD(), FedPAQ(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
+    elif algos == "memories":
+        list_algos = [VanillaSGD(), Artemis(), ArtemisTailAvg(), ArtemisTailAvgDbsd(), ArtemisAvgDbsd()]
     return list_algos
 
 
@@ -202,7 +205,7 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, experim
 
     for param_algo in tqdm(list_algos):
         losses_by_algo, losses_avg_by_algo, norm_ef_by_algo, dist_model_by_algo = [], [], [], []
-        h_i_to_optimal_grad_by_algo, var_models_by_algo = [], []
+        h_i_to_optimal_grad_by_algo, avg_h_i_to_optimal_grad_by_algo, var_models_by_algo = [], [], []
         descent_by_step_size = {}
         for (value, label) in zip(values, labels):
 
@@ -221,20 +224,22 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, experim
 
             descent_by_step_size[label] = multiple_sg_descent
             losses_by_label, losses_avg_by_label, norm_ef_by_label, dist_model_by_label = [], [], [], []
-            h_i_to_optimal_grad_by_label, var_models_by_label = [], []
+            h_i_to_optimal_grad_by_label, avg_h_i_to_optimal_grad_by_label, var_models_by_label = [], [], []
 
             # Picking the minimum values for each of the run.
-            for seq_losses, seq_losses_avg, seq_norm_ef, seq_dist_model, seq_h_i_optimal, seq_var_models in \
+            for seq_losses, seq_losses_avg, seq_norm_ef, seq_dist_model, seq_h_i_optimal, seq_avg_h_i_optimal, seq_var_models in \
                     zip(multiple_sg_descent.train_losses, multiple_sg_descent.averaged_train_losses,
                         multiple_sg_descent.norm_error_feedback, multiple_sg_descent.dist_to_model,
-                        multiple_sg_descent.h_i_to_optimal_grad, multiple_sg_descent.var_models):
+                        multiple_sg_descent.h_i_to_optimal_grad, multiple_sg_descent.avg_h_i_to_optimal_grad, multiple_sg_descent.var_models):
 
-                losses_by_label.append(min(seq_losses))
+                min_losses = min(seq_losses)
+                losses_by_label.append(min_losses if min_losses is not np.nan else -16)
                 losses_avg_by_label.append(min(seq_losses_avg))
                 norm_ef_by_label.append(seq_norm_ef[-1])
                 dist_model_by_label.append(seq_dist_model[-1])
                 var_models_by_label.append(seq_var_models[-1])
                 h_i_to_optimal_grad_by_label.append(seq_h_i_optimal[-1])
+                avg_h_i_to_optimal_grad_by_label.append(seq_avg_h_i_optimal[-1])
 
             losses_by_algo.append(losses_by_label)
             losses_avg_by_algo.append(losses_avg_by_label)
@@ -242,6 +247,7 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, experim
             dist_model_by_algo.append(dist_model_by_label)
             var_models_by_algo.append(var_models_by_label)
             h_i_to_optimal_grad_by_algo.append(h_i_to_optimal_grad_by_label)
+            avg_h_i_to_optimal_grad_by_algo.append(avg_h_i_to_optimal_grad_by_label)
 
         res_by_algo_and_step_size = ResultsOfSeveralDescents(nb_devices_for_the_run)
         res_by_algo_and_step_size.add_dict_of_descent(descent_by_step_size)
@@ -260,7 +266,7 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, experim
 
         artificial_multiple_descent = AverageOfSeveralIdenticalRun()
         artificial_multiple_descent.append_list(losses_by_algo, losses_avg_by_algo, norm_ef_by_algo, dist_model_by_algo,
-                                                h_i_to_optimal_grad_by_algo, var_models_by_algo)
+                                                h_i_to_optimal_grad_by_algo, avg_h_i_to_optimal_grad_by_algo, var_models_by_algo)
         all_descent_various_gamma[param_algo.name()] = artificial_multiple_descent
         all_kind_of_compression_res.append(all_descent_various_gamma)
 

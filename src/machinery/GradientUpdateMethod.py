@@ -19,6 +19,8 @@ import torch
 from typing import Tuple
 import numpy as np
 
+from src.machinery.Memory import Memory
+from src.machinery.MemoryHandler import AbstractMemoryHandler
 from src.machinery.Parameters import Parameters
 
 
@@ -31,11 +33,12 @@ class AbstractGradientUpdate(ABC):
 
     time_sample = 0
 
-    def __init__(self, parameters: Parameters) -> None:
+    def __init__(self, parameters: Parameters, memory_handler: AbstractMemoryHandler) -> None:
         super().__init__()
         self.parameters = parameters
         self.step = 0
         self.all_delta_i = []
+        self.memory_handler = memory_handler
 
     def compute_cost(self, model_param):
         """Compute the cost function for the model's parameter."""
@@ -63,19 +66,19 @@ class AbstractGradientUpdate(ABC):
 class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
     """An abstract class common to all algorithm using a FL paradigm."""
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, memory_handler)
 
         # Delta sent from remote nodes to main server.
         self.all_delta_i = []
 
+        self.nb_it = 0
+
         # Local memories hold on the central server.
         if not self.parameters.use_unique_up_memory:
-            if self.parameters.use_up_memory: print("Using multiple up memories.")
-            self.h = [torch.zeros(parameters.n_dimensions, dtype=np.float) for k in range(self.parameters.nb_devices)]
+            self.memory = [Memory(parameters) for k in range(self.parameters.nb_devices)]
         else:
-            if self.parameters.use_up_memory: print("Using a single up memory.")
-            self.h = torch.zeros(parameters.n_dimensions, dtype=np.float)
+            self.memory = Memory(parameters)
 
         # Omega : used to update the model on central server.
         self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -255,10 +258,12 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             # Smart initialisation of the memory (it corresponds to the first computed gradient).
             if self.parameters.fraction_sampled_workers==1: # TODO : There is issue with PP and multiple memories
                 if full_nb_iterations == 1 and self.parameters.use_up_memory:
+                    # TODO !!!
                     if self.parameters.use_unique_up_memory:
-                        self.h = self.h + worker.local_update.h_i / len(self.get_set_of_workers(cost_models))
+                        self.memory.smart_initialization_with_unique_memory(
+                            worker.local_update.memory.get_current_h_i() / len(self.get_set_of_workers(cost_models)))
                     if not self.parameters.use_unique_up_memory:
-                        self.h[worker.ID] = worker.local_update.h_i
+                        self.memory[worker.ID].smart_initialization(worker.local_update.memory.get_current_h_i())
 
             # If nothing is returned by the device, this device does not participate to the learning at this iterations.
             # This may happened if it is considered that during one epoch each devices should run through all its data
@@ -267,25 +272,29 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 if self.parameters.use_unique_up_memory:
                     self.all_delta_i.append(compressed_delta_i)
                 else:
-                    self.all_delta_i.append(compressed_delta_i + self.h[worker.ID])
+                    which_mem = self.memory_handler.which_mem(self.memory[worker.ID])
+                    self.all_delta_i.append(compressed_delta_i + which_mem)
             if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
-                self.h[worker.ID] = self.h[worker.ID] + self.parameters.up_learning_rate * compressed_delta_i
+                self.memory_handler.update_memory(self.memory[worker.ID], compressed_delta_i)
 
         all_delta = self.compute_aggregation(self.all_delta_i)
 
         # Aggregating all delta
-        self.g = all_delta + [0, self.h][self.parameters.use_unique_up_memory]
+        if self.parameters.use_unique_up_memory:
+            self.g = all_delta + self.memory.get_current_h_i()
+        else:
+            self.g = all_delta
 
         if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
-            self.h = self.h + self.parameters.up_learning_rate * all_delta
+            self.memory.set_h_i(self.memory.get_current_h_i() + self.parameters.up_learning_rate * all_delta)
 
         if self.parameters.up_compression_model.level != 0:
             if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
-                assert isinstance(self.h, torch.Tensor), "Up memory is not a tensor."
-                assert not torch.equal(self.h, torch.zeros(self.parameters.n_dimensions, dtype=np.float)), "Up memory is still null."
-            if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
-                assert not isinstance(self.h, torch.FloatTensor) and len(self.h) == self.parameters.nb_devices, \
-                    "Up memory should be a list of length equal to the number of devices."
+                assert isinstance(self.memory.get_current_h_i(), torch.Tensor), "Up memory is not a tensor."
+                assert not torch.equal(self.memory.get_current_h_i(), torch.zeros(self.parameters.n_dimensions, dtype=np.float)), "Up memory is still null."
+            # if self.parameters.use_up_memory and not self.parameters.use_unique_up_memory:
+            #     assert not isinstance(self.memory.get_current_h_i(), torch.FloatTensor) and len(self.memory.get_current_h_i()) == self.parameters.nb_devices, \
+            #         "Up memory should be a list of length equal to the number of devices."
                 # assert all([not torch.equal(e, torch.zeros(self.parameters.n_dimensions, dtype=np.float)) for e in self.h]), \
                 #     "Up memories are still null."
 
@@ -295,8 +304,8 @@ class ArtemisUpdate(AbstractFLUpdate):
 
     It hold two potential memories (one for each way), and can either compress gradients, either models."""
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters, workers)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, workers, memory_handler)
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
@@ -328,8 +337,8 @@ class ArtemisUpdate(AbstractFLUpdate):
 
 class GhostUpdate(AbstractFLUpdate):
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters, workers)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, workers, memory_handler)
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
@@ -382,8 +391,8 @@ class GhostUpdate(AbstractFLUpdate):
 
 class DownCompressModelUpdate(AbstractFLUpdate):
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters, workers)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, workers, memory_handler)
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
@@ -448,8 +457,8 @@ class FedAvgUpdate(AbstractFLUpdate):
 
     It hold two potentiel memories (one for each way), and can either compress gradients, either models."""
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters, workers)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, workers, memory_handler)
 
     def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
@@ -483,8 +492,8 @@ class DianaUpdate(AbstractFLUpdate):
 
     It hold two potentiel memories (one for each way), and can either compress gradients, either models."""
 
-    def __init__(self, parameters: Parameters, workers) -> None:
-        super().__init__(parameters, workers)
+    def __init__(self, parameters: Parameters, workers, memory_handler: AbstractMemoryHandler) -> None:
+        super().__init__(parameters, workers, memory_handler)
 
         self.value_to_compress = torch.zeros(parameters.n_dimensions, dtype=np.float)
 

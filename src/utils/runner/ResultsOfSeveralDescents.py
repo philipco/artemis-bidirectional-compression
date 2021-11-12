@@ -30,6 +30,8 @@ class ResultsOfSeveralDescents:
         self.norm_error_feedback = []
         self.distance_to_model = []
         self.h_i_to_optimal_grad = []
+        self.avg_h_i_to_optimal_grad = []
+        self.tail_avg_h_i_to_optimal_grad = []
         self.var_models = []
         # self.names = []
 
@@ -49,7 +51,7 @@ class ResultsOfSeveralDescents:
             # self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in all_descent.values()]
             self.X_number_of_bits.append(descent.theoretical_nb_bits)
             self.omega_c = descent.omega_c
-            print(self.omega_c)
+            print("Omega c:", self.omega_c)
         elif deep_learning_run:
             compress_model = True if 'MCM' in name else False
             params = descent.parameters
@@ -62,6 +64,8 @@ class ResultsOfSeveralDescents:
         self.norm_error_feedback.append(descent.norm_error_feedback)
         self.distance_to_model.append(descent.dist_to_model)
         self.h_i_to_optimal_grad.append(descent.h_i_to_optimal_grad)
+        self.avg_h_i_to_optimal_grad.append(descent.avg_h_i_to_optimal_grad)
+        self.tail_avg_h_i_to_optimal_grad.append(descent.tail_avg_h_i_to_optimal_grad)
         self.var_models.append(descent.var_models)
         # self.names.append(descent.get_name())
 
@@ -89,7 +93,9 @@ class ResultsOfSeveralDescents:
         mean_losses = []
         for losses in all_losses:
             if in_log:
-                log_losses = [np.log10(loss - obj) for loss in losses]
+                log_losses = [np.log10(np.abs(loss - obj)) for loss in losses]
+                for i in range(len(log_losses)):
+                    log_losses[i][log_losses[i] == -np.inf] = -16
                 mean_losses.append(np.mean(log_losses, axis=0))
             else:
                 mean_losses.append(np.mean(losses - obj, axis=0))
@@ -159,6 +165,22 @@ class ResultsOfSeveralDescents:
 
     def get_h_i_to_optimal_grad_std(self, in_log=True):
         return self.getter_std(self.h_i_to_optimal_grad)
+
+    def get_avg_h_i_to_optimal_grad(self, in_log=True):
+        """Return the sequence of average distance between all the local memories and the corresponding optimal
+        gradients."""
+        return self.getter(self.avg_h_i_to_optimal_grad)
+
+    def get_avg_h_i_to_optimal_grad_std(self, in_log=True):
+        return self.getter_std(self.avg_h_i_to_optimal_grad)
+
+    def get_tail_avg_h_i_to_optimal_grad(self, in_log=True):
+        """Return the sequence of average distance between all the local memories and the corresponding optimal
+        gradients."""
+        return self.getter(self.tail_avg_h_i_to_optimal_grad)
+
+    def get_tail_avg_h_i_to_optimal_grad_std(self, in_log=True):
+        return self.getter_std(self.tail_avg_h_i_to_optimal_grad)
 
     def get_var_models(self, in_log=True):
         """Return the sequence of average distance between the central model and the remotes one for each of the
