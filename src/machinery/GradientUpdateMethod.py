@@ -258,9 +258,8 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             # Smart initialisation of the memory (it corresponds to the first computed gradient).
             if self.parameters.fraction_sampled_workers==1: # TODO : There is issue with PP and multiple memories
                 if full_nb_iterations == 1 and self.parameters.use_up_memory:
-                    # TODO !!!
                     if self.parameters.use_unique_up_memory:
-                        self.memory.smart_initialization_with_unique_memory(
+                        self.memory.smart_initialization(self.memory.get_current_h_i() +
                             worker.local_update.memory.get_current_h_i() / len(self.get_set_of_workers(cost_models)))
                     if not self.parameters.use_unique_up_memory:
                         self.memory[worker.ID].smart_initialization(worker.local_update.memory.get_current_h_i())

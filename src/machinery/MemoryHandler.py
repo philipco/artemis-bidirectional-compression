@@ -28,9 +28,11 @@ class AbstractMemoryHandler(ABC):
             memory.set_h_i(self.update_h_i(memory, quantized_delta_i))
             memory.nb_it += 1
             self.update_average_h_i(memory)
-            self.update_tail_average_h_i(memory)
+            if self.parameters.save_all_memories:
+                self.update_tail_average_h_i(memory)
 
     def update_tail_average_h_i(self, memory: Memory):
+        ## This is working correctly !
         new_val = memory.get_current_h_i()
         if self.parameters.awa_tail_averaging:
             memory.tail_averaged_h_i = self.awa_averager.compute_average(memory.nb_it, new_val)

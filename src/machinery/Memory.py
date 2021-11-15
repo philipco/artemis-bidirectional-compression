@@ -24,7 +24,8 @@ class Memory:
             self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
         self.averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.tail_averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        if self.parameters.save_all_memories:
+            self.tail_averaged_h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
 
     def set_h_i(self, new_h):
         if self.parameters.save_all_memories:
@@ -38,18 +39,11 @@ class Memory:
         else:
             return self.h_i
 
-    def smart_initialization_with_unique_memory(self, first_gradient):
-        if self.parameters.save_all_memories:
-            self.h_i[-1] = self.h_i[-1] + first_gradient
-        else:
-            self.h_i = self.h_i[-1] + first_gradient
-        self.averaged_h_i = self.h_i[-1]
-        self.tail_averaged_h_i = self.h_i[-1]
-
     def smart_initialization(self, first_gradient):
         if self.parameters.save_all_memories:
             self.h_i[-1] = first_gradient
         else:
             self.h_i = first_gradient
-        self.averaged_h_i = first_gradient
-        self.tail_averaged_h_i = first_gradient
+        self.averaged_h_i = self.h_i[-1]
+        if self.parameters.save_all_memories:
+            self.tail_averaged_h_i = self.h_i[-1]

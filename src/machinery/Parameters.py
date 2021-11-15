@@ -87,7 +87,7 @@ class Parameters:
         self.reset_memories = False
         self.use_unique_up_memory = True
         self.use_unique_down_memory = False
-        self.save_all_memories = save_all_memories
+        self.save_all_memories = save_all_memories # used only if tail averaging is required !
         self.debiased = False
         self.expo_tail_averaging = False
         self.awa_tail_averaging = False

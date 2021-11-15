@@ -24,6 +24,10 @@ class PredefinedParameters:
     Keep high degree of customization.
     """
 
+    def __init__(self, save_all_memories: bool = False) -> None:
+        super().__init__()
+        self.save_all_memories = save_all_memories
+
     def name(self) -> str:
         """Name of the predefined parameters.
         """
@@ -80,7 +84,7 @@ class VanillaSGD(PredefinedParameters):
                           cost_models=cost_models,
                           use_averaging=use_averaging,
                           use_up_memory=False,
-                          save_all_memories=True
+                          save_all_memories=self.save_all_memories
                           )
 
 class VanillaSGDMem(VanillaSGD):
@@ -202,7 +206,6 @@ class Artemis(Diana):
         # Important settings to recover results provided in the paper !
         params.use_down_memory = False
         params.use_unique_up_memory = False
-        params.save_all_memories = True
         params.down_compression_model = down_compression_model
         return params
 
@@ -225,7 +228,6 @@ class ArtemisAvg(Diana):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = False
-        params.save_all_memories = True
         params.down_compression_model = down_compression_model
         return params
 
@@ -271,7 +273,6 @@ class ArtemisExpoTailAvgDbsd(ArtemisTailAvg):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = True
-        params.save_all_memories = True
         params.expo_tail_averaging = True
         # params.debiased = True
         params.down_compression_model = down_compression_model
@@ -296,7 +297,6 @@ class ArtemisAWATailAvgDbsd(ArtemisTailAvg):
                                 stochastic, streaming, batch_size)
         params.use_down_memory = False
         params.use_unique_up_memory = True
-        params.save_all_memories = True
         params.awa_tail_averaging = True
         params.debiased = True
         params.down_compression_model = down_compression_model
@@ -348,7 +348,6 @@ class ArtemisAvgDbsd(Diana):
         params.use_down_memory = False
         params.use_unique_up_memory = False
         params.debiased = True
-        params.save_all_memories = True
         params.down_compression_model = down_compression_model
         return params
 
