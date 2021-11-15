@@ -28,6 +28,8 @@ import psutil
 
 from src.machinery.GradientUpdateMethod import *
 from src.machinery.LocalUpdate import *
+from src.machinery.MemoryHandler import ClassicMemoryHandler, NoMemoryHandler, TailAverageMemoryHandler, \
+    AverageMemoryHandler
 from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
 from src.models.CompressionModel import SQuantization
@@ -59,6 +61,8 @@ class AGradientDescent(ABC):
         self.norm_error_feedback = []
         self.dist_to_model = [torch.tensor(0.)]
         self.h_i_to_optimal_grad = []
+        self.avg_h_i_to_optimal_grad = []
+        self.tail_avg_h_i_to_optimal_grad = []
         self.var_models = [torch.tensor(0.)]
         self.averaged_train_losses = []
         self.memory_info = None
@@ -87,7 +91,7 @@ class AGradientDescent(ABC):
                                                   self.parameters.nb_devices)
 
         # Creating each worker of the network.
-        self.workers = [Worker(i, parameters, self.__local_update__()) for i in range(self.parameters.nb_devices)]
+        self.workers = [Worker(i, self.__local_update__()) for i in range(self.parameters.nb_devices)]
 
         # Call for the update method of the gradient descent.
         self.update = self.__global_update__()
@@ -100,6 +104,14 @@ class AGradientDescent(ABC):
 
         Returns:
             The global update procedure for the gradient descent.
+        """
+        pass
+
+    @abstractmethod
+    def __memory_handler__(self) -> AbstractMemoryHandler:
+        """Factory method for the memory handler.
+        Returns:
+            The update procedure for the gradient descent.
         """
         pass
 
@@ -227,14 +239,23 @@ class AGradientDescent(ABC):
         # If we interrupted the run, we need to complete the list of loss to reach the number of iterations.
         # Otherwise it may later cause issues.
         if len(self.train_losses) != self.parameters.nb_epoch:
-            self.train_losses = self.train_losses + [self.train_losses[-1] for i in range(self.parameters.nb_epoch - len(self.train_losses))]
+            self.train_losses = self.train_losses + [self.train_losses[-1] for i in range(
+                self.parameters.nb_epoch - len(self.train_losses))]
         if len(self.norm_error_feedback) != self.parameters.nb_epoch:
-            self.norm_error_feedback = self.norm_error_feedback + [self.norm_error_feedback[-1] for i in range(self.parameters.nb_epoch - len(self.norm_error_feedback))]
+            self.norm_error_feedback = self.norm_error_feedback + [self.norm_error_feedback[-1] for i in range(
+                self.parameters.nb_epoch - len(self.norm_error_feedback))]
         if len(self.averaged_train_losses) != self.parameters.nb_epoch and self.parameters.use_averaging == True:
-            self.averaged_train_losses = self.averaged_train_losses + [self.averaged_train_losses[-1] for i in range(self.parameters.nb_epoch - len(self.averaged_train_losses))]
+            self.averaged_train_losses = self.averaged_train_losses + [self.averaged_train_losses[-1] for i in range(
+                self.parameters.nb_epoch - len(self.averaged_train_losses))]
         if len(self.dist_to_model) != self.parameters.nb_epoch:
             self.dist_to_model = self.dist_to_model + [self.dist_to_model[-1] for i in range(
                 self.parameters.nb_epoch - len(self.dist_to_model))]
+        if len(self.h_i_to_optimal_grad) != self.parameters.nb_epoch and len(self.h_i_to_optimal_grad) != 0:
+            self.h_i_to_optimal_grad = self.h_i_to_optimal_grad + [self.h_i_to_optimal_grad[-1] for i in range(
+                self.parameters.nb_epoch - len(self.h_i_to_optimal_grad))]
+        if len(self.avg_h_i_to_optimal_grad) != self.parameters.nb_epoch and len(self.avg_h_i_to_optimal_grad) != 0:
+            self.avg_h_i_to_optimal_grad = self.avg_h_i_to_optimal_grad + [self.avg_h_i_to_optimal_grad[-1] for i in range(
+                self.parameters.nb_epoch - len(self.avg_h_i_to_optimal_grad))]
         if len(self.var_models) != self.parameters.nb_epoch:
             self.var_models = self.var_models + [self.var_models[-1] for i in range(
                 self.parameters.nb_epoch - len(self.var_models))]
@@ -244,7 +265,8 @@ class AGradientDescent(ABC):
             print("Gradient Descent: execution time={t:.3f} seconds".format(t=elapsed_time))
             print("Final loss : {0:.5f}\n".format(self.train_losses[-1]))
 
-        del averaged_model_params
+        if self.parameters.use_averaging:
+            del averaged_model_params
         del current_model_param
         del past_model
         return elapsed_time
@@ -269,8 +291,18 @@ class AGradientDescent(ABC):
         ))
         if self.optimal_grad is not None:
             self.h_i_to_optimal_grad.append(np.mean(
-                [torch.norm(self.workers[i].local_update.h_i - self.optimal_grad[i]) ** 2 for i in range(len(self.workers))]
+                [torch.norm(self.workers[i].local_update.memory.h_i[-1] - self.optimal_grad[i]) ** 2 for i in
+                 range(len(self.workers))]
             ))
+            self.avg_h_i_to_optimal_grad.append(np.mean(
+                [torch.norm(self.workers[i].local_update.memory.averaged_h_i - self.optimal_grad[i]) ** 2 for i in
+                 range(len(self.workers))]
+            ))
+            if self.parameters.save_all_memories:
+                self.tail_avg_h_i_to_optimal_grad.append(np.mean(
+                    [torch.norm(self.workers[i].local_update.memory.tail_averaged_h_i - self.optimal_grad[i]) ** 2 for i in
+                     range(len(self.workers))]
+                ))
         # if (not self.parameters.randomized):
         #     assert torch.all(torch.norm(past_model - self.workers[0].local_update.model_param) ** 2 == torch.tensor(0.0)), \
         #         "The distance from central server and remote nodes is not null."
@@ -301,13 +333,67 @@ class ArtemisDescent(AGradientDescent):
     """
 
     def __local_update__(self) -> AbstractLocalUpdate:
-        return LocalArtemisUpdate
+        return LocalArtemisUpdate(self.parameters, self.__memory_handler__())
+
+    def __memory_handler__(self) -> AbstractMemoryHandler:
+        return ClassicMemoryHandler(self.parameters)
 
     def __global_update__(self) -> AbstractGradientUpdate:
-        return ArtemisUpdate(self.parameters, self.workers)
+        return ArtemisUpdate(self.parameters, self.workers, self.__memory_handler__())
 
     def get_name(self) -> str:
         return "Artemis"
+
+
+class BiQsgdDescent(AGradientDescent):
+    """Implementation of BiQSGD.
+    """
+
+    def __local_update__(self):
+        return LocalArtemisUpdate(self.parameters, self.__memory_handler__())
+
+    def __global_update__(self) -> AbstractGradientUpdate:
+        return ArtemisUpdate(self.parameters, self.workers, self.__memory_handler__())
+
+    def __memory_handler__(self) -> AbstractMemoryHandler:
+        return NoMemoryHandler(self.parameters)
+
+    def get_name(self) -> str:
+        return "BiQSGD"
+
+
+class AvgArtemisDescent(AGradientDescent):
+    """Implementation of BiQSGD.
+    """
+
+    def __local_update__(self):
+        return LocalArtemisUpdate(self.parameters, self.__memory_handler__())
+
+    def __global_update__(self) -> AbstractGradientUpdate:
+        return ArtemisUpdate(self.parameters, self.workers, self.__memory_handler__())
+
+    def __memory_handler__(self) -> AbstractMemoryHandler:
+        return AverageMemoryHandler(self.parameters)
+
+    def get_name(self) -> str:
+        return "AvgArtemis"
+
+
+class TailAvgArtemisDescent(AGradientDescent):
+    """Implementation of BiQSGD.
+    """
+
+    def __local_update__(self):
+        return LocalArtemisUpdate(self.parameters, self.__memory_handler__())
+
+    def __global_update__(self) -> AbstractGradientUpdate:
+        return ArtemisUpdate(self.parameters, self.workers, self.__memory_handler__())
+
+    def __memory_handler__(self) -> AbstractMemoryHandler:
+        return TailAverageMemoryHandler(self.parameters)
+
+    def get_name(self) -> str:
+        return "TailArtemis"
 
 
 class SGD_Descent(AGradientDescent):
@@ -323,10 +409,13 @@ class SGD_Descent(AGradientDescent):
         self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
 
     def __local_update__(self) -> AbstractLocalUpdate:
-        return LocalGradientVanillaUpdate
+        return LocalGradientVanillaUpdate(self.parameters, self.__memory_handler__())
 
     def __global_update__(self) -> AbstractGradientUpdate:
-        return GradientVanillaUpdate(self.parameters, self.workers)
+        return GradientVanillaUpdate(self.parameters, self.workers, self.__memory_handler__())
+
+    def __memory_handler__(self) -> AbstractMemoryHandler:
+        return NoMemoryHandler(self.parameters)
 
     def get_name(self) -> str:
         return "VanillaGradient"
@@ -343,13 +432,36 @@ class DianaDescent(AGradientDescent):
         self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
 
     def __local_update__(self) -> AbstractLocalUpdate:
-        return LocalDianaUpdate
+        return LocalDianaUpdate(self.parameters, self.__memory_handler__())
 
     def __global_update__(self) -> AbstractGradientUpdate:
-        return DianaUpdate(self.parameters, self.workers)
+        return DianaUpdate(self.parameters, self.workers, self.__memory_handler__())
+
+    def __memory_handler__(self) -> AbstractMemoryHandler:
+        return ClassicMemoryHandler(self.parameters)
 
     def get_name(self) -> str:
         return "Diana"
+    
+
+class QsgdDescent(AGradientDescent):
+
+    def __init__(self, parameters: Parameters, algos_pickle_path: str) -> None:
+        super().__init__(parameters, algos_pickle_path)
+        # Diana doesn't carry out a down compression.
+        self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
+
+    def __local_update__(self):
+        return LocalDianaUpdate(self.parameters, self.__memory_handler__())
+
+    def __global_update__(self) -> AbstractGradientUpdate:
+        return DianaUpdate(self.parameters, self.workers, self.__memory_handler__())
+
+    def __memory_handler__(self) -> AbstractMemoryHandler:
+        return NoMemoryHandler(self.parameters)
+
+    def get_name(self) -> str:
+        return "QSGD"
 
 
 class FedAvgDescent(AGradientDescent):
@@ -362,10 +474,13 @@ class FedAvgDescent(AGradientDescent):
         self.parameters.down_compression_model = SQuantization(0, self.parameters.n_dimensions)
 
     def __local_update__(self) -> AbstractLocalUpdate:
-        return LocalFedAvgUpdate
+        return LocalFedAvgUpdate(self.parameters, self.__memory_handler__())
 
     def __global_update__(self) -> AbstractGradientUpdate:
-        return FedAvgUpdate(self.parameters, self.workers)
+        return FedAvgUpdate(self.parameters, self.workers, self.__memory_handler__())
+
+    def __memory_handler__(self) -> AbstractMemoryHandler:
+        return NoMemoryHandler(self.parameters)
 
     def __number_iterations__(self, cost_models) -> int:
         if self.parameters.stochastic:
@@ -391,10 +506,13 @@ class DownCompressModelDescent(AGradientDescent):
                      preserve the central model.
     """
     def __local_update__(self) -> AbstractLocalUpdate:
-        return LocalDownCompressModelUpdate
+        return LocalDownCompressModelUpdate(self.parameters, self.__memory_handler__())
 
     def __global_update__(self) -> AbstractGradientUpdate:
-        return DownCompressModelUpdate(self.parameters, self.workers)
+        return DownCompressModelUpdate(self.parameters, self.workers, self.__memory_handler__())
+
+    def __memory_handler__(self) -> AbstractMemoryHandler:
+        return ClassicMemoryHandler(self.parameters)
 
     def get_name(self) -> str:
         return "DwnComprModel"
@@ -412,7 +530,10 @@ class GhostDescent(AGradientDescent):
         return LocalGhostUpdate
 
     def __global_update__(self) -> AbstractGradientUpdate:
-        return GhostUpdate(self.parameters, self.workers)
+        return GhostUpdate(self.parameters, self.__memory_handler__())
+
+    def __memory_handler__(self) -> AbstractMemoryHandler:
+        return ClassicMemoryHandler(self.parameters)
 
     def get_name(self) -> str:
         return "Ghost"

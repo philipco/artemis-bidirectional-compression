@@ -123,7 +123,10 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     label_compression = ["SGD"] + [str(value.omega_c)[:4] for value in values_compression[1:]]
 
-    values_alpha = [SQuantization(1, dim_notebook, norm=2, constant=0.25),
+    values_alpha = [SQuantization(1, dim_notebook, norm=2, constant=0.01),
+                    SQuantization(1, dim_notebook, norm=2, constant=0.1),
+                    SQuantization(1, dim_notebook, norm=2, constant=0.2),
+                    SQuantization(1, dim_notebook, norm=2, constant=0.25),
                     SQuantization(1, dim_notebook, norm=2, constant=0.5),
                     SQuantization(1, dim_notebook, norm=2, constant=1),
                     SQuantization(1, dim_notebook, norm=2, constant=2),
@@ -180,7 +183,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                         logs_file=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
         elif scenario == "alpha":
-            run_for_different_scenarios(cost_models, [Artemis(), MCM(), RandMCM()], values_alpha, label_alpha,
+            run_for_different_scenarios(cost_models, list_algos[1:], values_alpha, label_alpha,
                                         experiments_settings=experiments_settings,
                                         logs_file=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
@@ -215,6 +218,20 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                         x_points=res.X_number_of_bits, x_legend="Communicated bits",
                         all_error=res.get_std(obj_min), picture_name="{0}/bits-noavg-{1}"
                         .format(picture_path, experiments_settings))
+        plot_error_dist(res.get_h_i_to_optimal_grad(np.array(0)), res.names,
+                        all_error=res.get_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
+                        picture_name="{0}/h_i-{1}".format(picture_path, experiments_settings), ylegends="h_i_dist")
+        plot_error_dist(res.get_avg_h_i_to_optimal_grad(np.array(0)), res.names,
+                        all_error=res.get_avg_h_i_to_optimal_grad_std(np.array(0)), x_legend="Number of passes on data",
+                        picture_name="{0}/h_i_avg-{1}".format(picture_path, experiments_settings),
+                        ylegends="avg_h_i_dist")
+        if algos == "memories":
+            # Tail averaging is systematically computed only in this case.
+            plot_error_dist(res.get_tail_avg_h_i_to_optimal_grad(np.array(0)), res.names,
+                            all_error=res.get_tail_avg_h_i_to_optimal_grad_std(np.array(0)),
+                            x_legend="Number of passes on data",
+                            picture_name="{0}/tail_h_i_avg-{1}".format(picture_path, experiments_settings),
+                            ylegends="tail_avg_h_i_dist")
 
         # Plotting with averaging
         if use_averaging:
@@ -249,13 +266,13 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
                         x_legend=["$\omega_c$", "$\\alpha_{dwn}^{-1} \\times (\omega_c + 1)^{-1}$"][scenario=="alpha"],
                         one_on_two_points=True, xlabels=[label_compression, label_alpha][scenario=="alpha"],
-                        picture_name="{0}/{1}/{2}".format(picture_path, scenario, experiments_settings))
+                        picture_name="{0}/{1}-{2}".format(picture_path, scenario, experiments_settings))
 
         res_by_algo = pickle_loader("{0}/{1}-descent_by_algo-{2}".format(algos_pickle_path, scenario, experiments_settings))
         for key in res_by_algo.keys():
             res = res_by_algo[key]
             plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
-                            x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}/{2}-it-noavg-{3}"
+                            x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}-{2}-it-noavg-{3}"
                             .format(picture_path, scenario, key, experiments_settings))
 
         # res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
@@ -276,15 +293,27 @@ if __name__ == '__main__':
         if sys.argv[2] == "logistic":
             run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
                             use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True, scenario="alpha")
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True, scenario="step")
             run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
                             use_averaging=True)
         elif sys.argv[2] == "linear":
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
+                            algos=sys.argv[3], use_averaging=True, scenario=None)
             run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
-                            use_averaging=True)
+                            use_averaging=True, scenario="alpha")
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True, scenario="step")
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid',
+                            algos=sys.argv[3], use_averaging=True, scenario="alpha")
             run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
                             use_averaging=True)
             run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid', algos=sys.argv[3],
                             use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid',
+                            algos=sys.argv[3], use_averaging=True, scenario="alpha")
         else:
             raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
 
