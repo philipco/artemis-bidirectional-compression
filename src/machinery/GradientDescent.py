@@ -298,7 +298,7 @@ class AGradientDescent(ABC):
                 [torch.norm(self.workers[i].local_update.memory.averaged_h_i - self.optimal_grad[i]) ** 2 for i in
                  range(len(self.workers))]
             ))
-            if self.parameters.save_all_memories:
+            if isinstance(self.update.memory_handler, TailAverageMemoryHandler):
                 self.tail_avg_h_i_to_optimal_grad.append(np.mean(
                     [torch.norm(self.workers[i].local_update.memory.tail_averaged_h_i - self.optimal_grad[i]) ** 2 for i in
                      range(len(self.workers))]

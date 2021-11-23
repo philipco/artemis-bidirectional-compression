@@ -16,6 +16,7 @@ class Memory:
     def __init__(self, parameters: Parameters, is_using_tail: bool):
         super().__init__()
         self.parameters = parameters
+        self.is_using_tail = is_using_tail
 
         self.nb_it = 0
 
@@ -52,6 +53,6 @@ class Memory:
             self.h_i[-1] = first_gradient
         else:
             self.h_i = first_gradient
-        self.averaged_h_i = self.h_i[-1]
-        if self.parameters.save_all_memories:
-            self.tail_averaged_h_i = self.h_i[-1]
+        self.averaged_h_i = first_gradient
+        if self.is_using_tail:
+            self.tail_averaged_h_i = first_gradient

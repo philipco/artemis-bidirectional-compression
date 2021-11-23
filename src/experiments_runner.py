@@ -185,7 +185,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                         scenario=scenario, compression=compression_by_default)
         elif scenario == "alpha":
             run_for_different_scenarios(cost_models, list_algos[1:], values_alpha, label_alpha,
-                                        experiments_settings=experiments_settings,
+                                        experiments_settings=experiments_settings, step_formula=step_size,
                                         logs_file=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
         else:
