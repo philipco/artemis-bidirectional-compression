@@ -12,7 +12,7 @@ import torch
 import numpy as np
 
 from src.machinery.Memory import Memory
-from src.machinery.MemoryHandler import AbstractMemoryHandler
+from src.machinery.MemoryHandler import AbstractMemoryHandler, TailAverageMemoryHandler
 from src.models.CostModel import ACostModel
 from src.machinery.Parameters import Parameters
 
@@ -34,7 +34,7 @@ class AbstractLocalUpdate(ABC):
 
         # Local memory.
         self.memory_handler = memory_handler
-        self.memory = Memory(parameters)
+        self.memory = Memory(parameters, isinstance(self.memory_handler, TailAverageMemoryHandler))
 
         # Local delta (information that is sent to central server).
         self.delta_i = torch.zeros(parameters.n_dimensions, dtype=np.float)

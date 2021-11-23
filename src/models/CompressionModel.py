@@ -96,8 +96,8 @@ class CompressionModel(ABC):
         if self.level == 0:
             return 0
         if len(args) == 1:
-            return 1 / (self.constant * (self.__compute_omega_c__(args[0]) + 1))
-        return 1 / (self.constant * (self.omega_c + 1))
+            return self.constant / (self.__compute_omega_c__(args[0]) + 1)
+        return self.constant / (self.omega_c + 1)
 
 
 class TopKSparsification(CompressionModel):

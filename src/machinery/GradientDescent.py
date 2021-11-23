@@ -303,6 +303,8 @@ class AGradientDescent(ABC):
                     [torch.norm(self.workers[i].local_update.memory.tail_averaged_h_i - self.optimal_grad[i]) ** 2 for i in
                      range(len(self.workers))]
                 ))
+            else:
+                self.tail_avg_h_i_to_optimal_grad.append(np.array(0))
         # if (not self.parameters.randomized):
         #     assert torch.all(torch.norm(past_model - self.workers[0].local_update.model_param) ** 2 == torch.tensor(0.0)), \
         #         "The distance from central server and remote nodes is not null."

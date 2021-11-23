@@ -255,12 +255,12 @@ class ArtemisTailAvg(Diana):
         return params
 
 
-class ArtemisExpoTailAvgDbsd(ArtemisTailAvg):
+class ArtemisExpoTailAvg(ArtemisTailAvg):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "Artemis+ExpoTail+Dbsd"
+        return "Artailmis+Expo"
 
     def type_FL(self):
         return TailAvgArtemisDescent
@@ -271,20 +271,18 @@ class ArtemisExpoTailAvgDbsd(ArtemisTailAvg):
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.use_down_memory = False
-        params.use_unique_up_memory = True
+        params.save_all_memories = False
         params.expo_tail_averaging = True
-        # params.debiased = True
-        params.down_compression_model = down_compression_model
+        params.debiased = True
         return params
 
 
-class ArtemisAWATailAvgDbsd(ArtemisTailAvg):
+class ArtemisSimpleExpoTailAvg(ArtemisTailAvg):
     """Predefine parameters to run Artemis algorithm.
     """
 
     def name(self) -> str:
-        return "Artemis+AWATail+Dbsd"
+        return "Artailmis+10LastExpo"
 
     def type_FL(self):
         return TailAvgArtemisDescent
@@ -295,11 +293,31 @@ class ArtemisAWATailAvgDbsd(ArtemisTailAvg):
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.use_down_memory = False
-        params.use_unique_up_memory = True
-        params.awa_tail_averaging = True
+        params.save_all_memories = False
+        params.simple_expo_tail_averaging = True
         params.debiased = True
-        params.down_compression_model = down_compression_model
+        return params
+
+
+class ArtemisAWATailAvg(ArtemisTailAvg):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "Artailmis+AWA"
+
+    def type_FL(self):
+        return TailAvgArtemisDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.save_all_memories = False
+        params.debiased = True
+        params.awa_tail_averaging = True
         return params
 
 
@@ -308,7 +326,7 @@ class ArtemisTailAvgDbsd(Diana):
     """
 
     def name(self) -> str:
-        return "Artemis+Tail+Debsd"
+        return "Artailmis"
 
     def type_FL(self):
         return TailAvgArtemisDescent
@@ -324,7 +342,6 @@ class ArtemisTailAvgDbsd(Diana):
         params.save_all_memories = True
         params.debiased = True
         params.use_unique_up_memory = False
-        # params.expo_tail_averaging = True
         params.down_compression_model = down_compression_model
         return params
 

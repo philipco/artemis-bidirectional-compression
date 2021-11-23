@@ -2,7 +2,7 @@
 Created by Philippenko, 15 January 2021
 """
 import sys
-from guppy import hpy
+# from guppy import hpy
 
 from src.models.CostModel import build_several_cost_model
 from src.utils.ConvexSettings import batch_sizes, models
@@ -37,7 +37,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos, fraction_sampled_workers)
 
-    list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
+    list_algos = choose_algo(algos, stochastic, fraction_sampled_workers, scenario)
     nb_devices = nb_devices
     nb_epoch = 600 if stochastic else 400
 
@@ -125,13 +125,14 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     values_alpha = [SQuantization(1, dim_notebook, norm=2, constant=0.01),
                     SQuantization(1, dim_notebook, norm=2, constant=0.1),
-                    SQuantization(1, dim_notebook, norm=2, constant=0.2),
                     SQuantization(1, dim_notebook, norm=2, constant=0.25),
                     SQuantization(1, dim_notebook, norm=2, constant=0.5),
                     SQuantization(1, dim_notebook, norm=2, constant=1),
                     SQuantization(1, dim_notebook, norm=2, constant=2),
                     SQuantization(1, dim_notebook, norm=2, constant=4),
-                    SQuantization(1, dim_notebook, norm=2, constant=8)
+                    SQuantization(1, dim_notebook, norm=2, constant=10),
+                    SQuantization(1, dim_notebook, norm=2, constant=25),
+                    SQuantization(1, dim_notebook, norm=2, constant=50)
                     ]
 
     label_alpha = [str(value.constant) for value in values_alpha]
@@ -264,15 +265,15 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         create_folder_if_not_existing("{0}/{1}".format(picture_path, scenario))
         res = pickle_loader("{0}/{1}-{2}".format(algos_pickle_path, scenario, experiments_settings))
         plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
-                        x_legend=["$\omega_c$", "$\\alpha_{dwn}^{-1} \\times (\omega_c + 1)^{-1}$"][scenario=="alpha"],
+                        x_legend=["$\omega_c$", "$\\alpha_{dwn} \\times (\omega_c + 1)$"][scenario=="alpha"],
                         one_on_two_points=True, xlabels=[label_compression, label_alpha][scenario=="alpha"],
-                        picture_name="{0}/{1}-{2}".format(picture_path, scenario, experiments_settings))
+                        picture_name="{0}/{1}/{2}".format(picture_path, scenario, experiments_settings))
 
         res_by_algo = pickle_loader("{0}/{1}-descent_by_algo-{2}".format(algos_pickle_path, scenario, experiments_settings))
         for key in res_by_algo.keys():
             res = res_by_algo[key]
             plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
-                            x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}-{2}-it-noavg-{3}"
+                            x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}/{2}-it-noavg-{3}"
                             .format(picture_path, scenario, key, experiments_settings))
 
         # res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
@@ -299,19 +300,21 @@ if __name__ == '__main__':
                             use_averaging=True, scenario="step")
             run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
                             use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+                            use_averaging=True, scenario="alpha")
         elif sys.argv[2] == "linear":
             run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
                             algos=sys.argv[3], use_averaging=True, scenario=None)
-            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
-                            use_averaging=True, scenario="alpha")
-            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
-                            use_averaging=True, scenario="step")
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
+                            algos=sys.argv[3], use_averaging=True, scenario="alpha")
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
+                            algos=sys.argv[3], use_averaging=True, scenario="step")
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid',
+                            algos=sys.argv[3], use_averaging=True)
             run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid',
                             algos=sys.argv[3], use_averaging=True, scenario="alpha")
-            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid', algos=sys.argv[3],
-                            use_averaging=True)
-            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid', algos=sys.argv[3],
-                            use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid',
+                            algos=sys.argv[3], use_averaging=True)
             run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid',
                             algos=sys.argv[3], use_averaging=True, scenario="alpha")
         else:
@@ -320,15 +323,17 @@ if __name__ == '__main__':
     elif sys.argv[1] == "real":
         for sto in [False, True]:
             for dataset in [sys.argv[2]]:
-                # run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                #                 use_averaging=True, scenario="alpha", fraction_sampled_workers=float(sys.argv[5]))
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                                 use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))
 
-        # for sto in [True, False]:
-        #     for dataset in ["phishing", "mushroom", "a9a", "quantum", "superconduct"]:
-        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[3],
-        #                         use_averaging=True, scenario="step")
-        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[3],
-        #                           use_averaging=True, scenario="compression")
+        for sto in [False, True]:
+            for dataset in [sys.argv[2]]:
+                if sys.argv[3] == "memories":
+                    run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+                                    use_averaging=True, scenario="alpha", fraction_sampled_workers=float(sys.argv[5]))
+                # else:
+                    # run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[3],
+                    #                 use_averaging=True, scenario="step")
+                    # run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[3],
+                    #                   use_averaging=True, scenario="compression")
 

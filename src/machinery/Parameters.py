@@ -89,7 +89,14 @@ class Parameters:
         self.use_unique_down_memory = False
         self.save_all_memories = save_all_memories # used only if tail averaging is required !
         self.debiased = False
+
+        self.simple_expo_tail_averaging = False
         self.expo_tail_averaging = False
+
+        # We have to use tail approximator if we are not in a full batch regime, otherwise computation is too long !
+        # if self.save_all_memories and self.stochastic:
+        #     self.expo_tail_averaging = True
+
         self.awa_tail_averaging = False
         self.verbose = verbose
         self.use_averaging = use_averaging  # true if using a Polyak-Ruppert averaging.

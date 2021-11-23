@@ -23,7 +23,7 @@ from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 NB_RUN = 5  # Number of gradient descent before averaging.
 
 
-def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1):
+def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1, scenario=None):
     assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-1-mem", "mcm-one-way",
                      "mcm-other-options", "artemis-vs-existing", "artemis-and-ef", "memories"], \
         "The possible choice of algorithms are : " \
@@ -59,8 +59,17 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
         else:
             list_algos = [VanillaSGD(), FedSGD(), FedPAQ(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
     elif algos == "memories":
-        list_algos = [VanillaSGD(save_all_memories=True), Artemis(save_all_memories=True), ArtemisTailAvg(save_all_memories=True),
-                      ArtemisTailAvgDbsd(save_all_memories=True), ArtemisAvgDbsd(save_all_memories=True)]
+        if stochastic:
+            if scenario is not None:
+                list_algos = [VanillaSGD(), Artemis(), ArtemisAWATailAvg(), ArtemisExpoTailAvg(),
+                              ArtemisSimpleExpoTailAvg()]
+            else:
+                list_algos = [VanillaSGD(), Artemis(save_all_memories=True), ArtemisAWATailAvg(save_all_memories=True),
+                              ArtemisExpoTailAvg(save_all_memories=True), ArtemisSimpleExpoTailAvg(save_all_memories=True)]
+        else:
+            list_algos = [VanillaSGD(), Artemis(save_all_memories=True), ArtemisTailAvgDbsd(save_all_memories=True),
+                          ArtemisAWATailAvg(save_all_memories=True), ArtemisExpoTailAvg(save_all_memories=True),
+                          ArtemisSimpleExpoTailAvg(save_all_memories=True)]
     return list_algos
 
 
