@@ -291,7 +291,7 @@ class AGradientDescent(ABC):
         ))
         if self.optimal_grad is not None:
             self.h_i_to_optimal_grad.append(np.mean(
-                [torch.norm(self.workers[i].local_update.memory.h_i[-1] - self.optimal_grad[i]) ** 2 for i in
+                [torch.norm(self.workers[i].local_update.memory.get_current_h_i() - self.optimal_grad[i]) ** 2 for i in
                  range(len(self.workers))]
             ))
             self.avg_h_i_to_optimal_grad.append(np.mean(
