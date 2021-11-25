@@ -4,6 +4,8 @@ Created by Philippenko, 6th March 2020.
 This python file provide facilities to plot the results of a (multiple) gradient descent run.
 """
 import matplotlib
+import numpy as np
+
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
     'font.family': 'serif',
@@ -14,7 +16,7 @@ matplotlib.rcParams.update({
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 
-from src.utils.Utilities import drop_nan_values, keep_until_found_nan
+from src.utils.Utilities import drop_nan_values, keep_until_found_nan, pickle_loader
 
 # colors=["tab:blue", "tab:brown", "tab:orange", "tab:green", "tab:red", "tab:purple"]
 markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
@@ -190,3 +192,35 @@ def logistic_plot(X, Y):
     plt.xlabel(r"$x_i^1$", fontsize=16)
     plt.ylabel(r"$x_i^2$", fontsize=16)
     plt.title("Logistic regression simulation", fontsize=18)
+
+
+def plot_2D_scenarios(obj_min, algos_pickle_path, experiments_settings, scenario, xlabels, ylabels, picture_name):
+
+    scenario1, scenario2 = scenario.split("-")
+    ylabels.reverse()
+
+    res = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario1, experiments_settings, ylabels[0]))
+
+    # For each algorithm
+    for idx in range(len(res.names)):
+        Z = np.empty((0, len(xlabels)), int) # We could put all plot one one figure.
+        for ylabel in ylabels:
+            res = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario1, experiments_settings, ylabel))
+            Z = np.append([np.array(res.get_loss(obj_min)[idx])], Z, axis=0)
+
+
+        plt.yticks([i+0.5 for i in range(0, len(ylabels))], ylabels)#, rotation=40)
+        plt.xticks([i+0.5 for i in range(0, len(xlabels))], xlabels, rotation=40)
+
+        # Reverse
+        name_algo = res.names[idx]
+        plt.title(name_algo + " - Logarithm excess loss (after $250$ iter.)")
+
+        plt.pcolor(Z, cmap=plt.cm.RdYlGn)
+        plt.clim(1, -8)
+        plt.colorbar()
+        if picture_name:
+            plt.savefig('{0}.eps'.format("{0}/{1}".format(picture_name, name_algo)), format='eps')
+            plt.clf()
+        else:
+            plt.show()

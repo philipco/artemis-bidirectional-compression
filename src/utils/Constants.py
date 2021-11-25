@@ -35,28 +35,24 @@ TRUE_MODEL_PARAM = generate_param(DIM)
 DEVICE_RANGE = [1, 3, 10, 16, 20, 40]  # Range of device used in experiments
 DIMENSION_RANGE = [1, 4, 10, 16, 20, 160, 320]  # Range of dimension used in experiments
 
-step_formula = [(lambda it, L, omega, N: 40 / (2*L)),
-                (lambda it, L, omega, N: 20 / (2*L)),
-                (lambda it, L, omega, N: 5 / L),
+step_formula = [(lambda it, L, omega, N: 20 / L),
+                (lambda it, L, omega, N: 10 / L),
                 (lambda it, L, omega, N: 2 / L),
                 (lambda it, L, omega, N: 1 / L),
                 (lambda it, L, omega, N: 1 / (2*L)),
                 (lambda it, L, omega, N: 1 / (4*L)),
                 (lambda it, L, omega, N: 1 / (8*L)),
-                (lambda it, L, omega, N: 1 / (16*L)),
-                (lambda it, L, omega, N: 1 / (32*L))
+                (lambda it, L, omega, N: 1 / (16*L))
                 ]
 
-label_step_formula = ["N/L",
-                      "N/2L",
-                      "5/L",
-                      "2/L",
-                      "$L^{-1}$",
+label_step_formula = ["$20L^{-1}$",
+                      "$10L^{-1}$",
                       "$2L^{-1}$",
-                      "$4L^{-1}$",
-                      "$8L^{-1}$",
-                      "$16L^{-1}$",
-                      "$32L^{-1}$"
+                      "$L^{-1}$",
+                      "$(2L)^{-1}$",
+                      "$(4L)^{-1}$",
+                      "$(8L)^{-1}$",
+                      "$(16L)^{-1}$"
                       ]
 
 

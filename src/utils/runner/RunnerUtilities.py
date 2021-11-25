@@ -196,13 +196,15 @@ def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settin
         del multiple_sg_descent
 
 
-def run_for_different_scenarios(cost_models, list_algos, values, labels, experiments_settings: str,
-                                logs_file: str, batch_size: int = 1,
+def run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabel, experiments_settings: str,
+                                algos_pickle_path: str, batch_size: int = 1,
                                 stochastic: bool = True, nb_epoch: int = 250, step_formula = None,
                                 compression: CompressionModel = None, scenario: str = "step") -> None:
 
     assert scenario in ["step", "compression", "alpha"], "There is three possible scenarios : to analyze by step size," \
                                                          " by compression operators, or by value of alpha."
+
+    create_folder_if_not_existing("{0}/{1}".format(algos_pickle_path, scenario))
 
     nb_devices_for_the_run = len(cost_models)
 
@@ -217,20 +219,20 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, experim
         losses_by_algo, losses_avg_by_algo, norm_ef_by_algo, dist_model_by_algo = [], [], [], []
         h_i_to_optimal_grad_by_algo, avg_h_i_to_optimal_grad_by_algo, var_models_by_algo = [], [], []
         descent_by_step_size = {}
-        for (value, label) in zip(values, labels):
+        for (value, label) in zip(xvalues, xlabels):
 
             if scenario == "step":
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
                                                            use_averaging=True, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=value, nb_epoch=nb_epoch, compression_model=compression,
-                                                           logs_file=logs_file)
+                                                           logs_file=algos_pickle_path)
 
             if scenario in ["compression", "alpha"]:
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
                                                            use_averaging=True, stochastic=stochastic, batch_size=batch_size,
                                                            step_formula=step_formula,
                                                            compression_model=value, nb_epoch=nb_epoch,
-                                                           logs_file=logs_file)
+                                                           logs_file=algos_pickle_path)
 
             descent_by_step_size[label] = multiple_sg_descent
             losses_by_label, losses_avg_by_label, norm_ef_by_label, dist_model_by_label = [], [], [], []
@@ -283,12 +285,29 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, experim
     res_various_gamma = ResultsOfSeveralDescents(nb_devices_for_the_run)
     res_various_gamma.add_dict_of_descent(all_descent_various_gamma, deep_learning_run=False)
 
-    pickle_saver(res_various_gamma, "{0}/{1}-{2}".format(logs_file, scenario, experiments_settings))
+    pickle_saver(res_various_gamma, "{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario, experiments_settings, ylabel))
 
     res_opt_gamma = ResultsOfSeveralDescents(nb_devices_for_the_run)
     res_opt_gamma.add_dict_of_descent(optimal_descents, deep_learning_run=False)
 
-    pickle_saver(res_opt_gamma, "{0}/{1}-optimal-{2}".format(logs_file, scenario, experiments_settings))
+    pickle_saver(res_opt_gamma, "{0}/{1}/optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
 
-    pickle_saver(descent_by_algo_and_step_size, "{0}/{1}-descent_by_algo-{2}"
-                 .format(logs_file, scenario, experiments_settings))
+    pickle_saver(descent_by_algo_and_step_size, "{0}/{1}/descent_by_algo-{2}"
+                 .format(algos_pickle_path, scenario, experiments_settings))
+
+
+def run_2D_scenarios(cost_models, list_algos, xvalues, xlabels, yvalues, ylabels, experiments_settings: str,
+                                algos_pickle_path: str, batch_size: int = 1,
+                                stochastic: bool = True, nb_epoch: int = 250,
+                                compression: CompressionModel = None, scenario: str = "step") -> None:
+    """ For now, the y scenario is expected to be the step size."""
+    # Scenario = "scenario1-scenario2", scenario1 = x axis, scenario2 = y axis.
+    sceanarios = scenario.split("-")
+    for i in range(len(yvalues)):
+        yvalue, ylabel = yvalues[i], ylabels[i]
+        print("\nY LABEL ==> ", ylabel)
+        run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabel=ylabel,
+                                    experiments_settings=experiments_settings, step_formula=yvalue,
+                                    algos_pickle_path=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
+                                    scenario=sceanarios[0], compression=compression, nb_epoch=nb_epoch)
+
