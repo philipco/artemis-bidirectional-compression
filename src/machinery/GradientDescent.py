@@ -256,6 +256,9 @@ class AGradientDescent(ABC):
         if len(self.avg_h_i_to_optimal_grad) != self.parameters.nb_epoch and len(self.avg_h_i_to_optimal_grad) != 0:
             self.avg_h_i_to_optimal_grad = self.avg_h_i_to_optimal_grad + [self.avg_h_i_to_optimal_grad[-1] for i in range(
                 self.parameters.nb_epoch - len(self.avg_h_i_to_optimal_grad))]
+        if len(self.tail_avg_h_i_to_optimal_grad) != self.parameters.nb_epoch and len(self.tail_avg_h_i_to_optimal_grad) != 0:
+            self.tail_avg_h_i_to_optimal_grad = self.tail_avg_h_i_to_optimal_grad + [self.tail_avg_h_i_to_optimal_grad[-1] for i in range(
+                self.parameters.nb_epoch - len(self.tail_avg_h_i_to_optimal_grad))]
         if len(self.var_models) != self.parameters.nb_epoch:
             self.var_models = self.var_models + [self.var_models[-1] for i in range(
                 self.parameters.nb_epoch - len(self.var_models))]
