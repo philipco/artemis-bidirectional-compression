@@ -220,7 +220,7 @@ def plot_2D_scenarios(obj_min, algos_pickle_path, experiments_settings, scenario
         plt.clim(1, -8)
         plt.colorbar()
         if picture_name:
-            plt.savefig('{0}.eps'.format("{0}/{1}".format(picture_name, name_algo)), format='eps')
+            plt.savefig('{0}.eps'.format("{0}/{1}-{2}".format(picture_name, name_algo, experiments_settings)), format='eps')
             plt.clf()
         else:
             plt.show()

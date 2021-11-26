@@ -51,7 +51,6 @@ class ResultsOfSeveralDescents:
             # self.all_final_model = [desc.multiple_descent[-1].model_params[-1] for desc in all_descent.values()]
             self.X_number_of_bits.append(descent.theoretical_nb_bits)
             self.omega_c = descent.omega_c
-            print("Omega c:", self.omega_c)
         elif deep_learning_run:
             compress_model = True if 'MCM' in name else False
             params = descent.parameters

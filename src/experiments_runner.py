@@ -20,7 +20,7 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = True, modify_run=None):
+                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=None):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
@@ -108,7 +108,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             X, Y = pickle_loader(pickle_path + "/data")
 
     default_level_of_quantization = 1 if fraction_sampled_workers == 1 else 2
-    compression_by_default = SQuantization(1, dim_notebook, norm=2)
+    compression_by_default = RandomSparsification(0.05, dim_notebook, norm=2)
+    print("Omega_c: ", compression_by_default.omega_c)
     label_default_compression = str(compression_by_default.omega_c)[:4]
 
     values_compression = [SQuantization(0, dim_notebook, norm=2),
@@ -319,6 +320,7 @@ if __name__ == '__main__':
                             algos=sys.argv[3], use_averaging=True)
             run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid',
                             algos=sys.argv[3], use_averaging=True, scenario="alpha-step")
+        elif sys.argv[2] == "linear_nonoised":
             run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid',
                             algos=sys.argv[3], use_averaging=True)
             run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid',
