@@ -3,6 +3,8 @@ Created by Philippenko, 6th March 2020.
 
 This python file provide facilities to plot the results of a (multiple) gradient descent run.
 """
+import copy
+
 import matplotlib
 import numpy as np
 
@@ -180,6 +182,7 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
     fig.tight_layout()
     if picture_name:
         plt.savefig('{0}.eps'.format(picture_name), format='eps')
+        plt.close()
     else:
         plt.show()
 
@@ -197,7 +200,7 @@ def logistic_plot(X, Y):
 def plot_2D_scenarios(obj_min, algos_pickle_path, experiments_settings, scenario, xlabels, ylabels, picture_name):
 
     scenario1, scenario2 = scenario.split("-")
-    ylabels.reverse()
+    # ylabels.reverse()
 
     res = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario1, experiments_settings, ylabels[0]))
 
@@ -205,22 +208,27 @@ def plot_2D_scenarios(obj_min, algos_pickle_path, experiments_settings, scenario
     for idx in range(len(res.names)):
         Z = np.empty((0, len(xlabels)), int) # We could put all plot one one figure.
         for ylabel in ylabels:
+            print(ylabel)
             res = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario1, experiments_settings, ylabel))
-            Z = np.append([np.array(res.get_loss(obj_min)[idx])], Z, axis=0)
+            Z = np.append(Z, [np.array(res.get_loss(obj_min)[idx])], axis=0)
 
+        fig, ax = plt.subplots(figsize=figsize)
 
         plt.yticks([i+0.5 for i in range(0, len(ylabels))], ylabels)#, rotation=40)
         plt.xticks([i+0.5 for i in range(0, len(xlabels))], xlabels, rotation=40)
 
         # Reverse
         name_algo = res.names[idx]
-        plt.title(name_algo + " - Logarithm excess loss (after $250$ iter.)")
+        print("Name algo:", name_algo)
+        ax.set_title(name_algo + " - Logarithm excess loss (after $250$ iter.)")
+        ax.set_xlabel("$\\alpha_{dwn} \\times (\omega_c + 1)$")
+        ax.set_ylabel("Step size $\\gamma$")
 
-        plt.pcolor(Z, cmap=plt.cm.RdYlGn)
-        plt.clim(1, -8)
-        plt.colorbar()
+        figure = ax.pcolor(Z, cmap=plt.cm.RdYlGn)
+        figure.set_clim(1, -6)
+        fig.colorbar(figure, ax=ax)
         if picture_name:
             plt.savefig('{0}.eps'.format("{0}/{1}-{2}".format(picture_name, name_algo, experiments_settings)), format='eps')
-            plt.clf()
+            plt.close()
         else:
             plt.show()

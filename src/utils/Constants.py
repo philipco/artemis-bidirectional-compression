@@ -36,23 +36,23 @@ DEVICE_RANGE = [1, 3, 10, 16, 20, 40]  # Range of device used in experiments
 DIMENSION_RANGE = [1, 4, 10, 16, 20, 160, 320]  # Range of dimension used in experiments
 
 step_formula = [(lambda it, L, omega, N: 10 / L),
-                (lambda it, L, omega, N: 5 / L),
+                (lambda it, L, omega, N: 6 / L),
+                (lambda it, L, omega, N: 4 / L),
                 (lambda it, L, omega, N: 2 / L),
                 (lambda it, L, omega, N: 1 / L),
                 (lambda it, L, omega, N: 1 / (2*L)),
                 (lambda it, L, omega, N: 1 / (4*L)),
-                (lambda it, L, omega, N: 1 / (8*L)),
-                (lambda it, L, omega, N: 1 / (16*L))
+                (lambda it, L, omega, N: 1 / (8*L))
                 ]
 
 label_step_formula = ["$10L^{-1}$",
-                      "$5L^{-1}$",
+                      "$6L^{-1}$",
+                      "$4L^{-1}$",
                       "$2L^{-1}$",
                       "$L^{-1}$",
                       "$(2L)^{-1}$",
                       "$(4L)^{-1}$",
-                      "$(8L)^{-1}$",
-                      "$(16L)^{-1}$"
+                      "$(8L)^{-1}$"
                       ]
 
 

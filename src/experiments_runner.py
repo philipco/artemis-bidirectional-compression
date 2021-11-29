@@ -19,6 +19,11 @@ def deacreasing_step_size(it, L, omega, N): return 1 / (L * sqrt(it))
 def batch_step_size(it, L, omega, N): return 1 / L
 
 
+def operator_of_compression():
+    # return SQuantization, 1
+    return RandomSparsification, 0.06
+
+
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
                     scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=None):
 
@@ -107,8 +112,9 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         else:
             X, Y = pickle_loader(pickle_path + "/data")
 
-    default_level_of_quantization = 1 if fraction_sampled_workers == 1 else 2
-    compression_by_default = RandomSparsification(0.05, dim_notebook, norm=2)
+    operator, level = operator_of_compression()
+    compression_by_default = operator(level=level, dim=dim_notebook, norm=2)
+    # default_level_of_quantization = 1 if fraction_sampled_workers == 1 else 2 TODO Fraction sampled!!
     print("Omega_c: ", compression_by_default.omega_c)
     label_default_compression = str(compression_by_default.omega_c)[:4]
 
@@ -123,16 +129,16 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     label_compression = ["SGD"] + [str(value.omega_c)[:4] for value in values_compression[1:]]
 
-    values_alpha = [SQuantization(1, dim_notebook, norm=2, constant=0.01),
-                    SQuantization(1, dim_notebook, norm=2, constant=0.1),
-                    SQuantization(1, dim_notebook, norm=2, constant=0.25),
-                    SQuantization(1, dim_notebook, norm=2, constant=0.5),
-                    SQuantization(1, dim_notebook, norm=2, constant=1),
-                    SQuantization(1, dim_notebook, norm=2, constant=2),
-                    SQuantization(1, dim_notebook, norm=2, constant=4),
-                    SQuantization(1, dim_notebook, norm=2, constant=10),
-                    SQuantization(1, dim_notebook, norm=2, constant=25),
-                    SQuantization(1, dim_notebook, norm=2, constant=50)
+    values_alpha = [operator(level=level, dim=dim_notebook, norm=2, constant=0.01),
+                    operator(level=level, dim=dim_notebook, norm=2, constant=0.1),
+                    operator(level=level, dim=dim_notebook, norm=2, constant=0.25),
+                    operator(level=level, dim=dim_notebook, norm=2, constant=0.5),
+                    operator(level=level, dim=dim_notebook, norm=2, constant=1),
+                    operator(level=level, dim=dim_notebook, norm=2, constant=2),
+                    operator(level=level, dim=dim_notebook, norm=2, constant=4),
+                    operator(level=level, dim=dim_notebook, norm=2, constant=10),
+                    operator(level=level, dim=dim_notebook, norm=2, constant=25),
+                    operator(level=level, dim=dim_notebook, norm=2, constant=50)
                     ]
 
     label_alpha = [str(value.constant) for value in values_alpha]
@@ -164,7 +170,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         label_step_size = "decr."
     else:
         step_size = batch_step_size
-        label_step_size = "$L^{-1}$"
+        label_step_size = "$(2L)^{-1}$"
 
     stochasticity = 'sto' if stochastic else "full"
     if stochastic:
@@ -189,10 +195,11 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                         algos_pickle_path=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
         elif scenario == "alpha-step":
-            run_2D_scenarios(cost_models, list_algos[1:], values_alpha, label_alpha, yvalues=step_formula,
-                             ylabels=label_step_formula, experiments_settings=experiments_settings,
-                             algos_pickle_path=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
-                             scenario=scenario, compression=compression_by_default)
+            run_2D_scenarios(cost_models, list_algos[1:], xvalues=values_alpha, xlabels=label_alpha,
+                             yvalues=step_formula, ylabels=label_step_formula,
+                             experiments_settings=experiments_settings, algos_pickle_path=algos_pickle_path,
+                             batch_size=batch_size, stochastic=stochastic, scenario=scenario,
+                             compression=compression_by_default)
 
         else:
             run_one_scenario(cost_models=cost_models, list_algos=list_algos, logs_file=algos_pickle_path,
@@ -329,10 +336,10 @@ if __name__ == '__main__':
             raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
 
     elif sys.argv[1] == "real":
-        for sto in [False, True]:
-            for dataset in [sys.argv[2]]:
-                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                                use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))
+        # for sto in [False, True]:
+        #     for dataset in [sys.argv[2]]:
+        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+        #                         use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))
 
         for sto in [False, True]:
             for dataset in [sys.argv[2]]:
