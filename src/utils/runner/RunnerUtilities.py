@@ -14,7 +14,7 @@ from tqdm import tqdm
 from src.machinery.PredefinedParameters import *
 from src.models.CompressionModel import CompressionModel
 
-from src.utils.Constants import NB_EPOCH
+from src.utils.Constants import NB_EPOCH, TIMESTAMP, NB_EPOCH_WITH_HYPERPARAMETERS
 from src.utils.PathDataset import get_path_to_pickle
 from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if_not_existing, pickle_loader, file_exist, remove_file
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
@@ -198,7 +198,7 @@ def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settin
 
 def run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabel, experiments_settings: str,
                                 algos_pickle_path: str, batch_size: int = 1,
-                                stochastic: bool = True, nb_epoch: int = 250, step_formula = None,
+                                stochastic: bool = True, step_formula = None,
                                 compression: CompressionModel = None, scenario: str = "step") -> None:
 
     assert scenario in ["step", "compression", "alpha"], "There is three possible scenarios : to analyze by step size," \
@@ -208,35 +208,53 @@ def run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabe
 
     nb_devices_for_the_run = len(cost_models)
 
-    all_kind_of_compression_res = []
-    all_descent_various_gamma = {}
+    all_descent_various_gamma = {i:{} for i in TIMESTAMP}
     descent_by_algo_and_step_size = {}
 
     # Corresponds to descent with optimal gamma for each algorithm
     optimal_descents = {}
 
     for param_algo in tqdm(list_algos):
-        losses_by_algo, losses_avg_by_algo, norm_ef_by_algo, dist_model_by_algo = [], [], [], []
-        h_i_to_optimal_grad_by_algo, avg_h_i_to_optimal_grad_by_algo, var_models_by_algo = [], [], []
+        losses_by_algo = {i: [] for i in TIMESTAMP}
+        losses_avg_by_algo = {i: [] for i in TIMESTAMP}
+        norm_ef_by_algo = {i: [] for i in TIMESTAMP}
+        dist_model_by_algo = {i: [] for i in TIMESTAMP}
+        h_i_to_optimal_grad_by_algo = {i: [] for i in TIMESTAMP}
+        avg_h_i_to_optimal_grad_by_algo = {i: [] for i in TIMESTAMP}
+        var_models_by_algo = {i: [] for i in TIMESTAMP}
         descent_by_step_size = {}
         for (value, label) in zip(xvalues, xlabels):
 
             if scenario == "step":
-                multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
-                                                           use_averaging=True, stochastic=stochastic, batch_size=batch_size,
-                                                           step_formula=value, nb_epoch=nb_epoch, compression_model=compression,
+                multiple_sg_descent = multiple_run_descent(param_algo,
+                                                           cost_models=cost_models,
+                                                           use_averaging=True,
+                                                           stochastic=stochastic,
+                                                           batch_size=batch_size,
+                                                           step_formula=value,
+                                                           nb_epoch=NB_EPOCH_WITH_HYPERPARAMETERS,
+                                                           compression_model=compression,
                                                            logs_file=algos_pickle_path)
 
             if scenario in ["compression", "alpha"]:
-                multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
-                                                           use_averaging=True, stochastic=stochastic, batch_size=batch_size,
+                multiple_sg_descent = multiple_run_descent(param_algo,
+                                                           cost_models=cost_models,
+                                                           use_averaging=True,
+                                                           stochastic=stochastic,
+                                                           batch_size=batch_size,
                                                            step_formula=step_formula,
-                                                           compression_model=value, nb_epoch=nb_epoch,
+                                                           compression_model=value,
+                                                           nb_epoch=NB_EPOCH_WITH_HYPERPARAMETERS,
                                                            logs_file=algos_pickle_path)
 
             descent_by_step_size[label] = multiple_sg_descent
-            losses_by_label, losses_avg_by_label, norm_ef_by_label, dist_model_by_label = [], [], [], []
-            h_i_to_optimal_grad_by_label, avg_h_i_to_optimal_grad_by_label, var_models_by_label = [], [], []
+            losses_by_label = {i: [] for i in TIMESTAMP}
+            losses_avg_by_label = {i: [] for i in TIMESTAMP}
+            norm_ef_by_label = {i: [] for i in TIMESTAMP}
+            dist_model_by_label = {i: [] for i in TIMESTAMP}
+            h_i_to_optimal_grad_by_label = {i: [] for i in TIMESTAMP}
+            avg_h_i_to_optimal_grad_by_label = {i: [] for i in TIMESTAMP}
+            var_models_by_label = {i: [] for i in TIMESTAMP}
 
             # Picking the minimum values for each of the run.
             for seq_losses, seq_losses_avg, seq_norm_ef, seq_dist_model, seq_h_i_optimal, seq_avg_h_i_optimal, seq_var_models in \
@@ -244,26 +262,29 @@ def run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabe
                         multiple_sg_descent.norm_error_feedback, multiple_sg_descent.dist_to_model,
                         multiple_sg_descent.h_i_to_optimal_grad, multiple_sg_descent.avg_h_i_to_optimal_grad, multiple_sg_descent.var_models):
 
-                min_losses = min(seq_losses)
-                losses_by_label.append(min_losses if min_losses is not np.nan else -16)
-                losses_avg_by_label.append(min(seq_losses_avg))
-                norm_ef_by_label.append(seq_norm_ef[-1])
-                dist_model_by_label.append(seq_dist_model[-1])
-                var_models_by_label.append(seq_var_models[-1])
-                h_i_to_optimal_grad_by_label.append(seq_h_i_optimal[-1])
-                avg_h_i_to_optimal_grad_by_label.append(seq_avg_h_i_optimal[-1])
+                for time in TIMESTAMP:
+                    min_losses = min(seq_losses)
+                    losses_by_label[time].append(min_losses if min_losses is not np.nan else -16)
+                    losses_avg_by_label[time].append(min(seq_losses_avg))
+                    norm_ef_by_label[time].append(seq_norm_ef[-1])
+                    dist_model_by_label[time].append(seq_dist_model[-1])
+                    var_models_by_label[time].append(seq_var_models[-1])
+                    h_i_to_optimal_grad_by_label[time].append(seq_h_i_optimal[-1])
+                    avg_h_i_to_optimal_grad_by_label[time].append(seq_avg_h_i_optimal[-1])
 
-            losses_by_algo.append(losses_by_label)
-            losses_avg_by_algo.append(losses_avg_by_label)
-            norm_ef_by_algo.append(norm_ef_by_label)
-            dist_model_by_algo.append(dist_model_by_label)
-            var_models_by_algo.append(var_models_by_label)
-            h_i_to_optimal_grad_by_algo.append(h_i_to_optimal_grad_by_label)
-            avg_h_i_to_optimal_grad_by_algo.append(avg_h_i_to_optimal_grad_by_label)
+            for time in TIMESTAMP:
+                losses_by_algo[time].append(losses_by_label[time])
+                losses_avg_by_algo[time].append(losses_avg_by_label[time])
+                norm_ef_by_algo[time].append(norm_ef_by_label[time])
+                dist_model_by_algo[time].append(dist_model_by_label[time])
+                var_models_by_algo[time].append(var_models_by_label[time])
+                h_i_to_optimal_grad_by_algo[time].append(h_i_to_optimal_grad_by_label[time])
+                avg_h_i_to_optimal_grad_by_algo[time].append(avg_h_i_to_optimal_grad_by_label[time])
 
-        res_by_algo_and_step_size = ResultsOfSeveralDescents(nb_devices_for_the_run)
-        res_by_algo_and_step_size.add_dict_of_descent(descent_by_step_size)
-        descent_by_algo_and_step_size[param_algo.name()] = res_by_algo_and_step_size
+        # We create a dictionary which keys are the algorithms, and the value a GD for each  hyperparameters.
+        res_by_algo_and_hyperparameters = ResultsOfSeveralDescents(nb_devices_for_the_run)
+        res_by_algo_and_hyperparameters.add_dict_of_descent(descent_by_step_size)
+        descent_by_algo_and_step_size[param_algo.name()] = res_by_algo_and_hyperparameters
 
         # Find optimal descent for the algo:
         min_loss_desc = 10e12
@@ -275,15 +296,18 @@ def run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabe
         # Adding the optimal descent to the dict of optimal descent
         optimal_descents[param_algo.name()] = opt_desc
 
+        # We create an artificial gradient descent that contains information not w.r.t to the iteration, but w.r.t the 
+        # hyperparameters
+        for time in TIMESTAMP:
+            artificial_multiple_descent = AverageOfSeveralIdenticalRun()
+            artificial_multiple_descent.append_list(
+                losses_by_algo[time], losses_avg_by_algo[time], norm_ef_by_algo[time], dist_model_by_algo[time],
+                h_i_to_optimal_grad_by_algo[time], avg_h_i_to_optimal_grad_by_algo[time], var_models_by_algo[time])
+            all_descent_various_gamma[time][param_algo.name()] = artificial_multiple_descent
 
-        artificial_multiple_descent = AverageOfSeveralIdenticalRun()
-        artificial_multiple_descent.append_list(losses_by_algo, losses_avg_by_algo, norm_ef_by_algo, dist_model_by_algo,
-                                                h_i_to_optimal_grad_by_algo, avg_h_i_to_optimal_grad_by_algo, var_models_by_algo)
-        all_descent_various_gamma[param_algo.name()] = artificial_multiple_descent
-        all_kind_of_compression_res.append(all_descent_various_gamma)
-
-    res_various_gamma = ResultsOfSeveralDescents(nb_devices_for_the_run)
-    res_various_gamma.add_dict_of_descent(all_descent_various_gamma, deep_learning_run=False)
+    res_various_gamma = {i: ResultsOfSeveralDescents(nb_devices_for_the_run) for i in TIMESTAMP}
+    for time in TIMESTAMP:
+        res_various_gamma[time].add_dict_of_descent(all_descent_various_gamma[time], deep_learning_run=False)
 
     pickle_saver(res_various_gamma, "{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario, experiments_settings, ylabel))
 
@@ -297,8 +321,7 @@ def run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabe
 
 
 def run_2D_scenarios(cost_models, list_algos, xvalues, xlabels, yvalues, ylabels, experiments_settings: str,
-                                algos_pickle_path: str, batch_size: int = 1,
-                                stochastic: bool = True, nb_epoch: int = 250,
+                                algos_pickle_path: str, batch_size: int = 1, stochastic: bool = True,
                                 compression: CompressionModel = None, scenario: str = "step") -> None:
     """ For now, the y scenario is expected to be the step size."""
     # Scenario = "scenario1-scenario2", scenario1 = x axis, scenario2 = y axis.
@@ -309,5 +332,5 @@ def run_2D_scenarios(cost_models, list_algos, xvalues, xlabels, yvalues, ylabels
         run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabel=ylabel,
                                     experiments_settings=experiments_settings, step_formula=yvalue,
                                     algos_pickle_path=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
-                                    scenario=sceanarios[0], compression=compression, nb_epoch=nb_epoch)
+                                    scenario=sceanarios[0], compression=compression)
 

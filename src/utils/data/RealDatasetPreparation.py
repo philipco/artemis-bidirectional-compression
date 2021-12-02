@@ -14,8 +14,42 @@ from sklearn.preprocessing import scale, LabelEncoder
 from src.utils.PathDataset import get_path_to_datasets
 from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, get_project_root
 from src.utils.data.DataClustering import find_cluster, clustering_data, tsne, check_data_clusterisation, \
-    rebalancing_clusters
+    rebalancing_clusters, dirichlet_sampling
 from src.utils.data.DataPreparation import add_bias_term
+
+
+def get_preparation_operator_of_dataset(dataset):
+    # Select the correct dataset
+    if dataset == "a9a":
+        return prepare_a9a
+
+    if dataset == "abalone":
+        return prepare_abalone
+
+    if dataset == "covtype":
+        return prepare_covtype
+
+    if dataset == "gisette":
+        return prepare_gisette
+
+    if dataset == "madelon":
+        return prepare_madelon
+
+    if dataset == "mushroom":
+        return prepare_mushroom
+
+    if dataset == "quantum":
+        return prepare_quantum
+
+    if dataset == "phishing":
+        return prepare_phishing
+
+    elif dataset == "superconduct":
+        return prepare_superconduct
+
+    if dataset == "w8a":
+        return prepare_w8a
+
 
 def prepare_dataset_by_device(X_merged, Y_merged, nb_devices: int):
 
@@ -36,8 +70,29 @@ def prepare_dataset_by_device(X_merged, Y_merged, nb_devices: int):
     X = add_bias_term(X)
     return X, Y
 
-def prepare_noniid_dataset(data, pivot_label: str, data_path: str, pickle_path: str, nb_cluster: int, double_check: bool =False):
 
+def prepare_noniid_dataset(data, target_label: str, data_path: str, pickle_path: str, nb_cluster: int, dirichlet: int = None, double_check: bool =False):
+    if dirichlet is not None:
+        return dirichlet_preparation(data, target_label, data_path, pickle_path, nb_cluster, dirichlet)
+    else:
+        return TSNE_prepration(data, target_label, data_path, pickle_path, nb_cluster, double_check)
+
+
+def dirichlet_preparation(data, target_label: str, data_path: str, pickle_path: str, nb_devices: int, double_check: bool =False):
+    dirichlet_file = "{0}-dirichlet".format(data_path)
+    if not file_exist("{0}.pkl".format(dirichlet_file)):
+        # Sampling according to Dirichlet distribution.
+        logging.debug("The TSNE representation ({0}) doesn't exist."
+                      .format(dirichlet_file))
+        clustered_indices = dirichlet_sampling(data, nb_devices=nb_devices, nb_labels=2)
+        pickle_saver(clustered_indices, dirichlet_file)
+
+    # With the found clusters, splitting data.
+    X, Y = clustering_data(data, clustered_indices, target_label, nb_devices)
+    return data
+
+
+def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, nb_cluster: int, double_check: bool =False):
     # The TSNE representation is independent of the number of devices.
     tsne_file = "{0}-tsne".format(data_path)
     if not file_exist("{0}.pkl".format(tsne_file)):
@@ -59,7 +114,7 @@ def prepare_noniid_dataset(data, pivot_label: str, data_path: str, pickle_path: 
     predicted_cluster = pickle_loader("{0}".format(tsne_cluster_file))
 
     # With the found clusters, splitting data.
-    X, Y = clustering_data(data, predicted_cluster, pivot_label, nb_cluster)
+    X, Y = clustering_data(data, predicted_cluster, target_label, nb_cluster)
 
     if double_check:
         logging.debug("Checking data cluserization, wait until completion before seeing the plots.")
@@ -74,7 +129,7 @@ def prepare_noniid_dataset(data, pivot_label: str, data_path: str, pickle_path: 
 
     return X_rebalanced, Y_rebalanced
 
-def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool = False):
+def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool = False):
     raw_data = pd.read_csv('{0}/dataset/superconduct/train.csv'.format(get_path_to_datasets()), sep=",")
     if raw_data.isnull().values.any():
         logging.warning("There is missing value.")
@@ -97,11 +152,11 @@ def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid:
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "critical_temp", data_path + "/superconduct", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "critical_temp", data_path + "/superconduct", pickle_path, nb_devices, dirichlet, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
-def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool =False):
 
     raw_data= pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_path_to_datasets()), sep="\t", header=None)
 
@@ -156,11 +211,11 @@ def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "state", data_path + "/quantum", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "state", data_path + "/quantum", pickle_path, nb_devices, dirichlet, double_check)
 
     return X, Y, dim + 1 # Because we added one column for the bias
 
-def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool =False):
     raw_data = pd.read_csv('{0}/dataset/mushroom/mushrooms.csv'.format(get_path_to_datasets()))
 
     # The data is categorial so I convert it with LabelEncoder to transfer to ordinal.
@@ -186,11 +241,11 @@ def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: boo
         Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "class", data_path + "/mushroom", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "class", data_path + "/mushroom", pickle_path, nb_devices, dirichlet, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
-def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool =False):
 
     raw_X, raw_Y = load_svmlight_file("{0}/dataset/phishing/phishing.txt".format(get_path_to_datasets()))
 
@@ -210,11 +265,11 @@ def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: boo
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/phishing", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/phishing", pickle_path, nb_devices, dirichlet, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
-def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False, test: bool = False):
+def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool =False, test: bool = False):
 
     if not test:
         raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a.txt".format(get_path_to_datasets()))
@@ -241,11 +296,11 @@ def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/a9a", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/a9a", pickle_path, nb_devices, dirichlet, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
-def prepare_abalone(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+def prepare_abalone(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool =False):
     raw_data = pd.read_csv('{0}/dataset/abalone/abalone.csv'.format(get_path_to_datasets()), sep=",", header = None)
 
     raw_data = raw_data.rename(columns={ 0: "gender", 1: "Length", 2: "Diameter", 3: "Height", 8: "rings"})
@@ -266,11 +321,11 @@ def prepare_abalone(nb_devices: int, data_path: str, pickle_path: str, iid: bool
         Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "rings", data_path + "/abalone", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "rings", data_path + "/abalone", pickle_path, nb_devices, dirichlet, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
-def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool =False):
 
     raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
@@ -291,11 +346,11 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/covtype", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/covtype", pickle_path, nb_devices, dirichlet, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
-def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool =False):
 
     raw_data = pd.read_csv('{0}/dataset/madelon/madelon_train.data'.format(get_path_to_datasets()), sep=" ", header=None)
     raw_data.drop(raw_data.columns[len(raw_data.columns) - 1], axis=1, inplace=True)
@@ -312,11 +367,11 @@ def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/madelon", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/madelon", pickle_path, nb_devices, dirichlet, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
-def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool =False):
 
     raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
@@ -337,11 +392,11 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/covtype", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/covtype", pickle_path, nb_devices, dirichlet, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
-def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
+def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool =False):
 
     raw_X, raw_Y = load_svmlight_file("{0}/dataset/gisette/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
@@ -358,11 +413,13 @@ def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/gisette", pickle_path, nb_devices,
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/gisette", pickle_path, nb_devices, dirichlet,
                                       double_check)
     return X, Y, dim + 1  # Because we added one column for the bias
 
-def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool = False, test: bool = False):
+
+def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
+                double_check: bool = False, test: bool = False):
 
     if not test:
         raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a".format(get_path_to_datasets()))
@@ -384,5 +441,5 @@ def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/w8a", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/w8a", pickle_path, nb_devices, dirichlet, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias

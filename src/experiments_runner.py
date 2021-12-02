@@ -9,8 +9,7 @@ from src.utils.ConvexSettings import batch_sizes, models
 
 from src.utils.ErrorPlotter import *
 from src.utils.data.DataPreparation import build_data_logistic, build_data_linear
-from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_superconduct, prepare_mushroom, \
-    prepare_phishing, prepare_a9a, prepare_abalone, prepare_covtype, prepare_madelon, prepare_gisette, prepare_w8a
+from src.utils.data.RealDatasetPreparation import get_preparation_operator_of_dataset
 from src.utils.Constants import *
 from src.utils.data.DataClustering import *
 from src.utils.runner.RunnerUtilities import *
@@ -49,36 +48,9 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     batch_size = batch_sizes[dataset]
     model = models[dataset]
 
-    # Select the correct dataset
-    if dataset == "a9a":
-        X, Y, dim_notebook = prepare_a9a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "abalone":
-        X, Y, dim_notebook = prepare_abalone(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "covtype":
-        X, Y, dim_notebook = prepare_covtype(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "gisette":
-        X, Y, dim_notebook = prepare_gisette(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "madelon":
-        X, Y, dim_notebook = prepare_madelon(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "mushroom":
-        X, Y, dim_notebook = prepare_mushroom(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "quantum":
-        X, Y, dim_notebook = prepare_quantum(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "phishing":
-        X, Y, dim_notebook = prepare_phishing(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    elif dataset == "superconduct":
-        X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "w8a":
-        X, Y, dim_notebook = prepare_w8a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
+    if dataset not in ['synth_logistic', 'synth_linear_noised', 'synth_linear_nonoised']:
+        prepare_dataset = get_preparation_operator_of_dataset(dataset)
+        X, Y, dim_notebook = prepare_dataset(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data, dirichlet = None)
 
     elif dataset == 'synth_logistic':
         nb_epoch = 100 if stochastic else 400
@@ -185,7 +157,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                         algos_pickle_path=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         step_formula=step_size, scenario=scenario)
         elif scenario == "step":
-            run_for_different_scenarios(cost_models, list_algos, step_formula, label_step_formula,
+            run_for_different_scenarios(cost_models, list_algos, STEP_FORMULA, LABEL_STEP_FORMULA,
                                         ylabel=label_compression, experiments_settings=experiments_settings,
                                         algos_pickle_path=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
@@ -196,7 +168,22 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                         scenario=scenario, compression=compression_by_default)
         elif scenario == "alpha-step":
             run_2D_scenarios(cost_models, list_algos[1:], xvalues=values_alpha, xlabels=label_alpha,
-                             yvalues=step_formula, ylabels=label_step_formula,
+                             yvalues=STEP_FORMULA, ylabels=LABEL_STEP_FORMULA,
+                             experiments_settings=experiments_settings, algos_pickle_path=algos_pickle_path,
+                             batch_size=batch_size, stochastic=stochastic, scenario=scenario,
+                             compression=compression_by_default)
+
+        elif scenario == "alpha-dirichlet":
+            # TODO !
+            prepare_dataset = get_preparation_operator_of_dataset(dataset)
+
+            X, Y, dim_notebook = prepare_dataset(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data,
+                                                 dirichlet=None)
+
+            # run_2D_scenario_with_different_dirichlet_clustering(prepare_dataset, )
+
+            run_2D_scenarios(cost_models, list_algos[1:], xvalues=values_alpha, xlabels=label_alpha,
+                             yvalues=DIRICHLET_PARAMS, ylabels=LABEL_DIRICHLET,
                              experiments_settings=experiments_settings, algos_pickle_path=algos_pickle_path,
                              batch_size=batch_size, stochastic=stochastic, scenario=scenario,
                              compression=compression_by_default)
@@ -262,8 +249,9 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
         plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
                         x_legend="Step size ({0}, {1})".format(iid, str(compression_by_default.omega_c)[:4]),
-                        one_on_two_points=True, xlabels=label_step_formula,
-                        picture_name="{0}/{1}/{2}-{3}".format(picture_path, scenario, experiments_settings, label_default_compression))
+                        one_on_two_points=True, xlabels=LABEL_STEP_FORMULA,
+                        picture_name="{0}/{1}/{2}-{3}".format(picture_path, scenario, experiments_settings,
+                                                              label_default_compression))
 
         # res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
         #
@@ -275,25 +263,30 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         #                 picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
 
     if scenario in ["compression", "alpha"]:
-        create_folder_if_not_existing("{0}/{1}".format(picture_path, scenario))
-        res = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario, experiments_settings,label_step_size))
-        plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
-                        x_legend=["$\omega_c$", "$\\alpha_{dwn} \\times (\omega_c + 1)$"][scenario=="alpha"],
-                        one_on_two_points=True, xlabels=[label_compression, label_alpha][scenario=="alpha"],
-                        picture_name="{0}/{1}/{2}-{3}".format(picture_path, scenario, experiments_settings,
-                                                              label_step_size))
+        create_folder_if_not_existing("{0}/{1}/{2}".format(picture_path, scenario, label_step_size))
+        res_all_timestamp = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario, experiments_settings,
+                                                                   label_step_size))
 
-        res_by_algo = pickle_loader("{0}/{1}/descent_by_algo-{2}".format(algos_pickle_path, scenario, experiments_settings))
+        for time in TIMESTAMP:
+            res = res_all_timestamp[time]
+            plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
+                            x_legend=["$\omega_c$", "$\\alpha_{dwn} \\times (\omega_c + 1)$"][scenario=="alpha"],
+                            one_on_two_points=True, xlabels=[label_compression, label_alpha][scenario=="alpha"],
+                            picture_name="{0}/{1}/{2}/{3}-{4}T".format(picture_path, scenario, label_step_size,
+                                                                       experiments_settings, time))
+
+        res_by_algo = pickle_loader("{0}/{1}/descent_by_algo-{2}".format(algos_pickle_path, scenario,
+                                                                         experiments_settings))
         for key in res_by_algo.keys():
             res = res_by_algo[key]
             plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
-                            x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}/{2}-it-noavg-{3}"
-                            .format(picture_path, scenario, key, experiments_settings))
+                            x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}/{2}/{3}-it-noavg-{4}"
+                            .format(picture_path, scenario, label_step_size, key, experiments_settings))
 
     if scenario == "alpha-step":
         create_folder_if_not_existing("{0}/{1}".format(picture_path, scenario))
         plot_2D_scenarios(obj_min=obj_min, algos_pickle_path=algos_pickle_path, experiments_settings=experiments_settings,
-                          scenario=scenario, xlabels=label_alpha, ylabels=label_step_formula,
+                          scenario=scenario, xlabels=label_alpha, ylabels=LABEL_STEP_FORMULA,
                           picture_name="{0}/{1}".format(picture_path, scenario))
 
         # res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
@@ -312,24 +305,24 @@ if __name__ == '__main__':
 
     if sys.argv[1] == "synth":
         if sys.argv[2] == "logistic":
-            run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
-                            use_averaging=True)
+            # run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+            #                 use_averaging=True)
             run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
                             use_averaging=True, scenario="alpha-step")
-            run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
-                            use_averaging=True)
+            # run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+            #                 use_averaging=True)
         elif sys.argv[2] == "linear":
-            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
-                            algos=sys.argv[3], use_averaging=True, scenario=None)
+            # run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
+            #                 algos=sys.argv[3], use_averaging=True, scenario=None)
             run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
                             algos=sys.argv[3], use_averaging=True, scenario="alpha-step")
-            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid',
-                            algos=sys.argv[3], use_averaging=True)
-            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid',
+            # run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid',
+            #                 algos=sys.argv[3], use_averaging=True)
+            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
                             algos=sys.argv[3], use_averaging=True, scenario="alpha-step")
         elif sys.argv[2] == "linear_nonoised":
-            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid',
-                            algos=sys.argv[3], use_averaging=True)
+            # run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid',
+            #                 algos=sys.argv[3], use_averaging=True)
             run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid',
                             algos=sys.argv[3], use_averaging=True, scenario="alpha-step")
         else:

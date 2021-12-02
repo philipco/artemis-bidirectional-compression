@@ -8,6 +8,8 @@ import copy
 import matplotlib
 import numpy as np
 
+from src.utils.Constants import TIMESTAMP
+
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
     'font.family': 'serif',
@@ -202,33 +204,36 @@ def plot_2D_scenarios(obj_min, algos_pickle_path, experiments_settings, scenario
     scenario1, scenario2 = scenario.split("-")
     # ylabels.reverse()
 
-    res = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario1, experiments_settings, ylabels[0]))
+    res_all_timestamp = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario1, experiments_settings, ylabels[0]))
+    names = res_all_timestamp[TIMESTAMP[0]].names
 
-    # For each algorithm
-    for idx in range(len(res.names)):
-        Z = np.empty((0, len(xlabels)), int) # We could put all plot one one figure.
-        for ylabel in ylabels:
-            print(ylabel)
-            res = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario1, experiments_settings, ylabel))
-            Z = np.append(Z, [np.array(res.get_loss(obj_min)[idx])], axis=0)
+    for time in TIMESTAMP:
+        # For each algorithm
+        for idx in range(len(names)):
+            Z = np.empty((0, len(xlabels)), int) # We could put all plot one one figure.
+            for ylabel in ylabels:
+                print(ylabel)
+                res = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario1, experiments_settings, ylabel))[time]
+                Z = np.append(Z, [np.array(res.get_loss(obj_min)[idx])], axis=0)
 
-        fig, ax = plt.subplots(figsize=figsize)
+            fig, ax = plt.subplots(figsize=figsize)
 
-        plt.yticks([i+0.5 for i in range(0, len(ylabels))], ylabels)#, rotation=40)
-        plt.xticks([i+0.5 for i in range(0, len(xlabels))], xlabels, rotation=40)
+            plt.yticks([i+0.5 for i in range(0, len(ylabels))], ylabels)#, rotation=40)
+            plt.xticks([i+0.5 for i in range(0, len(xlabels))], xlabels, rotation=40)
 
-        # Reverse
-        name_algo = res.names[idx]
-        print("Name algo:", name_algo)
-        ax.set_title(name_algo + " - Logarithm excess loss (after $250$ iter.)")
-        ax.set_xlabel("$\\alpha_{dwn} \\times (\omega_c + 1)$")
-        ax.set_ylabel("Step size $\\gamma$")
+            # Reverse
+            name_algo = res.names[idx]
+            print("Name algo:", name_algo)
+            ax.set_title(name_algo + " - Logarithm excess loss (after $250$ iter.)")
+            ax.set_xlabel("$\\alpha_{dwn} \\times (\omega_c + 1)$")
+            ax.set_ylabel("Step size $\\gamma$")
 
-        figure = ax.pcolor(Z, cmap=plt.cm.RdYlGn)
-        figure.set_clim(1, -6)
-        fig.colorbar(figure, ax=ax)
-        if picture_name:
-            plt.savefig('{0}.eps'.format("{0}/{1}-{2}".format(picture_name, name_algo, experiments_settings)), format='eps')
-            plt.close()
-        else:
-            plt.show()
+            figure = ax.pcolor(Z, cmap=plt.cm.RdYlGn)
+            figure.set_clim(1, -6)
+            fig.colorbar(figure, ax=ax)
+            if picture_name:
+                plt.savefig('{0}.eps'.format("{0}/{1}-{2}-{3}T".format(picture_name, name_algo, experiments_settings,
+                                                                       time)), format='eps')
+                plt.close()
+            else:
+                plt.show()
