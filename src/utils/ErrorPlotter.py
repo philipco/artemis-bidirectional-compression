@@ -20,7 +20,8 @@ matplotlib.rcParams.update({
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 
-from src.utils.Utilities import drop_nan_values, keep_until_found_nan, pickle_loader
+from src.utils.Utilities import drop_nan_values, keep_until_found_nan
+from src.utils.PickletHandler import pickle_loader
 
 # colors=["tab:blue", "tab:brown", "tab:orange", "tab:green", "tab:red", "tab:purple"]
 markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
@@ -204,7 +205,7 @@ def plot_2D_scenarios(obj_min, algos_pickle_path, experiments_settings, scenario
     scenario1, scenario2 = scenario.split("-")
     # ylabels.reverse()
 
-    res_all_timestamp = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario1, experiments_settings, ylabels[0]))
+    res_all_timestamp = pickle_loader("{0}/{1}/{2}/{3}".format(algos_pickle_path, scenario1, ylabels[0], experiments_settings))
     names = res_all_timestamp[TIMESTAMP[0]].names
 
     for time in TIMESTAMP:
@@ -213,7 +214,7 @@ def plot_2D_scenarios(obj_min, algos_pickle_path, experiments_settings, scenario
             Z = np.empty((0, len(xlabels)), int) # We could put all plot one one figure.
             for ylabel in ylabels:
                 print(ylabel)
-                res = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario1, experiments_settings, ylabel))[time]
+                res = pickle_loader("{0}/{1}/{2}/{3}".format(algos_pickle_path, scenario1, ylabel, experiments_settings))[time]
                 Z = np.append(Z, [np.array(res.get_loss(obj_min)[idx])], axis=0)
 
             fig, ax = plt.subplots(figsize=figsize)

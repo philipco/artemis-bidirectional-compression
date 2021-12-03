@@ -34,7 +34,7 @@ from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
 from src.models.CompressionModel import SQuantization
 from src.utils.Constants import MAX_LOSS
-from src.utils.Utilities import pickle_loader
+from src.utils.PickletHandler import pickle_loader
 
 
 class AGradientDescent(ABC):

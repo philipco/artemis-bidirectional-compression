@@ -12,6 +12,7 @@ from src.utils.data.DataPreparation import build_data_logistic, build_data_linea
 from src.utils.data.RealDatasetPreparation import get_preparation_operator_of_dataset
 from src.utils.Constants import *
 from src.utils.data.DataClustering import *
+from src.utils.PickletHandler import pickle_loader, pickle_saver
 from src.utils.runner.RunnerUtilities import *
 
 def deacreasing_step_size(it, L, omega, N): return 1 / (L * sqrt(it))
@@ -264,8 +265,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     if scenario in ["compression", "alpha"]:
         create_folder_if_not_existing("{0}/{1}/{2}".format(picture_path, scenario, label_step_size))
-        res_all_timestamp = pickle_loader("{0}/{1}/{2}-{3}".format(algos_pickle_path, scenario, experiments_settings,
-                                                                   label_step_size))
+        res_all_timestamp = pickle_loader("{0}/{1}/{2}/{3}".format(algos_pickle_path, scenario, label_step_size,
+                                                                   experiments_settings))
 
         for time in TIMESTAMP:
             res = res_all_timestamp[time]
@@ -275,8 +276,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                             picture_name="{0}/{1}/{2}/{3}-{4}T".format(picture_path, scenario, label_step_size,
                                                                        experiments_settings, time))
 
-        res_by_algo = pickle_loader("{0}/{1}/descent_by_algo-{2}".format(algos_pickle_path, scenario,
-                                                                         experiments_settings))
+        res_by_algo = pickle_loader("{0}/{1}/{2}/descent_by_algo-{3}".format(algos_pickle_path, scenario,
+                                                                             label_step_size, experiments_settings))
         for key in res_by_algo.keys():
             res = res_by_algo[key]
             plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),

@@ -12,7 +12,8 @@ from sklearn.datasets import load_svmlight_file
 from sklearn.preprocessing import scale, LabelEncoder
 
 from src.utils.PathDataset import get_path_to_datasets
-from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, get_project_root
+from src.utils.PickletHandler import pickle_loader, pickle_saver
+from src.utils.Utilities import file_exist
 from src.utils.data.DataClustering import find_cluster, clustering_data, tsne, check_data_clusterisation, \
     rebalancing_clusters, dirichlet_sampling
 from src.utils.data.DataPreparation import add_bias_term
