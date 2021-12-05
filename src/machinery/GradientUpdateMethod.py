@@ -20,7 +20,7 @@ from typing import Tuple
 import numpy as np
 
 from src.machinery.Memory import Memory
-from src.machinery.MemoryHandler import AbstractMemoryHandler
+from src.machinery.MemoryHandler import AbstractMemoryHandler, TailAverageMemoryHandler
 from src.machinery.Parameters import Parameters
 
 
@@ -76,9 +76,9 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         # Local memories hold on the central server.
         if not self.parameters.use_unique_up_memory:
-            self.memory = [Memory(parameters) for k in range(self.parameters.nb_devices)]
+            self.memory = [Memory(parameters, isinstance(self.memory_handler, TailAverageMemoryHandler)) for k in range(self.parameters.nb_devices)]
         else:
-            self.memory = Memory(parameters)
+            self.memory = Memory(parameters, isinstance(self.memory_handler, TailAverageMemoryHandler))
 
         # Omega : used to update the model on central server.
         self.omega = torch.zeros(parameters.n_dimensions, dtype=np.float)
@@ -285,7 +285,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             self.g = all_delta
 
         if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:
-            self.memory.set_h_i(self.memory.get_current_h_i() + self.parameters.up_learning_rate * all_delta)
+            self.memory_handler.update_memory(self.memory, compressed_delta_i)
 
         if self.parameters.up_compression_model.level != 0:
             if self.parameters.use_up_memory and self.parameters.use_unique_up_memory:

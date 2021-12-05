@@ -31,6 +31,18 @@ def tsne(data):
     return X_embedded
 
 
+def dirichlet_sampling(data, target_column_name: int, labels, nb_devices: int, beta: int = 0.5):
+    """Returns for each data point, the index of the devices it will belong to."""
+    Y_data = data.loc[:, data.columns == target_column_name].values
+    proportions = []
+    for i in labels:
+        proportions.append(np.random.dirichlet(np.repeat(beta, nb_devices)))
+    predictions = []
+    indices_split_by_label = [np.where(np.array(Y_data) == i) for i in labels]
+
+    return np.array(predictions)
+
+
 def find_cluster(embedded_data, tsne_cluster_file, nb_cluster: int = 10):
     """Find cluster in a dataset."""
     np.random.seed(25)
@@ -51,24 +63,24 @@ def find_cluster(embedded_data, tsne_cluster_file, nb_cluster: int = 10):
     return predicted_cluster
 
 
-def clustering_data(data, predicted_cluster, column_name: str, nb_cluster: int = 10):
+def clustering_data(data, clustered_indices, target_column_name: str, nb_cluster: int = 10):
     """
     Split a dataset in clusters (and add a column for bias in each cluster of data).
 
     :param data:
-    :param predicted_cluster:
-    :param column_name:
+    :param clustered_indices:
+    :param target_column_name:
     :param nb_cluster:
     :return:
     """
 
     # Separing features and labels
-    Y_data = data.loc[:, data.columns == column_name].values
-    X_data = data.loc[:, data.columns != column_name].to_numpy()
+    Y_data = data.loc[:, data.columns == target_column_name].values
+    X_data = data.loc[:, data.columns != target_column_name].to_numpy()
 
     X, Y = [], []
     for i in range(nb_cluster):
-        indices = np.where(np.array(predicted_cluster) == i)
+        indices = np.where(np.array(clustered_indices) == i)
 
         X_sub_data = X_data[indices]
         Y_sub_data = Y_data[indices]

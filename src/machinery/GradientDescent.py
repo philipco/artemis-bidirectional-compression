@@ -34,7 +34,7 @@ from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
 from src.models.CompressionModel import SQuantization
 from src.utils.Constants import MAX_LOSS
-from src.utils.Utilities import pickle_loader
+from src.utils.PickletHandler import pickle_loader
 
 
 class AGradientDescent(ABC):
@@ -256,6 +256,9 @@ class AGradientDescent(ABC):
         if len(self.avg_h_i_to_optimal_grad) != self.parameters.nb_epoch and len(self.avg_h_i_to_optimal_grad) != 0:
             self.avg_h_i_to_optimal_grad = self.avg_h_i_to_optimal_grad + [self.avg_h_i_to_optimal_grad[-1] for i in range(
                 self.parameters.nb_epoch - len(self.avg_h_i_to_optimal_grad))]
+        if len(self.tail_avg_h_i_to_optimal_grad) != self.parameters.nb_epoch and len(self.tail_avg_h_i_to_optimal_grad) != 0:
+            self.tail_avg_h_i_to_optimal_grad = self.tail_avg_h_i_to_optimal_grad + [self.tail_avg_h_i_to_optimal_grad[-1] for i in range(
+                self.parameters.nb_epoch - len(self.tail_avg_h_i_to_optimal_grad))]
         if len(self.var_models) != self.parameters.nb_epoch:
             self.var_models = self.var_models + [self.var_models[-1] for i in range(
                 self.parameters.nb_epoch - len(self.var_models))]
@@ -291,18 +294,20 @@ class AGradientDescent(ABC):
         ))
         if self.optimal_grad is not None:
             self.h_i_to_optimal_grad.append(np.mean(
-                [torch.norm(self.workers[i].local_update.memory.h_i[-1] - self.optimal_grad[i]) ** 2 for i in
+                [torch.norm(self.workers[i].local_update.memory.get_current_h_i() - self.optimal_grad[i]) ** 2 for i in
                  range(len(self.workers))]
             ))
             self.avg_h_i_to_optimal_grad.append(np.mean(
                 [torch.norm(self.workers[i].local_update.memory.averaged_h_i - self.optimal_grad[i]) ** 2 for i in
                  range(len(self.workers))]
             ))
-            if self.parameters.save_all_memories:
+            if isinstance(self.update.memory_handler, TailAverageMemoryHandler):
                 self.tail_avg_h_i_to_optimal_grad.append(np.mean(
                     [torch.norm(self.workers[i].local_update.memory.tail_averaged_h_i - self.optimal_grad[i]) ** 2 for i in
                      range(len(self.workers))]
                 ))
+            else:
+                self.tail_avg_h_i_to_optimal_grad.append(np.array(0))
         # if (not self.parameters.randomized):
         #     assert torch.all(torch.norm(past_model - self.workers[0].local_update.model_param) ** 2 == torch.tensor(0.0)), \
         #         "The distance from central server and remote nodes is not null."

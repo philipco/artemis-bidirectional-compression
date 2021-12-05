@@ -18,6 +18,12 @@ MAX_LOSS = 1e10 # maximal acceptable loss when considering that gradient descent
 
 BIAS = 2
 
+TIME_PERIOD = 100
+NB_EPOCH_WITH_HYPERPARAMETERS = 1000
+
+# We will screenshot loss values at these values.
+TIMESTAMP = [TIME_PERIOD * i for i in range(1, NB_EPOCH_WITH_HYPERPARAMETERS // TIME_PERIOD + 1)]
+
 CORES = mp.cpu_count()
 
 
@@ -35,28 +41,29 @@ TRUE_MODEL_PARAM = generate_param(DIM)
 DEVICE_RANGE = [1, 3, 10, 16, 20, 40]  # Range of device used in experiments
 DIMENSION_RANGE = [1, 4, 10, 16, 20, 160, 320]  # Range of dimension used in experiments
 
-step_formula = [(lambda it, L, omega, N: 40 / (2*L)),
-                (lambda it, L, omega, N: 20 / (2*L)),
-                (lambda it, L, omega, N: 5 / L),
+STEP_FORMULA = [(lambda it, L, omega, N: 10 / L),
+                (lambda it, L, omega, N: 6 / L),
+                (lambda it, L, omega, N: 4 / L),
                 (lambda it, L, omega, N: 2 / L),
                 (lambda it, L, omega, N: 1 / L),
                 (lambda it, L, omega, N: 1 / (2*L)),
                 (lambda it, L, omega, N: 1 / (4*L)),
                 (lambda it, L, omega, N: 1 / (8*L)),
-                (lambda it, L, omega, N: 1 / (16*L)),
-                (lambda it, L, omega, N: 1 / (32*L))
+                (lambda it, L, omega, N: 1 / (16*L))
                 ]
 
-label_step_formula = ["N/L",
-                      "N/2L",
-                      "5/L",
-                      "2/L",
-                      "$L^{-1}$",
-                      "$2L^{-1}$",
+LABEL_STEP_FORMULA = ["$10L^{-1}$",
+                      "$6L^{-1}$",
                       "$4L^{-1}$",
-                      "$8L^{-1}$",
-                      "$16L^{-1}$",
-                      "$32L^{-1}$"
+                      "$2L^{-1}$",
+                      "$L^{-1}$",
+                      "$(2L)^{-1}$",
+                      "$(4L)^{-1}$",
+                      "$(8L)^{-1}$",
+                      "$(16L)^{-1}$"
                       ]
+
+DIRICHLET_PARAMS = [0.01, 0.1, 0.5, 1, 5, 10]
+LABEL_DIRICHLET = [str(value) for value in DIRICHLET_PARAMS[1:]]
 
 

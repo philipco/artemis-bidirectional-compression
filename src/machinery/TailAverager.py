@@ -59,7 +59,7 @@ class AnytimeWindowsAverage2Acc(AnytimeTailAverage):
             self.accumulator0 = self.accumulator1
             self.N0 = self.N1
             self.accumulator1 = self.zeros
-            self.N1 = self.zeros
+            self.N1 = 0
 
         return average
 
@@ -132,9 +132,31 @@ class AnytimeExpoAverage(AnytimeTailAverage):
 
     def compute_average(self, nb_it, new_value):
         if nb_it == 1:
-            return new_value
+            self.accumulator = new_value
+            return self.accumulator
         gamma1 = self.c * (nb_it - 1) / (1 + self.c * (nb_it - 1))
         gamma2 = 1 - math.sqrt((1 - self.c) / (nb_it * (nb_it - 1))) / self.c
         gamma = gamma1 * gamma2
+        self.accumulator = gamma * self.accumulator + (1 - gamma) * new_value
+        return self.accumulator
+
+class ExpoAverage(AnytimeTailAverage):
+
+    def __init__(self, parameters: Parameters):
+        super().__init__(parameters)
+
+        self.c = 0.5
+
+        # Number of element in the accumulator 0.
+        self.N0 = 0
+
+        # Accumulator
+        self.accumulator = self.zeros
+
+    def compute_average(self, nb_it, new_value):
+        if nb_it == 1:
+            self.accumulator = new_value
+            return self.accumulator
+        gamma = 0.9
         self.accumulator = gamma * self.accumulator + (1 - gamma) * new_value
         return self.accumulator
