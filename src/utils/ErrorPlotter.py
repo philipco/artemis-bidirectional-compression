@@ -7,6 +7,7 @@ import copy
 
 import matplotlib
 import numpy as np
+from PIL import Image
 
 from src.utils.Constants import TIMESTAMP
 
@@ -208,12 +209,13 @@ def plot_2D_scenarios(obj_min, algos_pickle_path, experiments_settings, scenario
     res_all_timestamp = pickle_loader("{0}/{1}/{2}/{3}".format(algos_pickle_path, scenario1, ylabels[0], experiments_settings))
     names = res_all_timestamp[TIMESTAMP[0]].names
 
-    for time in TIMESTAMP:
-        # For each algorithm
-        for idx in range(len(names)):
+    # For each algorithm
+    for idx in range(len(names)):
+        print(names[idx])
+        picture_for_gif = []
+        for time in TIMESTAMP:
             Z = np.empty((0, len(xlabels)), int) # We could put all plot one one figure.
             for ylabel in ylabels:
-                print(ylabel)
                 res = pickle_loader("{0}/{1}/{2}/{3}".format(algos_pickle_path, scenario1, ylabel, experiments_settings))[time]
                 Z = np.append(Z, [np.array(res.get_loss(obj_min)[idx])], axis=0)
 
@@ -224,8 +226,7 @@ def plot_2D_scenarios(obj_min, algos_pickle_path, experiments_settings, scenario
 
             # Reverse
             name_algo = res.names[idx]
-            print("Name algo:", name_algo)
-            ax.set_title(name_algo + " - Logarithm excess loss (after $250$ iter.)")
+            ax.set_title("{0} - Logarithm excess loss, {1} iter".format(name_algo, time))
             ax.set_xlabel("$\\alpha_{dwn} \\times (\omega_c + 1)$")
             ax.set_ylabel("Step size $\\gamma$")
 
@@ -233,8 +234,19 @@ def plot_2D_scenarios(obj_min, algos_pickle_path, experiments_settings, scenario
             figure.set_clim(1, -6)
             fig.colorbar(figure, ax=ax)
             if picture_name:
-                plt.savefig('{0}.eps'.format("{0}/{1}-{2}-{3}T".format(picture_name, name_algo, experiments_settings,
-                                                                       time)), format='eps')
+                name = '{0}.eps'.format("{0}/{1}-{2}-{3}T".format(picture_name, name_algo, experiments_settings, time))
+                picture_for_gif.append(name)
+                plt.savefig(name, format='eps')
                 plt.close()
             else:
                 plt.show()
+
+        # Build GIF
+        gif_name = "{0}/{1}-{2}.gif".format(picture_name, name_algo, experiments_settings)
+        img, *imgs = [Image.open(f) for f in picture_for_gif]
+        img.save(fp=gif_name, format='GIF', append_images=imgs,
+                 save_all=True, duration=300, loop=1)
+        # with imageio.get_writer("{0}/{1}-{2}.gif".format(picture_name, name_algo, experiments_settings), mode='I') as writer:
+        #     for filename in picture_for_gif:
+        #         image = imageio.imread(filename)
+        #         writer.append_data(image)
