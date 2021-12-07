@@ -74,26 +74,38 @@ def prepare_dataset_by_device(X_merged, Y_merged, nb_devices: int):
 
 def prepare_noniid_dataset(data, target_label: str, data_path: str, pickle_path: str, nb_cluster: int, dirichlet: int = None, double_check: bool =False):
     if dirichlet is not None:
-        return dirichlet_preparation(data, target_label, data_path, pickle_path, nb_cluster, dirichlet)
+        X, Y = dirichlet_preparation(data, target_label, pickle_path, nb_cluster, dirichlet)
     else:
-        return TSNE_prepration(data, target_label, data_path, pickle_path, nb_cluster, double_check)
+        X, Y = TSNE_prepration(data, target_label, data_path, pickle_path, nb_cluster, double_check)
+
+    # Rebalancing cluster: the biggest one must not be more than 10times bigger than the smallest one.
+    # X_rebalanced, Y_rebalanced = rebalancing_clusters(X, Y)
+
+    for y in Y:
+        print("Nb of points:", len(y))
+
+    return X, Y
 
 
-def dirichlet_preparation(data, target_label: str, data_path: str, pickle_path: str, nb_devices: int, double_check: bool =False):
-    dirichlet_file = "{0}-dirichlet".format(data_path)
+def dirichlet_preparation(data, target_column_name: str, pickle_path: str, nb_devices: int, dirichlet: int):
+    dirichlet_file = "{0}-dirichlet-{1}".format(pickle_path, dirichlet)
     if not file_exist("{0}.pkl".format(dirichlet_file)):
         # Sampling according to Dirichlet distribution.
         logging.debug("The TSNE representation ({0}) doesn't exist."
                       .format(dirichlet_file))
-        clustered_indices = dirichlet_sampling(data, nb_devices=nb_devices, nb_labels=2)
+
+        clustered_indices = dirichlet_sampling(data, target_column_name=target_column_name, nb_devices=nb_devices, beta=dirichlet)
         pickle_saver(clustered_indices, dirichlet_file)
 
+    clustered_indices = pickle_loader("{0}".format(dirichlet_file))
+
     # With the found clusters, splitting data.
-    X, Y = clustering_data(data, clustered_indices, target_label, nb_devices)
-    return data
+    X, Y = clustering_data(data, clustered_indices, target_column_name, nb_devices)
+    return X, Y
 
 
 def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, nb_cluster: int, double_check: bool =False):
+    print("TSNE preparation.")
     # The TSNE representation is independent of the number of devices.
     tsne_file = "{0}-tsne".format(data_path)
     if not file_exist("{0}.pkl".format(tsne_file)):
@@ -122,13 +134,7 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
         # Checking that splitting data by cluster is valid.
         check_data_clusterisation(X, Y, nb_cluster)
 
-    # Rebalancing cluster: the biggest one must not be more than 10times bigger than the smallest one.
-    X_rebalanced, Y_rebalanced = rebalancing_clusters(X, Y)
-
-    for y in Y_rebalanced:
-        print("Nb of points:", len(y))
-
-    return X_rebalanced, Y_rebalanced
+    return X, Y
 
 def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool = False):
     raw_data = pd.read_csv('{0}/dataset/superconduct/train.csv'.format(get_path_to_datasets()), sep=",")

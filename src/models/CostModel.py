@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 import time
 import numpy as np
 
-from src.models.RegularizationModel import ARegularizationModel, NoRegularization
+from src.models.RegularizationModel import ARegularizationModel, NoRegularization, L2Regularization
 
 
 class ACostModel(ABC):
@@ -129,7 +129,7 @@ class LogisticModel(ACostModel):
             loss = -torch.sum(torch.log(torch.sigmoid(self.Y * self.X.mv(w))))
         end = time.time()
         self.cost_times += (end - start)
-        return loss / n_sample, w
+        return loss / n_sample + self.regularization.coefficient(w), w
 
     def grad(self, w: torch.FloatTensor) -> torch.FloatTensor:
         n_sample = self.X.shape[0]
@@ -140,7 +140,7 @@ class LogisticModel(ACostModel):
         else:
             s = torch.sigmoid(self.Y * self.X.mv(w))
             grad = self.X.T.mv((s - 1) * self.Y) / n_sample
-        return grad
+        return grad + self.regularization.grad(w)
 
     def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor):
         n_sample = x.shape[0]
@@ -236,7 +236,7 @@ def automaticGradComputation(w: torch.FloatTensor, X: torch.FloatTensor, Y: torc
 
 
 def build_several_cost_model(cost_model, X, Y, nb_devices: int):
-    cost_models = [cost_model(X[k], Y[k]) for k in range(nb_devices)]
+    cost_models = [cost_model(X[k], Y[k], regularization=NoRegularization()) for k in range(nb_devices)]
     global_L = np.mean([cost.local_L for cost in cost_models])
     for cost in cost_models:
         cost.L = global_L

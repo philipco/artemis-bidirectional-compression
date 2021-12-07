@@ -2,6 +2,7 @@
 Created by Philippenko, 24th July 2020.
 
 """
+import random
 from copy import deepcopy
 
 import torch
@@ -31,16 +32,31 @@ def tsne(data):
     return X_embedded
 
 
-def dirichlet_sampling(data, target_column_name: int, labels, nb_devices: int, beta: int = 0.5):
+def dirichlet_sampling(data, target_column_name: int, nb_devices: int, beta: int = 1):
     """Returns for each data point, the index of the devices it will belong to."""
+    print("Beta parameters of the dirichlet distribution: ", beta)
     Y_data = data.loc[:, data.columns == target_column_name].values
-    proportions = []
-    for i in labels:
-        proportions.append(np.random.dirichlet(np.repeat(beta, nb_devices)))
-    predictions = []
-    indices_split_by_label = [np.where(np.array(Y_data) == i) for i in labels]
+    labels = np.unique(Y_data)
 
-    return np.array(predictions)
+    proportions = [np.random.dirichlet(np.repeat(beta, nb_devices)) for i in labels]
+    indices_split_by_label = [np.where(np.array(Y_data) == i)[0] for i in labels]
+    predicted_cluster = list(range(len(Y_data)))
+    for idx_label in range(len(labels)):
+        indices_by_label = indices_split_by_label[idx_label]
+        proportion = proportions[idx_label]
+        random.shuffle(indices_by_label)
+        start, end = 0, 0
+        for i in range(nb_devices):
+            end += int(proportion[i] * len(indices_by_label))
+            if i == nb_devices-1:
+                end = len(indices_by_label)
+            for indices in indices_by_label[start:end]:
+                predicted_cluster[indices] = i
+            start = end
+
+    # TODO : à supprimer ?
+    print([len(np.where(np.array(predicted_cluster) == i)[0]) for i in range(20)])
+    return np.array(predicted_cluster)
 
 
 def find_cluster(embedded_data, tsne_cluster_file, nb_cluster: int = 10):
@@ -98,6 +114,7 @@ def clustering_data(data, clustered_indices, target_column_name: str, nb_cluster
 
 def rebalancing_clusters(X_origin, Y_origin):
     """If the clusters are too unbalanced w.r.t. the number of elements, rebalance clusters."""
+    MAX_RATIO = 10
     X, Y = deepcopy(X_origin), deepcopy(Y_origin)
     do = True
     cpt = 0
@@ -106,7 +123,7 @@ def rebalancing_clusters(X_origin, Y_origin):
         lenghts = [len(y) for y in Y]
         min_lenght = min(lenghts), np.argmin(lenghts)
         max_lenght = max(lenghts), np.argmax(lenghts)
-        if min_lenght[0] * 10 < max_lenght[0]:
+        if min_lenght[0] * MAX_RATIO < max_lenght[0]:
             print("Changing : ")
             print(min_lenght)
             print(max_lenght)
