@@ -12,6 +12,7 @@ from sklearn.mixture import GaussianMixture
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import scale
 
 from src.utils.data.DataPreparation import add_bias_term
 
@@ -26,7 +27,7 @@ def tsne(data):
     """Compute the TSNE representation of a dataset."""
     np.random.seed(25)
     tsne = TSNE()
-    X_embedded = tsne.fit_transform(data)
+    X_embedded = tsne.fit_transform(scale(data))
     fig, ax = plt.subplots(figsize=dim_tnse_fig)
     sns.scatterplot(X_embedded[:, 0], X_embedded[:, 1], ax=ax).set_title("TSNE - 2D representation of data")
     return X_embedded
@@ -93,6 +94,10 @@ def clustering_data(data, clustered_indices, target_column_name: str, nb_cluster
     # Separing features and labels
     Y_data = data.loc[:, data.columns == target_column_name].values
     X_data = data.loc[:, data.columns != target_column_name].to_numpy()
+
+    X_data = scale(X_data)
+    if not np.sort(np.unique(Y_data)).tolist() == [-1.0, 1.0]:
+        Y_data = scale(Y_data)
 
     X, Y = [], []
     for i in range(nb_cluster):

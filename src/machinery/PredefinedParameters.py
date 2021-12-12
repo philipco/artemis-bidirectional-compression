@@ -185,6 +185,8 @@ class BiQSGD(Qsgd):
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.down_compression_model = down_compression_model
+        params.use_down_memory = False
+        params.use_up_memory = False
         return params
 
 
