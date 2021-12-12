@@ -39,7 +39,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
-    nb_epoch = 600 if stochastic else 400
+    nb_epoch = 1000 if stochastic else 400
 
     iid_data = True if iid == 'iid' else False
 
@@ -289,7 +289,7 @@ if __name__ == '__main__':
             raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
 
     elif sys.argv[1] == "real":
-        for sto in [False, True]:
+        for sto in [True]:
             for dataset in [sys.argv[2]]:
                 # run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                 #                 use_averaging=True, scenario="alpha", fraction_sampled_workers=float(sys.argv[5]))

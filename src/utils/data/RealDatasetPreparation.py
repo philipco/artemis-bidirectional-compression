@@ -81,11 +81,9 @@ def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid:
     else:
         logging.debug("No missing value. Great !")
     logging.debug("Scaling data.")
-    scaled_data = scale(raw_data)
 
-    scaled_data = pd.DataFrame(data=scaled_data, columns = raw_data.columns)
-    X_data = scaled_data.loc[:, scaled_data.columns != "critical_temp"]
-    Y_data = scaled_data.loc[:, scaled_data.columns == "critical_temp"]
+    X_data = raw_data.loc[:, raw_data.columns != "critical_temp"]
+    Y_data = raw_data.loc[:, raw_data.columns == "critical_temp"]
     dim = len(X_data.columns)
     logging.debug("There is " + str(dim) + " dimensions.")
 
@@ -97,7 +95,7 @@ def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid:
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "critical_temp", data_path + "/superconduct", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(raw_data, "critical_temp", data_path + "/superconduct", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
@@ -142,21 +140,13 @@ def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     X_data = raw_data.loc[:, raw_data.columns != "state"]
     Y_data = raw_data.loc[:, raw_data.columns == "state"]  # We do not scale labels (+/-1).
 
-    logging.debug("Scaling data.")
-    scaled_data = scale(raw_data.loc[:, raw_data.columns != "state"])
-
-    scaled_X = pd.DataFrame(data=scaled_data, columns=raw_data.loc[:, raw_data.columns != "state"].columns)
-
-    # Merging dataset in one :
-    scaled_data = pd.concat([scaled_X, Y_data], axis=1, sort=False)
-
     if iid:
         # Transforming into torch.FloatTensor
-        X_tensor = torch.tensor(scaled_X.to_numpy(), dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "state", data_path + "/quantum", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(raw_data, "state", data_path + "/quantum", pickle_path, nb_devices, double_check)
 
     return X, Y, dim + 1 # Because we added one column for the bias
 
@@ -173,20 +163,16 @@ def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: boo
     raw_data = raw_data.replace({'class': {0: -1}})
 
     Y_data = raw_data.loc[:, raw_data.columns == "class"]
+    X_data = raw_data.loc[:, raw_data.columns != "class"]
 
-    scaled_data = scale(raw_data.loc[:, raw_data.columns != "class"])
-    scaled_X = pd.DataFrame(data=scaled_data, columns=raw_data.loc[:, raw_data.columns != "class"].columns)
-
-    # Merging dataset in one :
-    scaled_data = pd.concat([scaled_X, Y_data], axis=1, sort=False)
-    dim = len(scaled_X.columns)
+    dim = len(X_data.columns)
 
     if iid:
-        X_merged = torch.tensor(scaled_X.to_numpy(), dtype=torch.float64)
+        X_merged = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "class", data_path + "/mushroom", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(raw_data, "class", data_path + "/mushroom", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
@@ -198,19 +184,20 @@ def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: boo
         if raw_Y[i] == 0:
             raw_Y[i] = -1
 
-    scaled_X = scale(np.array(raw_X.todense(), dtype=np.float64))
-    scaled_data = pd.DataFrame(data=scaled_X)
-    scaled_data["target"] = raw_Y
-    dim = len(scaled_data.columns) - 1
+    # scaled_X = scale(np.array(raw_X.todense(), dtype=np.float64))
+    raw_data = pd.DataFrame(data=raw_X.todense())
+    raw_data["target"] = raw_Y
+    dim = len(raw_data.columns) - 1
 
-    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+    X_data = raw_data.loc[:, raw_data.columns != "target"]
+    Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data, dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/phishing", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/phishing", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
@@ -229,19 +216,19 @@ def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
         if raw_Y[i] == 0:
             raw_Y[i] = -1
 
-    scaled_X = scale(np.array(raw_X, dtype=np.float64))
-    scaled_data = pd.DataFrame(data=scaled_X)
-    scaled_data["target"] = raw_Y
-    dim = len(scaled_data.columns) - 1
+    raw_data = pd.DataFrame(data=raw_X)
+    raw_data["target"] = raw_Y
+    dim = len(raw_data.columns) - 1
 
-    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+    X_data = raw_data.loc[:, raw_data.columns != "target"]
+    Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data, dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/a9a", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/a9a", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
@@ -252,21 +239,17 @@ def prepare_abalone(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     labelencoder = LabelEncoder()
     raw_data["gender"] = labelencoder.fit_transform(raw_data["gender"])
 
+    X_data = raw_data.loc[:, raw_data.columns != "rings"]
     Y_data = raw_data.loc[:, raw_data.columns == "rings"]
 
-    scaled_data = scale(raw_data.loc[:, raw_data.columns != "rings"])
-    scaled_X = pd.DataFrame(data=scaled_data, columns=raw_data.loc[:, raw_data.columns != "rings"].columns)
-
-    # Merging dataset in one :
-    scaled_data = pd.concat([scaled_X, Y_data], axis=1, sort=False)
-    dim = len(scaled_X.columns)
+    dim = len(X_data.columns)
 
     if iid:
-        X_merged = torch.tensor(scaled_X.to_numpy(), dtype=torch.float64)
+        X_merged = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_merged = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_merged, Y_merged, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "rings", data_path + "/abalone", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(raw_data, "rings", data_path + "/abalone", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
@@ -279,40 +262,40 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
         if raw_Y[i] == 2:
             raw_Y[i] = -1
 
-    scaled_X = scale(np.array(raw_X, dtype=np.float64))
-    scaled_data = pd.DataFrame(data=scaled_X)
-    scaled_data["target"] = raw_Y
-    dim = len(scaled_data.columns) - 1
+    raw_data = pd.DataFrame(data=raw_X)
+    raw_data["target"] = raw_Y
+    dim = len(raw_data.columns) - 1
 
-    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+    X_data = raw_data.loc[:, raw_data.columns != "target"]
+    Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data, dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/covtype", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/covtype", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
 def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, double_check: bool =False):
 
-    raw_data = pd.read_csv('{0}/dataset/madelon/madelon_train.data'.format(get_path_to_datasets()), sep=" ", header=None)
-    raw_data.drop(raw_data.columns[len(raw_data.columns) - 1], axis=1, inplace=True)
-    scaled_X = scale(np.array(raw_data, dtype=np.float64))
-    scaled_data = pd.DataFrame(data=scaled_X)
-    dim = len(scaled_data.columns)
+    X_data = pd.read_csv('{0}/dataset/madelon/madelon_train.data'.format(get_path_to_datasets()), sep=" ", header=None)
+    X_data.drop(X_data.columns[len(X_data.columns) - 1], axis=1, inplace=True)
+
+    dim = len(X_data.columns)
 
     Y_data = pd.read_csv('{0}/dataset/madelon/madelon_train.labels'.format(get_path_to_datasets()), header=None)
 
-    scaled_data["target"] = Y_data.values
+    raw_data = X_data.copy()
+    raw_data["target"] = Y_data.values
 
     if iid:
-        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data, dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/madelon", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/madelon", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
@@ -325,19 +308,19 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
         if raw_Y[i] == 2:
             raw_Y[i] = -1
 
-    scaled_X = scale(np.array(raw_X, dtype=np.float64))
-    scaled_data = pd.DataFrame(data=scaled_X)
-    scaled_data["target"] = raw_Y
-    dim = len(scaled_data.columns) - 1
+    raw_data = pd.DataFrame(data=raw_X)
+    raw_data["target"] = raw_Y
+    dim = len(raw_data.columns) - 1
 
-    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+    X_data = raw_data.loc[:, raw_data.columns != "target"]
+    Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data, dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/covtype", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/covtype", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
 
@@ -346,19 +329,19 @@ def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     raw_X, raw_Y = load_svmlight_file("{0}/dataset/gisette/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
 
-    scaled_X = scale(np.array(raw_X, dtype=np.float64))
-    scaled_data = pd.DataFrame(data=scaled_X)
-    scaled_data["target"] = raw_Y
-    dim = len(scaled_data.columns) - 1
+    raw_data = pd.DataFrame(data=raw_X)
+    raw_data["target"] = raw_Y
+    dim = len(raw_data.columns) - 1
 
-    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+    X_data = raw_data.loc[:, raw_data.columns != "target"]
+    Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data, dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/gisette", pickle_path, nb_devices,
+        X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/gisette", pickle_path, nb_devices,
                                       double_check)
     return X, Y, dim + 1  # Because we added one column for the bias
 
@@ -372,17 +355,17 @@ def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
         raw_X = raw_X.todense()
         raw_X = np.c_[raw_X, np.zeros((len(raw_Y)))]
 
-    scaled_X = scale(np.array(raw_X, dtype=np.float64))
-    scaled_data = pd.DataFrame(data=scaled_X)
-    scaled_data["target"] = raw_Y
-    dim = len(scaled_data.columns) - 1
+    raw_data = pd.DataFrame(data=raw_X)
+    raw_data["target"] = raw_Y
+    dim = len(raw_data.columns) - 1
 
-    Y_data = scaled_data.loc[:, scaled_data.columns == "target"]
+    X_data = raw_data.loc[:, raw_data.columns != "target"]
+    Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(scaled_X, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data, dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(scaled_data, "target", data_path + "/w8a", pickle_path, nb_devices, double_check)
+        X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/w8a", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias

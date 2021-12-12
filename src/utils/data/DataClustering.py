@@ -11,6 +11,7 @@ from sklearn.mixture import GaussianMixture
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import scale
 
 from src.utils.data.DataPreparation import add_bias_term
 
@@ -65,6 +66,10 @@ def clustering_data(data, predicted_cluster, column_name: str, nb_cluster: int =
     # Separing features and labels
     Y_data = data.loc[:, data.columns == column_name].values
     X_data = data.loc[:, data.columns != column_name].to_numpy()
+
+    X_data =    scale(X_data)
+    if not np.sort(np.unique(Y_data)).tolist() == [-1.0, 1.0]:
+        Y_data = scale(Y_data)
 
     X, Y = [], []
     for i in range(nb_cluster):
