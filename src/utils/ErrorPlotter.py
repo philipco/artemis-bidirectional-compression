@@ -3,7 +3,14 @@ Created by Philippenko, 6th March 2020.
 
 This python file provide facilities to plot the results of a (multiple) gradient descent run.
 """
+import copy
+
 import matplotlib
+import numpy as np
+from PIL import Image
+
+from src.utils.Constants import TIMESTAMP
+
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
     'font.family': 'serif',
@@ -15,6 +22,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 
 from src.utils.Utilities import drop_nan_values, keep_until_found_nan
+from src.utils.PickletHandler import pickle_loader
 
 # colors=["tab:blue", "tab:brown", "tab:orange", "tab:green", "tab:red", "tab:purple"]
 markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
@@ -28,9 +36,12 @@ fourfigsize=(13, 8)
 sixfigsize=(13, 11)
 
 Y_LEGENDS = {"loss": r"$\log_{10}(F(w_k) - F(w_*))$",
-             "ef": r"$\log_{10}(\| \| EF_k \| \|)$",
-             "rand_dist": r"$\log_{10}(\mathbb{E} \| \| w_k - w_k^i \| \|^2)$",
-             "rand_var": r"$\log_{10}( \| \| \mathbb{V}~[w_k^i] \| \| )$",
+             "ef": r"$\log_{10}( \| EF_k \|)$",
+             "rand_dist": r"$\log_{10}(\mathbb{E} \| w_k - w_k^i \|^2)$",
+             "h_i_dist": r"$\log_{10}(1 / N \sum \| h_k^i - h_k^* \|^2)$",
+             "avg_h_i_dist": r"$\log_{10}(1 / N \sum \| \overline{h_k^i} - h_k^* \|^2)$",
+             "tail_avg_h_i_dist": r"$\log_{10}(1 / N \sum \| \overline{h_k^i}^T - h_k^* \|^2)$",
+             "rand_var": r"$\log_{10}( \| \mathbb{V}~[w_k^i] \| )$",
              "train_loss": r"$\log($Train loss$)$",
              "test_loss": r"$\log($Test loss$)$",
              "accuracy": "Accuracy",}
@@ -175,6 +186,7 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
     fig.tight_layout()
     if picture_name:
         plt.savefig('{0}.eps'.format(picture_name), format='eps')
+        plt.close()
     else:
         plt.show()
 
@@ -187,3 +199,54 @@ def logistic_plot(X, Y):
     plt.xlabel(r"$x_i^1$", fontsize=16)
     plt.ylabel(r"$x_i^2$", fontsize=16)
     plt.title("Logistic regression simulation", fontsize=18)
+
+
+def plot_2D_scenarios(obj_min, algos_pickle_path, experiments_settings, scenario, xlabels, ylabels, picture_name):
+
+    scenario1, scenario2 = scenario.split("-")
+    # ylabels.reverse()
+
+    res_all_timestamp = pickle_loader("{0}/{1}/{2}/{3}".format(algos_pickle_path, scenario1, ylabels[0], experiments_settings))
+    names = res_all_timestamp[TIMESTAMP[0]].names
+
+    # For each algorithm
+    for idx in range(len(names)):
+        print(names[idx])
+        picture_for_gif = []
+        for time in TIMESTAMP:
+            Z = np.empty((0, len(xlabels)), int) # We could put all plot one one figure.
+            for ylabel in ylabels:
+                res = pickle_loader("{0}/{1}/{2}/{3}".format(algos_pickle_path, scenario1, ylabel, experiments_settings))[time]
+                Z = np.append(Z, [np.array(res.get_loss(obj_min)[idx])], axis=0)
+
+            fig, ax = plt.subplots(figsize=figsize)
+
+            plt.yticks([i+0.5 for i in range(0, len(ylabels))], ylabels)#, rotation=40)
+            plt.xticks([i+0.5 for i in range(0, len(xlabels))], xlabels, rotation=40)
+
+            # Reverse
+            name_algo = res.names[idx]
+            ax.set_title("{0} - Logarithm excess loss, {1} iter".format(name_algo, time))
+            ax.set_xlabel("$\\alpha_{dwn} \\times (\omega_c + 1)$")
+            ax.set_ylabel("Step size $\\gamma$")
+
+            figure = ax.pcolor(Z, cmap=plt.cm.RdYlGn)
+            figure.set_clim(1, -6)
+            fig.colorbar(figure, ax=ax)
+            if picture_name:
+                name = '{0}.eps'.format("{0}/{1}-{2}-{3}T".format(picture_name, name_algo, experiments_settings, time))
+                picture_for_gif.append(name)
+                plt.savefig(name, format='eps')
+                plt.close()
+            else:
+                plt.show()
+
+        # Build GIF
+        gif_name = "{0}/{1}-{2}.gif".format(picture_name, name_algo, experiments_settings)
+        img, *imgs = [Image.open(f) for f in picture_for_gif]
+        img.save(fp=gif_name, format='GIF', append_images=imgs,
+                 save_all=True, duration=300, loop=1)
+        # with imageio.get_writer("{0}/{1}-{2}.gif".format(picture_name, name_algo, experiments_settings), mode='I') as writer:
+        #     for filename in picture_for_gif:
+        #         image = imageio.imread(filename)
+        #         writer.append_data(image)

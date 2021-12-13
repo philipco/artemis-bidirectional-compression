@@ -96,14 +96,14 @@ class CompressionModel(ABC):
         if self.level == 0:
             return 0
         if len(args) == 1:
-            return 1 / (self.constant * (self.__compute_omega_c__(args[0]) + 1))
-        return 1 / (self.constant * (self.omega_c + 1))
+            return self.constant / (self.__compute_omega_c__(args[0]) + 1)
+        return self.constant / (self.omega_c + 1)
 
 
 class TopKSparsification(CompressionModel):
 
-    def __init__(self, level: int, dim: int = None, norm: int = 2):
-        super().__init__(level, dim, norm)
+    def __init__(self, level: int, dim: int = None, norm: int = 2, constant: int = 1):
+        super().__init__(level, dim, norm, constant)
         if dim is not None:
             assert 0 <= level < dim, "k must be inferior to the number of dimension and superior to zero."
         self.biased = True
@@ -125,7 +125,7 @@ class TopKSparsification(CompressionModel):
 
 class RandomSparsification(CompressionModel):
 
-    def __init__(self, level: int, dim: int = None, biased = False, norm: int = 2, constant: int = 2):
+    def __init__(self, level: int, dim: int = None, biased = False, norm: int = 2, constant: int = 1):
         """
 
         :param level: number of dimension to select at compression step
@@ -133,8 +133,8 @@ class RandomSparsification(CompressionModel):
         :param biased: set to True to used to biased version of this operators
         """
         self.biased = biased
-        super().__init__(level, dim, norm)
-        assert 0 <= level <= 1, "k must be expressed in percent."
+        super().__init__(level, dim, norm, constant)
+        assert 0 <= level <= 1, "The level must be expressed in percent."
 
     def __compress__(self, vector: torch.FloatTensor):
         proba = self.level
@@ -159,7 +159,7 @@ class RandomSparsification(CompressionModel):
 
 class SQuantization(CompressionModel):
 
-    def __init__(self, level: int, dim: int = None, norm: int = 2, div_omega: int = 1, constant: int = 2):
+    def __init__(self, level: int, dim: int = None, norm: int = 2, div_omega: int = 1, constant: int = 1):
         self.biased = False
         self.div_omega = div_omega
         super().__init__(level, dim, norm, constant)

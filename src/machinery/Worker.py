@@ -12,9 +12,9 @@ class Worker:
     and a local update method (to carry out the local step of the federated gradient descent).
     """
 
-    def __init__(self, ID : int, parameters: Parameters, localUpdate: AbstractLocalUpdate) -> None:
+    def __init__(self, ID : int, local_update: AbstractLocalUpdate) -> None:
         super().__init__()
-        self.local_update = localUpdate(parameters)
+        self.local_update = local_update
         self.idx_last_update = 0
         self.ID = ID
         self.nb_inside_it = 0

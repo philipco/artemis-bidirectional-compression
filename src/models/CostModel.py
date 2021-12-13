@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 import time
 import numpy as np
 
-from src.models.RegularizationModel import ARegularizationModel, NoRegularization
+from src.models.RegularizationModel import ARegularizationModel, NoRegularization, L2Regularization
 
 
 class ACostModel(ABC):
