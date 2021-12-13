@@ -128,8 +128,9 @@ class LogisticModel(ACostModel):
         else:
             loss = -torch.sum(torch.log(torch.sigmoid(self.Y * self.X.mv(w))))
         end = time.time()
+        loss = loss / n_sample + self.regularization.coefficient(w)
         self.cost_times += (end - start)
-        return loss / n_sample, w
+        return loss, w
 
     def grad(self, w: torch.FloatTensor) -> torch.FloatTensor:
         n_sample = self.X.shape[0]
@@ -140,7 +141,7 @@ class LogisticModel(ACostModel):
         else:
             s = torch.sigmoid(self.Y * self.X.mv(w))
             grad = self.X.T.mv((s - 1) * self.Y) / n_sample
-        return grad
+        return grad + self.regularization.grad(w)
 
     def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor):
         n_sample = x.shape[0]
@@ -154,7 +155,7 @@ class LogisticModel(ACostModel):
             grad = x.T.mv((s - 1) * y) / n_sample
         end = time.time()
         self.grad_i_times += (end - start)
-        return grad
+        return grad + self.regularization.grad(w)
 
     def grad_coordinate(self, w: torch.FloatTensor, j: int) -> torch.FloatTensor:
         pass
@@ -197,10 +198,10 @@ class RMSEModel(ACostModel):
     def grad_i(self, w: torch.FloatTensor, x: torch.FloatTensor, y: torch.FloatTensor) -> torch.FloatTensor:
         n_sample = x.shape[0]
         start = time.time()
-        grad = 2 * x.T.mv(x.mv(w) - y) / n_sample + self.regularization.grad(w)
+        grad = 2 * x.T.mv(x.mv(w) - y) / n_sample
         end = time.time()
         self.grad_i_times += (end - start)
-        return grad
+        return grad + self.regularization.coefficient(w)
 
     def grad_coordinate(self, w: torch.FloatTensor, j: int) -> torch.FloatTensor:
         n_sample = self.X.shape[0]
@@ -237,7 +238,7 @@ def automaticGradComputation(w: torch.FloatTensor, X: torch.FloatTensor, Y: torc
 
 def build_several_cost_model(cost_model, X, Y, nb_devices: int):
     total_nb_points = np.sum(np.array([x.shape[0] for x in X]))
-    cost_models = [cost_model(X[k], Y[k], total_nb_points) for k in range(nb_devices)]
+    cost_models = [cost_model(X[k], Y[k], total_nb_points, regularization=NoRegularization()) for k in range(nb_devices)]
     global_L = np.mean([cost.local_L for cost in cost_models])
     for cost in cost_models:
         cost.L = global_L
