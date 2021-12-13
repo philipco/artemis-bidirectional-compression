@@ -58,12 +58,16 @@ class AbstractLocalUpdate(ABC):
 
     def compute_local_gradient(self, cost_model: ACostModel, full_nb_iterations: int) -> None:
         """Compute the local gradient of the worker."""
+
+        nb_local_points = cost_model.X.shape[0]
+        total_nb_points = cost_model.total_nb_points
+
         if self.parameters.stochastic:
             # If batch size is bigger than number of sample of the device, we only take all its points.
-            if self.parameters.batch_size > cost_model.X.shape[0]:
+            if self.parameters.batch_size > nb_local_points:
                 self.g_i = cost_model.grad(self.model_param)
             else:
-                idx = random.sample(list(range(cost_model.X.shape[0])), self.parameters.batch_size)
+                idx = random.sample(list(range(nb_local_points)), self.parameters.batch_size)
                 if isinstance(cost_model.X, sp.csc.csc_matrix):
                     x = sp.hstack([cost_model.X[i] for i in idx])
                 else:
@@ -74,6 +78,8 @@ class AbstractLocalUpdate(ABC):
                 self.g_i = cost_model.grad_i(self.model_param, x, y)
         else:
             self.g_i = cost_model.grad(self.model_param)
+
+        self.g_i = self.g_i * self.parameters.nb_devices * nb_local_points / total_nb_points
 
         # Smart initialisation of the memory (it corresponds to the first computed gradient).
         if self.parameters.fraction_sampled_workers == 1: # TODO : There is issue with PP and multiple memories

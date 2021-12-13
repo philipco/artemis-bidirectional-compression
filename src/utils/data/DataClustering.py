@@ -99,6 +99,10 @@ def clustering_data(data, clustered_indices, target_column_name: str, nb_cluster
     if not np.sort(np.unique(Y_data)).tolist() == [-1.0, 1.0]:
         Y_data = scale(Y_data)
 
+    X_data =    scale(X_data)
+    if not np.sort(np.unique(Y_data)).tolist() == [-1.0, 1.0]:
+        Y_data = scale(Y_data)
+
     X, Y = [], []
     for i in range(nb_cluster):
         indices = np.where(np.array(clustered_indices) == i)

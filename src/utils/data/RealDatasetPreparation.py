@@ -135,6 +135,12 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
         # Checking that splitting data by cluster is valid.
         check_data_clusterisation(X, Y, nb_cluster)
 
+    # Rebalancing cluster: the biggest one must not be more than 10times bigger than the smallest one. 
+    #X_rebalanced, Y_rebalanced = X, Y
+
+    for y in Y:
+        print("Nb of points:", len(y))
+
     return X, Y
 
 def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool = False):
@@ -290,6 +296,7 @@ def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
+
         X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/a9a", pickle_path, nb_devices, dirichlet, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
@@ -431,5 +438,5 @@ def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
-        X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/w8a", pickle_path, nb_devices, dirichlet, double_check)
+        X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/w8a", pickle_path, nb_devices, double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
