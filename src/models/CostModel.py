@@ -30,11 +30,11 @@ class ACostModel(ABC):
     """
     #__slots__ = ('cost_times', 'grad_times', 'lips_times', 'X', 'Y', 'L', 'local_L', 'regularization')
 
-    def __init__(self, X, Y, regularization: ARegularizationModel = NoRegularization()) -> None:
+    def __init__(self, X, Y, total_nb_points: int, regularization: ARegularizationModel = NoRegularization()) -> None:
         super().__init__()
 
         self.cost_times, self.grad_i_times, self.lips_times = 0, 0, 0
-
+        self.total_nb_points = total_nb_points
         self.regularization = regularization
 
         self.X, self.Y = X, Y
@@ -115,8 +115,8 @@ class LogisticModel(ACostModel):
 
     Note that labels should be equal to +/-1."""
 
-    def __init__(self, X, Y, regularization: ARegularizationModel = NoRegularization()) -> None:
-        super().__init__(X, Y, regularization)
+    def __init__(self, X, Y, total_nb_points: int, regularization: ARegularizationModel = NoRegularization()) -> None:
+        super().__init__(X, Y, total_nb_points, regularization)
         assert torch.sort(torch.unique(Y))[0] in torch.Tensor([-1, 1]).to(dtype=torch.float64), \
             "Y values must contains only -1 and 1."
 
@@ -177,8 +177,8 @@ class LogisticModel(ACostModel):
 
 class RMSEModel(ACostModel):
 
-    def __init__(self, X, Y, regularization: ARegularizationModel = NoRegularization()) -> None:
-        super().__init__(X, Y, regularization)
+    def __init__(self, X, Y, total_nb_points: int, regularization: ARegularizationModel = NoRegularization()) -> None:
+        super().__init__(X, Y, total_nb_points, regularization)
         # assert len(torch.unique(Y)) > 2, "Y values must have at least 3 different values."
 
     def cost(self, w: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
@@ -236,7 +236,8 @@ def automaticGradComputation(w: torch.FloatTensor, X: torch.FloatTensor, Y: torc
 
 
 def build_several_cost_model(cost_model, X, Y, nb_devices: int):
-    cost_models = [cost_model(X[k], Y[k]) for k in range(nb_devices)]
+    total_nb_points = np.sum(np.array([x.shape[0] for x in X]))
+    cost_models = [cost_model(X[k], Y[k], total_nb_points) for k in range(nb_devices)]
     global_L = np.mean([cost.local_L for cost in cost_models])
     for cost in cost_models:
         cost.L = global_L

@@ -67,7 +67,7 @@ def prepare_noniid_dataset(data, pivot_label: str, data_path: str, pickle_path: 
         check_data_clusterisation(X, Y, nb_cluster)
 
     # Rebalancing cluster: the biggest one must not be more than 10times bigger than the smallest one.
-    X_rebalanced, Y_rebalanced = rebalancing_clusters(X, Y)
+    X_rebalanced, Y_rebalanced = X, Y
 
     for y in Y_rebalanced:
         print("Nb of points:", len(y))
