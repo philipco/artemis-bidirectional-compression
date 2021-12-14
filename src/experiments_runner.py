@@ -5,6 +5,7 @@ import sys
 # from guppy import hpy
 
 from src.models.CostModel import build_several_cost_model
+from src.models.RegularizationModel import L2Regularization
 from src.utils.ConvexSettings import batch_sizes, models
 
 from src.utils.ErrorPlotter import *
@@ -20,8 +21,8 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def operator_of_compression():
-    # return SQuantization, 1
-    return RandomSparsification, 0.06
+    return SQuantization, 1
+    # return RandomSparsification, 0.06
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
@@ -116,9 +117,10 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                     ]
 
     label_alpha = [str(value.constant) for value in values_alpha]
+    default_regularizer = L2Regularization(regularization_rate=0.01)
 
     # Creating cost models which will be used to computed cost/loss, gradients, L ...
-    cost_models = build_several_cost_model(model, X, Y, nb_devices)
+    cost_models = build_several_cost_model(model, X, Y, nb_devices, regularization=default_regularizer)
 
     # hp.setrelheap()
 
@@ -157,9 +159,11 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     stochasticity = 'sto' if stochastic else "full"
     if stochastic:
-        experiments_settings = "{0}-{1}-b{2}".format(compression_by_default.get_name(), stochasticity, batch_size)
+        experiments_settings = "{0}-{1}-b{2}-reg{3}".format(compression_by_default.get_name(), stochasticity,
+                                                            batch_size, default_regularizer.regularization_rate)
     else:
-        experiments_settings = "{0}-{1}".format(compression_by_default.get_name(), stochasticity)
+        experiments_settings = "{0}-{1}-reg{2}".format(compression_by_default.get_name(), stochasticity,
+                                                default_regularizer.regularization_rate)
 
     if not plot_only:
         if scenario == "compression":
@@ -340,10 +344,10 @@ if __name__ == '__main__':
             raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
 
     elif sys.argv[1] == "real":
-        # for sto in [False, True]:
-        #     for dataset in [sys.argv[2]]:
-        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-        #                         use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))
+        for sto in [False, True]:
+            for dataset in [sys.argv[2]]:
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+                                use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))
 
         for sto in [False, True]:
             for dataset in [sys.argv[2]]:

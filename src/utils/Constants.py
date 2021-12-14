@@ -18,8 +18,8 @@ MAX_LOSS = 1e10 # maximal acceptable loss when considering that gradient descent
 
 BIAS = 2
 
-TIME_PERIOD = 100
-NB_EPOCH_WITH_HYPERPARAMETERS = 1000
+TIME_PERIOD = 15
+NB_EPOCH_WITH_HYPERPARAMETERS = 150
 
 # We will screenshot loss values at these values.
 TIMESTAMP = [TIME_PERIOD * i for i in range(1, NB_EPOCH_WITH_HYPERPARAMETERS // TIME_PERIOD + 1)]
