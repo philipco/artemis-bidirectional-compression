@@ -68,7 +68,8 @@ class AGradientDescent(ABC):
         self.memory_info = None
         if algos_pickle_path is not None:
             if self.parameters.fraction_sampled_workers == 1:
-                self.optimal_grad = pickle_loader("{0}/../grads_min".format(algos_pickle_path))
+                # TODO TSNE or Dirichlet!
+                self.optimal_grad = pickle_loader("{0}/../grads_min-TSNE".format(algos_pickle_path))
             else:
                 self.optimal_grad = pickle_loader("{0}/../../grads_min".format(algos_pickle_path))
         else:

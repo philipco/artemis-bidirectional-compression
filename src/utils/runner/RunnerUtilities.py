@@ -21,7 +21,7 @@ from src.utils.PickletHandler import pickle_loader, pickle_saver
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-NB_RUN = 2  # Number of gradient descent before averaging.
+NB_RUN = 3  # Number of gradient descent before averaging.
 
 
 def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1, scenario=None):
