@@ -55,8 +55,7 @@ def dirichlet_sampling(data, target_column_name: int, nb_devices: int, beta: int
                 predicted_cluster[indices] = i
             start = end
 
-    # TODO : à supprimer ?
-    print([len(np.where(np.array(predicted_cluster) == i)[0]) for i in range(20)])
+    print("Number of of points:\n", [len(np.where(np.array(predicted_cluster) == i)[0]) for i in range(20)])
     return np.array(predicted_cluster)
 
 

@@ -27,7 +27,7 @@ def operator_of_compression():
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
                     scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=None,
-                    dirichlet = None):
+                    dirichlet = 0.3):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
@@ -40,11 +40,12 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     # tracemalloc.start()
     # hp = hpy()
 
-    data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos, fraction_sampled_workers)
+    data_path, pickle_path, algos_pickle_path, picture_path = \
+        create_path_and_folders(nb_devices, dataset, iid, algos, fraction_sampled_workers, dirichlet)
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers, scenario)
     nb_devices = nb_devices
-    nb_epoch = 150 if stochastic else 400
+    nb_epoch = 80 if stochastic else 400
 
     iid_data = True if iid == 'iid' else False
 
@@ -117,7 +118,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                     ]
 
     label_alpha = [str(value.constant) for value in values_alpha]
-    default_regularizer = L2Regularization(regularization_rate=0.01)
+    default_regularizer = L2Regularization(regularization_rate=0)
 
     # Creating cost models which will be used to computed cost/loss, gradients, L ...
     cost_models = build_several_cost_model(model, X, Y, nb_devices, regularization=default_regularizer)
@@ -125,65 +126,68 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     # hp.setrelheap()
 
     if dirichlet is not None:
-        obj_type = "dirichlet-{0}".format(dirichlet)
+        dirichlet_or_tsne = "dirichlet-{0}".format(dirichlet)
     else:
-        obj_type = "TSNE"
-    obj_name = "{0}/obj_min-{1}".format(pickle_path, obj_type)
+        dirichlet_or_tsne = "TSNE"
+    obj_name = "{0}/obj_min-{1}".format(pickle_path, dirichlet_or_tsne)
 
     if not file_exist("{0}.pkl".format(obj_name)) \
-            or not file_exist("{0}/grads_min-{1}.pkl".format(pickle_path, obj_type)):
+            or not file_exist("{0}/grads_min-{1}.pkl".format(pickle_path, dirichlet_or_tsne)):
         obj_min_by_N_descent = SGD_Descent(Parameters(n_dimensions=dim_notebook,
-                                                  nb_devices=nb_devices,
-                                                  nb_epoch=40000,
-                                                  momentum=0.,
-                                                  verbose=True,
-                                                  cost_models=cost_models,
-                                                  stochastic=False
-                                                  ), None)
+                                                      dirichlet=dirichlet,
+                                                      nb_devices=nb_devices,
+                                                      nb_epoch=40000,
+                                                      step_formula=lambda it, L, omega, N: 1 / (L),
+                                                      momentum=0.,
+                                                      verbose=True,
+                                                      cost_models=cost_models,
+                                                      stochastic=False), None)
 
         obj_min_by_N_descent.run(cost_models)
-        obj_min = obj_min_by_N_descent.train_losses[-1]
+        obj_min = min(obj_min_by_N_descent.train_losses)
+        torch.set_printoptions(precision=10)
+        print("Objectif min:", obj_min)
 
         pickle_saver(obj_min, obj_name)
 
         grads_min = [worker.local_update.g_i for worker in obj_min_by_N_descent.workers]
-        pickle_saver(grads_min, "{0}/grads_min-{1}".format(pickle_path, obj_type))
+        pickle_saver(grads_min, "{0}/grads_min-{1}".format(pickle_path, dirichlet_or_tsne))
 
     # Choice of step size
     if 'synth' in dataset and stochastic:
         step_size = deacreasing_step_size
         label_step_size = "decr."
     else:
-        step_size = lambda it, L, omega, N: 1 / L
-        label_step_size = LABEL_STEP_FORMULA[4]
+        step_size = lambda it, L, omega, N: 1 / (4*L)
+        label_step_size = LABEL_STEP_FORMULA[6]
 
     stochasticity = 'sto' if stochastic else "full"
+    reg = "-reg{0}".format((default_regularizer.regularization_rate)) if default_regularizer.regularization_rate != 0 else ""
     if stochastic:
-        experiments_settings = "{0}-{1}-b{2}-reg{3}".format(compression_by_default.get_name(), stochasticity,
-                                                            batch_size, default_regularizer.regularization_rate)
+        experiments_settings = "{0}-{1}-b{2}{3}".format(compression_by_default.get_name(), stochasticity,
+                                                            batch_size, reg)
     else:
-        experiments_settings = "{0}-{1}-reg{2}".format(compression_by_default.get_name(), stochasticity,
-                                                default_regularizer.regularization_rate)
+        experiments_settings = "{0}-{1}{2}".format(compression_by_default.get_name(), stochasticity, reg)
 
     if not plot_only:
         if scenario == "compression":
             run_for_different_scenarios(cost_models, list_algos[1:], values_compression, label_compression,
                                         ylabel=label_step_size, experiments_settings=experiments_settings,
                                         algos_pickle_path=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
-                                        step_formula=step_size, scenario=scenario)
+                                        dirichlet=dirichlet, step_formula=step_size, scenario=scenario)
         elif scenario == "step":
-            run_for_different_scenarios(cost_models, list_algos, STEP_FORMULA, LABEL_STEP_FORMULA,
+            run_for_different_scenarios(cost_models, list_algos, STEP_FORMULA, LABEL_STEP_FORMULA, dirichlet=dirichlet,
                                         ylabel=label_compression, experiments_settings=experiments_settings,
                                         algos_pickle_path=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
         elif scenario == "alpha":
-            run_for_different_scenarios(cost_models, list_algos[1:], values_alpha, label_alpha,
+            run_for_different_scenarios(cost_models, list_algos[1:], values_alpha, label_alpha, dirichlet=dirichlet,
                                         ylabel=label_step_size, experiments_settings=experiments_settings, step_formula=step_size,
                                         algos_pickle_path=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                         scenario=scenario, compression=compression_by_default)
         elif scenario == "alpha-step":
             run_2D_scenarios(cost_models, list_algos[1:], xvalues=values_alpha, xlabels=label_alpha,
-                             yvalues=STEP_FORMULA, ylabels=LABEL_STEP_FORMULA,
+                             yvalues=STEP_FORMULA, ylabels=LABEL_STEP_FORMULA, dirichlet=dirichlet,
                              experiments_settings=experiments_settings, algos_pickle_path=algos_pickle_path,
                              batch_size=batch_size, stochastic=stochastic, scenario=scenario,
                              compression=compression_by_default)
@@ -198,14 +202,14 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             # run_2D_scenario_with_different_dirichlet_clustering(prepare_dataset, )
 
             run_2D_scenarios(cost_models, list_algos[1:], xvalues=values_alpha, xlabels=label_alpha,
-                             yvalues=DIRICHLET_PARAMS, ylabels=LABEL_DIRICHLET,
+                             yvalues=DIRICHLET_PARAMS, ylabels=LABEL_DIRICHLET, dirichlet=dirichlet,
                              experiments_settings=experiments_settings, algos_pickle_path=algos_pickle_path,
                              batch_size=batch_size, stochastic=stochastic, scenario=scenario,
                              compression=compression_by_default)
 
         else:
             run_one_scenario(cost_models=cost_models, list_algos=list_algos, logs_file=algos_pickle_path,
-                             batch_size=batch_size, experiments_settings=experiments_settings,
+                             batch_size=batch_size, experiments_settings=experiments_settings, dirichlet=dirichlet,
                              stochastic=stochastic, nb_epoch=nb_epoch, step_size=step_size,
                              use_averaging=use_averaging, compression=compression_by_default,
                              fraction_sampled_workers=fraction_sampled_workers, modify_run=modify_run)
@@ -344,12 +348,12 @@ if __name__ == '__main__':
             raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
 
     elif sys.argv[1] == "real":
-        for sto in [False, True]:
+        for sto in [True]:
             for dataset in [sys.argv[2]]:
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                                 use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))
 
-        for sto in [False, True]:
+        for sto in [True]:
             for dataset in [sys.argv[2]]:
                 if sys.argv[3] == "memories":
                     run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],

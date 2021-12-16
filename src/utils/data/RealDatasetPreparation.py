@@ -79,9 +79,6 @@ def prepare_noniid_dataset(data, target_label: str, data_path: str, pickle_path:
     else:
         X, Y = TSNE_prepration(data, target_label, data_path, pickle_path, nb_cluster, double_check)
 
-    # Rebalancing cluster: the biggest one must not be more than 10times bigger than the smallest one.
-    # X_rebalanced, Y_rebalanced = rebalancing_clusters(X, Y)
-
     for y in Y:
         print("Nb of points:", len(y))
 
@@ -137,12 +134,6 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
         logging.debug("Checking data cluserization, wait until completion before seeing the plots.")
         # Checking that splitting data by cluster is valid.
         check_data_clusterisation(X, Y, nb_cluster)
-
-    # Rebalancing cluster: the biggest one must not be more than 10times bigger than the smallest one. 
-    #X_rebalanced, Y_rebalanced = X, Y
-
-    for y in Y:
-        print("Nb of points:", len(y))
 
     return X, Y
 

@@ -62,11 +62,9 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
     elif algos == "memories":
         if stochastic:
             if scenario is not None:
-                list_algos = [VanillaSGD(), Artemis(), ArtemisAWATailAvg(), ArtemisExpoTailAvg(),
-                              ArtemisSimpleExpoTailAvg()]
+                list_algos = [VanillaSGD(), BiQSGD(), Artemis(save_all_memories=True), ArtemisAWATailAvg()]
             else:
-                list_algos = [VanillaSGD(), Artemis(save_all_memories=True), ArtemisAWATailAvg(save_all_memories=True),
-                              ArtemisExpoTailAvg(save_all_memories=True), ArtemisSimpleExpoTailAvg(save_all_memories=True)]
+                list_algos = [VanillaSGD(), BiQSGD(), Artemis(save_all_memories=True), ArtemisAWATailAvg()]
         else:
             list_algos = [VanillaSGD(), Artemis(save_all_memories=True), ArtemisTailAvgDbsd(save_all_memories=True),
                           ArtemisAWATailAvg(save_all_memories=True), ArtemisExpoTailAvg(save_all_memories=True),
@@ -74,12 +72,21 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
     return list_algos
 
 
-def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str, fraction_sampled_workers: int =1, model_name: str=None):
+def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str, fraction_sampled_workers: int =1,
+                            dirichlet: int = None, model_name: str=None):
+
+    if dirichlet is None:
+        dirichlet_or_tsne = "TSNE"
+    else:
+        dirichlet_or_tsne = "dirichlet-{0}".format(dirichlet)
+
+
     if model_name is not None:
         foldername = "{0}-{1}-N{2}/{3}".format(dataset, iid, nb_devices, model_name)
     else:
         foldername = "{0}-{1}-N{2}".format(dataset, iid, nb_devices)
-    picture_path = "{0}/pictures/{1}/{2}".format(get_project_root(), foldername, algos)
+
+    picture_path = "{0}/pictures/{1}/{2}/{3}".format(get_project_root(), foldername, algos, dirichlet_or_tsne)
     if fraction_sampled_workers != 1:
         picture_path += "/pp-{0}".format(fraction_sampled_workers)
     # Contains the pickle of the dataset
@@ -87,7 +94,7 @@ def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str,
     # Contains the pickle of the minimum objective.
     pickle_path = "{0}/{1}".format(data_path, foldername)
     # Contains the pickle of the gradient descent for each kind of algorithms.
-    algos_pickle_path = "{0}/{1}".format(pickle_path, algos)
+    algos_pickle_path = "{0}/{1}/{2}".format(pickle_path, dirichlet_or_tsne, algos)
     if fraction_sampled_workers != 1:
         algos_pickle_path += "/pp-{0}".format(fraction_sampled_workers)
 
@@ -103,6 +110,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                          stochastic: bool = True,
                          streaming: bool = False,
                          batch_size: int = 1,
+                         dirichlet: int = None, 
                          fraction_sampled_workers: float = 1.,
                          logs_file: str = None) -> AverageOfSeveralIdenticalRun:
     """
@@ -132,6 +140,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                                               stochastic=stochastic,
                                               streaming=streaming,
                                               batch_size=batch_size,
+                                              dirichlet=dirichlet,
                                               fraction_sampled_workers=fraction_sampled_workers,
                                               up_compression_model=compression_model,
                                               down_compression_model=compression_model)
@@ -157,7 +166,7 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
 
 
 def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settings: str, batch_size: int = 1,
-                     stochastic: bool = True, nb_epoch: int = 250, step_size = None,
+                     dirichlet: int = None, stochastic: bool = True, nb_epoch: int = 250, step_size = None,
                      compression: CompressionModel = None, use_averaging: bool = False,
                      fraction_sampled_workers: int = 1, modify_run = None) -> None:
 
@@ -170,7 +179,7 @@ def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settin
     else:
         algos = [list_algos[i] for i in modify_run]
     for type_params in tqdm(algos):
-        multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models,
+        multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models, dirichlet=dirichlet,
                                                    compression_model=compression,
                                                    use_averaging=use_averaging,
                                                    stochastic=stochastic,
@@ -198,7 +207,7 @@ def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settin
 
 
 def run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabel, experiments_settings: str,
-                                algos_pickle_path: str, batch_size: int = 1,
+                                algos_pickle_path: str, batch_size: int = 1, dirichlet: int = None, 
                                 stochastic: bool = True, step_formula = None,
                                 compression: CompressionModel = None, scenario: str = "step") -> None:
 
@@ -232,6 +241,7 @@ def run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabe
                                                            use_averaging=True,
                                                            stochastic=stochastic,
                                                            batch_size=batch_size,
+                                                           dirichlet=dirichlet,
                                                            step_formula=value,
                                                            nb_epoch=NB_EPOCH_WITH_HYPERPARAMETERS,
                                                            compression_model=compression,
@@ -243,6 +253,7 @@ def run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabe
                                                            use_averaging=True,
                                                            stochastic=stochastic,
                                                            batch_size=batch_size,
+                                                           dirichlet=dirichlet,
                                                            step_formula=step_formula,
                                                            compression_model=value,
                                                            nb_epoch=NB_EPOCH_WITH_HYPERPARAMETERS,
@@ -321,15 +332,15 @@ def run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabe
 
 
 def run_2D_scenarios(cost_models, list_algos, xvalues, xlabels, yvalues, ylabels, experiments_settings: str,
-                                algos_pickle_path: str, batch_size: int = 1, stochastic: bool = True,
-                                compression: CompressionModel = None, scenario: str = "step") -> None:
+                     algos_pickle_path: str, batch_size: int = 1, stochastic: bool = True, dirichlet: int = None,
+                     compression: CompressionModel = None, scenario: str = "step") -> None:
     """ For now, the y scenario is expected to be the step size."""
     # Scenario = "scenario1-scenario2", scenario1 = x axis, scenario2 = y axis.
     sceanarios = scenario.split("-")
     for i in range(len(yvalues)):
         yvalue, ylabel = yvalues[i], ylabels[i]
         print("\nY LABEL ==> ", ylabel)
-        run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabel=ylabel,
+        run_for_different_scenarios(cost_models, list_algos, xvalues, xlabels, ylabel=ylabel, dirichlet=dirichlet,
                                     experiments_settings=experiments_settings, step_formula=yvalue,
                                     algos_pickle_path=algos_pickle_path, batch_size=batch_size, stochastic=stochastic,
                                     scenario=sceanarios[0], compression=compression)

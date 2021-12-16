@@ -66,12 +66,15 @@ class AGradientDescent(ABC):
         self.var_models = [torch.tensor(0.)]
         self.averaged_train_losses = []
         self.memory_info = None
+        if parameters.dirichlet is not None:
+            dirichlet_or_tsne = "dirichlet-{0}".format(parameters.dirichlet)
+        else:
+            dirichlet_or_tsne = "TSNE"
         if algos_pickle_path is not None:
             if self.parameters.fraction_sampled_workers == 1:
-                # TODO TSNE or Dirichlet!
-                self.optimal_grad = pickle_loader("{0}/../grads_min-TSNE".format(algos_pickle_path))
+                self.optimal_grad = pickle_loader("{0}/../../grads_min-{1}".format(algos_pickle_path, dirichlet_or_tsne))
             else:
-                self.optimal_grad = pickle_loader("{0}/../../grads_min".format(algos_pickle_path))
+                self.optimal_grad = pickle_loader("{0}/../../../grads_min-{1}".format(algos_pickle_path, dirichlet_or_tsne))
         else:
             self.optimal_grad = None
 
@@ -210,7 +213,7 @@ class AGradientDescent(ABC):
                     print(' | '.join([("%d" % i).rjust(8), ("%.4e" % self.train_losses[-1]).rjust(8)]))
 
             # Beyond 1e9, we consider that the algorithm has diverged.
-            if self.train_losses[-1] == math.inf:
+            if self.train_losses[-1] == math.inf or math.isnan(self.train_losses[-1]):
                 self.train_losses[-1] = MAX_LOSS
                 break
             elif (self.train_losses[-1] > 1e9):
