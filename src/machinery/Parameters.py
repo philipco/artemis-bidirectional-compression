@@ -35,6 +35,7 @@ class Parameters:
                  nb_devices: int = NB_DEVICES,
                  fraction_sampled_workers: float = 1.,
                  batch_size: int = 1,
+                 dirichlet: int = None,
                  step_formula=None,
                  nb_epoch: int = NB_EPOCH,
                  regularization_rate: int = 0,
@@ -66,6 +67,7 @@ class Parameters:
         self.nb_devices = nb_devices  # Number of device on the network.
         self.fraction_sampled_workers = fraction_sampled_workers # Probability of a worker to be active at each round.
         self.batch_size = batch_size  # Batch size.
+        self.dirichlet = dirichlet # Beta coefficient of the dirichlet distribution. If None, then use TSNE.
         self.nb_epoch = nb_epoch  # number of epoch of the run
         self.regularization_rate = regularization_rate  # coefficient of regularization
         self.force_learning_rate = force_learning_rate
