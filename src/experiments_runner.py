@@ -27,7 +27,7 @@ def operator_of_compression():
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
                     scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=None,
-                    dirichlet = 0.3):
+                    dirichlet = None):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
@@ -45,7 +45,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers, scenario)
     nb_devices = nb_devices
-    nb_epoch = 80 if stochastic else 400
+    nb_epoch = 150 if stochastic else 400
 
     iid_data = True if iid == 'iid' else False
 
@@ -132,11 +132,11 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     obj_name = "{0}/obj_min-{1}".format(pickle_path, dirichlet_or_tsne)
 
     if not file_exist("{0}.pkl".format(obj_name)) \
-            or not file_exist("{0}/grads_min-{1}.pkl".format(pickle_path, dirichlet_or_tsne)):
+             or not file_exist("{0}/grads_min-{1}.pkl".format(pickle_path, dirichlet_or_tsne)):
         obj_min_by_N_descent = SGD_Descent(Parameters(n_dimensions=dim_notebook,
                                                       dirichlet=dirichlet,
                                                       nb_devices=nb_devices,
-                                                      nb_epoch=40000,
+                                                      nb_epoch=10000,
                                                       step_formula=lambda it, L, omega, N: 1 / (L),
                                                       momentum=0.,
                                                       verbose=True,
@@ -158,8 +158,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         step_size = deacreasing_step_size
         label_step_size = "decr."
     else:
-        step_size = lambda it, L, omega, N: 1 / (4*L)
-        label_step_size = LABEL_STEP_FORMULA[6]
+        step_size = lambda it, L, omega, N: 1 / (L)
+        label_step_size = LABEL_STEP_FORMULA[4]
 
     stochasticity = 'sto' if stochastic else "full"
     reg = "-reg{0}".format((default_regularizer.regularization_rate)) if default_regularizer.regularization_rate != 0 else ""
@@ -348,7 +348,7 @@ if __name__ == '__main__':
             raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
 
     elif sys.argv[1] == "real":
-        for sto in [True]:
+        for sto in [False, True]:
             for dataset in [sys.argv[2]]:
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                                 use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))

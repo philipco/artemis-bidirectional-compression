@@ -79,7 +79,7 @@ class AbstractLocalUpdate(ABC):
         else:
             self.g_i = cost_model.grad(self.model_param)
 
-        self.g_i = self.g_i #* self.parameters.nb_devices * nb_local_points / total_nb_points
+        self.g_i = self.g_i * self.parameters.nb_devices * nb_local_points / total_nb_points
 
         # Smart initialisation of the memory (it corresponds to the first computed gradient).
         if self.parameters.fraction_sampled_workers == 1: # TODO : There is issue with PP and multiple memories

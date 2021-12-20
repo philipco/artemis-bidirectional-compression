@@ -139,7 +139,8 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         all_loss_i = []
         for worker, cost_model in zip(self.workers, cost_models):
             loss_i, _ = cost_model.cost(model_param)
-            all_loss_i.append(loss_i.item())
+            all_loss_i.append(
+                loss_i.item() * cost_model.X.shape[0] * self.parameters.nb_devices / self.parameters.total_nb_points)
         return np.mean(all_loss_i)
 
     def sampling_devices(self, cost_models):
