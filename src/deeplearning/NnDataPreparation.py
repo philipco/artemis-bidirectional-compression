@@ -102,12 +102,11 @@ def load_data(dataset: str, iid: str):
 
     elif dataset == 'cifar10':
 
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         std=[0.229, 0.224, 0.225])
+        normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 
         transform_train = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32, 4),
+            # transforms.RandomHorizontalFlip(),
+            # transforms.RandomCrop(32, 4),
             transforms.ToTensor(),
             normalize,
         ])

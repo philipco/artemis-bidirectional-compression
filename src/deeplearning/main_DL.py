@@ -16,8 +16,8 @@ from src.deeplearning.NonConvexSettings import *
 from src.deeplearning.Train import Train, compute_L
 from src.machinery.PredefinedParameters import *
 from src.utils.ErrorPlotter import plot_error_dist
-from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, seed_everything, \
-    create_folder_if_not_existing, remove_file
+from src.utils.PickletHandler import pickle_loader, pickle_saver
+from src.utils.Utilities import file_exist, seed_everything, create_folder_if_not_existing, remove_file
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 

@@ -60,7 +60,8 @@ class Parameters:
                  log_file: str = None) -> None:
         super().__init__()
         self.cost_models = cost_models  # Cost model to use for gradient descent.
-        self.total_nb_points = np.sum(np.array([cost.X.shape[0] for cost in cost_models]))
+        if cost_models:
+            self.total_nb_points = np.sum(np.array([cost.X.shape[0] for cost in cost_models]))
         self.n_dimensions = n_dimensions  # Dimension of the problem.
         self.nb_devices = nb_devices  # Number of device on the network.
         self.fraction_sampled_workers = fraction_sampled_workers # Probability of a worker to be active at each round.
