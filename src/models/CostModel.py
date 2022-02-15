@@ -236,9 +236,9 @@ def automaticGradComputation(w: torch.FloatTensor, X: torch.FloatTensor, Y: torc
     return w_with_grad.grad
 
 
-def build_several_cost_model(cost_model, X, Y, nb_devices: int):
+def build_several_cost_model(cost_model, X, Y, nb_devices: int, regularization: ARegularizationModel):
     total_nb_points = np.sum(np.array([x.shape[0] for x in X]))
-    cost_models = [cost_model(X[k], Y[k], total_nb_points, regularization=NoRegularization()) for k in range(nb_devices)]
+    cost_models = [cost_model(X[k], Y[k], total_nb_points, regularization=regularization) for k in range(nb_devices)]
     global_L = np.mean([cost.local_L for cost in cost_models])
     for cost in cost_models:
         cost.L = global_L
