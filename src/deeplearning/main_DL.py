@@ -57,7 +57,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False) -> No
 
     loaders = create_loaders(dataset, iid, nb_devices, batch_size, stochastic)
     _, train_loader_workers_full, _ = loaders
-    dim = next(iter(train_loader_workers_full[0]))[0].shape[1]
+    dim = next(iter(train_loader_workers_full))[0].shape[1]
     if optimal_steps_size[dataset] is None:
         L = compute_L(train_loader_workers_full)
         optimal_steps_size[dataset] = 1/L
