@@ -46,7 +46,6 @@ def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, sto
     train_data, test_data = load_data(dataset, iid)
 
     train_loader_workers = dict()
-    train_loader_workers_full = dict()
 
     size_dataset = len(train_data)
 
@@ -74,10 +73,10 @@ def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, sto
 
     b = 0
     for ind in split:
-        train_loader_workers_full[b] = DataLoader(Subset(train_data, ind), batch_size=len(ind), num_workers=4,
+        train_loader_workers_full = DataLoader(train_data, batch_size=5000,
                                                   shuffle=False, pin_memory = pin_memory)
         rand_sampler = RandomSampler(Subset(train_data, ind), replacement=True)
-        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=batch_size, num_workers=4,
+        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=batch_size,
                                              sampler=rand_sampler, pin_memory = pin_memory)
         b = b + 1
 

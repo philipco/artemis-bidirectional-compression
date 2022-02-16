@@ -301,18 +301,24 @@ class Train:
 
         :return: the loss
         """
-        train_loader_iter = [iter(self.train_loader_workers[w]) for w in range(self.parameters.nb_devices)]
-        running_loss = 0
-        for w_id in range(self.parameters.nb_devices):
-            self.global_model.eval()
-            for data, target in train_loader_iter[w_id]:
-                data, target = data.to(self.device), target.to(self.device)
+        train_loader_iter = iter(self.train_loader_workers_full)
+
+        self.global_model.eval()
+        train_loss = 0
+
+        for i in range(len(train_loader_iter)):
+            data, target = next(train_loader_iter)
+
+            with torch.no_grad():
                 output = self.global_model(data)
                 if torch.isnan(output).any():
                     raise ValueError("There is NaN in output values, stopping.")
-                loss =self.criterion(output, target)
-                running_loss += loss.item()
-        train_loss = running_loss / (self.parameters.nb_devices * len(train_loader_iter[w_id]))
+
+            loss = self.criterion(output, target)
+            train_loss += loss.item()
+
+        # print(len(client_data), len(client_data.dataset))
+        train_loss /= self.train_loader_workers_full.dataset.data.shape[0]
         return train_loss
 
     def compute_test_accuracy_and_loss(self) -> (int, int):
@@ -364,10 +370,10 @@ class Train:
 
 def compute_L(train_loader_workers_full) -> int:
     """Compute the lipschitz constant."""
-    L, n_workers = 0, len(train_loader_workers_full)
-    train_loader_iter = [iter(train_loader_workers_full[w]) for w in range(n_workers)]
-    for w_id in range(n_workers):
-        all_data, all_labels = next(train_loader_iter[w_id])
+    L = 0
+    train_loader_iter = iter(train_loader_workers_full)
+    for i in range(len(train_loader_iter)):
+        all_data, all_labels = next(train_loader_iter)
         n_sample = all_data.shape[0]
         L += (torch.norm(all_data.T.mm(all_data), p=2) / (4 * n_sample)).item()
-    return L / n_workers
+    return L
