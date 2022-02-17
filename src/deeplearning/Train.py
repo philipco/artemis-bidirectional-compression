@@ -319,7 +319,7 @@ class Train:
             train_loss += loss.item()
 
         # print(len(client_data), len(client_data.dataset))
-        train_loss /= self.train_loader_workers_full.dataset.data.shape[0]
+        train_loss /= len(train_loader_iter)
         return train_loss
 
     def compute_test_accuracy_and_loss(self) -> (int, int):
