@@ -5,14 +5,14 @@
 # OR TO CREATE A CONDA ENVIRONNEMENT:
 # conda create -c conda-forge --name artemis_gpu_env --file requirements.txt
 ipywidgets
-numpy==1.16.4
+numpy
 scipy
 #tensorflow<2.0
 Pillow
 psutil
 matplotlib
 jupyter
-pandas>0.25
+pandas
 scikit-learn
 pytorch-gpu==1.10.2 # To allow run on a gpu, version is required to force a cudatoolkit's version >= 11.6
 torchvision

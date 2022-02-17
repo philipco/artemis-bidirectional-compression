@@ -68,15 +68,16 @@ def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, sto
             split = non_iid_split(train_data, nb_devices)
 
     pin_memory = True if torch.cuda.is_available() else False
+    num_workers = 1  # Suggested max number of worker in my GPU's system is 1
 
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False, pin_memory = pin_memory, num_workers=4)
 
     b = 0
     for ind in split:
-        train_loader_workers_full = DataLoader(train_data, batch_size=5000,
+        train_loader_workers_full = DataLoader(train_data, batch_size=5000, num_workers=num_workers,
                                                   shuffle=False, pin_memory = pin_memory)
         rand_sampler = RandomSampler(Subset(train_data, ind), replacement=True)
-        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=batch_size,
+        train_loader_workers[b] = DataLoader(Subset(train_data, ind), batch_size=batch_size, num_workers=num_workers,
                                              sampler=rand_sampler, pin_memory = pin_memory)
         b = b + 1
 
@@ -101,11 +102,12 @@ def load_data(dataset: str, iid: str):
 
     elif dataset == 'cifar10':
 
-        normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
 
         transform_train = transforms.Compose([
-            # transforms.RandomHorizontalFlip(),
-            # transforms.RandomCrop(32, 4),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomCrop(32, 4),
             transforms.ToTensor(),
             normalize,
         ])
