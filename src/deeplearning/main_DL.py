@@ -7,6 +7,7 @@ import copy
 import sys
 import logging
 import time
+from datetime import datetime
 
 from pympler import asizeof
 
@@ -41,10 +42,10 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False) -> No
 
     create_folder_if_not_existing(algos)
     log_file = algos + "/log_" + dataset + "_" + iid + ".txt"
-    with open(log_file, 'a') as f:
-        print("==== NEW RUN ====", file=f)
 
     with open(log_file, 'a') as f:
+        print(f"=========================== NEW RUN " + datetime.now().strftime("%d/%m/%Y at %H:%M:%S") +
+              " ===========================", file=f)
         print("stochastic -> {0}, iid -> {1}, batch_size -> {2}, norm -> {3}, s -> {4}, momentum -> {5}, model -> {6}"
             .format(stochastic, iid, batch_size, norm_quantization[dataset], quantization_levels[dataset],
                     momentums[dataset], models[dataset].__name__), file=f)

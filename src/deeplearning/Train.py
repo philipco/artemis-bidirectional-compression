@@ -308,6 +308,7 @@ class Train:
 
         for i in range(len(train_loader_iter)):
             data, target = next(train_loader_iter)
+            data, target = data.to(self.device), target.to(self.device)
 
             with torch.no_grad():
                 output = self.global_model(data)
