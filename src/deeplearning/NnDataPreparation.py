@@ -30,7 +30,7 @@ def non_iid_split(train_data, nb_devices):
             unique_values[targets[i].item()] = np.array([i])
 
     nb_points_by_clients = n // nb_devices
-    matrix = (dirichlet([0.5] * 10, size=nb_devices)  * nb_points_by_clients).astype(int)# 1 line = 1 worker
+    matrix = (dirichlet([0.5] * 10, size=nb_devices)  * (nb_points_by_clients+2)).astype(int)# 1 line = 1 worker
     ordered_indices = sorted(unique_values.values(), key=len)
     split = []
     for i in range(nb_devices):

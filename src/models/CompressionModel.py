@@ -25,7 +25,7 @@ class CompressionModel(ABC):
     This class defines the operators of compression.
     """
     
-    def __init__(self, level: int, dim: int = None, norm: int = 2, constant: int = 1):
+    def __init__(self, level: int, dim: int = None, norm: int = 2, constant: int = 2):
         self.level = level
         self.dim = dim
         self.norm = norm

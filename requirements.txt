@@ -1,9 +1,9 @@
 #Require Python 3.7 in order to use annotation library
 
 # FOR INSTALLATION USE:
-# pip install -c conda-forge -r requirements.txt
+# pip install -c conda-forge -r requirements.txt python=3.7
 # OR TO CREATE A CONDA ENVIRONNEMENT:
-# conda create -c conda-forge --name artemis_gpu_env --file requirements.txt
+# conda create -c conda-forge --name artemis_gpu_env --file requirements.txt python=3.7
 ipywidgets
 numpy
 scipy
