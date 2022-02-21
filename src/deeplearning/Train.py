@@ -277,11 +277,9 @@ class Train:
         nb_epoch = self.parameters.nb_epoch
         for e in range(nb_epoch):
 
-            # Warning : here the train loss is the average loss of all the iteration within one epoch and not the loss
-            # computed on the whole dataset computed at the end of the epoch with the same model.
-            train_loss = self.__train_one_epoch__()
+            self.__train_one_epoch__()
 
-            # train_loss = self.compute_train_loss()
+            train_loss = self.__compute_train_loss__()
             test_loss, test_accuracy = self.compute_test_accuracy_and_loss()
             self.run.update_run(train_loss, test_loss, test_accuracy)
     
