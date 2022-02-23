@@ -5,6 +5,7 @@ import sys
 # from guppy import hpy
 
 from src.models.CostModel import build_several_cost_model
+from src.models.RegularizationModel import L2Regularization
 from src.utils.ConvexSettings import batch_sizes, models
 
 from src.utils.ErrorPlotter import *
@@ -20,8 +21,8 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def operator_of_compression():
-    # return SQuantization, 1
-    return RandomSparsification, 0.06
+    return SQuantization, 1
+    # return RandomSparsification, 0.06
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
@@ -116,9 +117,10 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                     ]
 
     label_alpha = [str(value.constant) for value in values_alpha]
+    default_regularizer = L2Regularization(regularization_rate=0.0)
 
     # Creating cost models which will be used to computed cost/loss, gradients, L ...
-    cost_models = build_several_cost_model(model, X, Y, nb_devices)
+    cost_models = build_several_cost_model(model, X, Y, nb_devices, regularization=default_regularizer)
 
     # hp.setrelheap()
 
@@ -152,14 +154,17 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         step_size = deacreasing_step_size
         label_step_size = "decr."
     else:
-        step_size = lambda it, L, omega, N: 1 / L
+        step_size = STEP_FORMULA[4]
         label_step_size = LABEL_STEP_FORMULA[4]
 
     stochasticity = 'sto' if stochastic else "full"
+    reg = "-reg{0}".format(
+        (default_regularizer.regularization_rate)) if default_regularizer.regularization_rate != 0 else ""
     if stochastic:
-        experiments_settings = "{0}-{1}-b{2}".format(compression_by_default.get_name(), stochasticity, batch_size)
+        experiments_settings = "{0}-{1}-b{2}{3}".format(compression_by_default.get_name(), stochasticity,
+                                                        batch_size, reg)
     else:
-        experiments_settings = "{0}-{1}".format(compression_by_default.get_name(), stochasticity)
+        experiments_settings = "{0}-{1}{2}".format(compression_by_default.get_name(), stochasticity, reg)
 
     if not plot_only:
         if scenario == "compression":
@@ -316,40 +321,42 @@ if __name__ == '__main__':
 
     if sys.argv[1] == "synth":
         if sys.argv[2] == "logistic":
-            # run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
-            #                 use_averaging=True)
             run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
-                            use_averaging=True, scenario="alpha-step")
+                            use_averaging=True)
+            # run_experiments(nb_devices=20, stochastic=False, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
+            #                 use_averaging=True, scenario="alpha-step")
             # run_experiments(nb_devices=20, stochastic=True, dataset='synth_logistic', iid='non-iid', algos=sys.argv[3],
             #                 use_averaging=True)
         elif sys.argv[2] == "linear":
-            # run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
-            #                 algos=sys.argv[3], use_averaging=True, scenario=None)
             run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
-                            algos=sys.argv[3], use_averaging=True, scenario="alpha-step")
+                            algos=sys.argv[3], use_averaging=True, scenario=None)
+            run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid',
+                            algos=sys.argv[3], use_averaging=True, scenario=None)
+            # run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
+            #                 algos=sys.argv[3], use_averaging=True, scenario="alpha-step")
             # run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_noised', iid='non-iid',
             #                 algos=sys.argv[3], use_averaging=True)
-            run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
-                            algos=sys.argv[3], use_averaging=True, scenario="alpha-step")
+            # run_experiments(nb_devices=20, stochastic=False, dataset='synth_linear_noised', iid='non-iid',
+            #                 algos=sys.argv[3], use_averaging=True, scenario="alpha-step")
         elif sys.argv[2] == "linear_nonoised":
-            # run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid',
-            #                 algos=sys.argv[3], use_averaging=True)
             run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid',
-                            algos=sys.argv[3], use_averaging=True, scenario="alpha-step")
+                            algos=sys.argv[3], use_averaging=True)
+            # run_experiments(nb_devices=20, stochastic=True, dataset='synth_linear_nonoised', iid='non-iid',
+            #                 algos=sys.argv[3], use_averaging=True, scenario="alpha-step")
         else:
-            raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
+            raise ValueError("Arg 2 should be either 'logistic', either 'linear', either 'linear_nonoised'.")
 
     elif sys.argv[1] == "real":
+        for sto in [False]:
+            for dataset in [sys.argv[2]]:
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+                                use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))
+
         # for sto in [False, True]:
         #     for dataset in [sys.argv[2]]:
-        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-        #                         use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))
-
-        for sto in [False, True]:
-            for dataset in [sys.argv[2]]:
-                if sys.argv[3] == "memories":
-                    run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                                    use_averaging=True, scenario="alpha-step", fraction_sampled_workers=float(sys.argv[5]))
+        #         if sys.argv[3] == "memories":
+        #             run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+        #                             use_averaging=True, scenario="alpha", fraction_sampled_workers=float(sys.argv[5]))
                 # else:
                     # run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[3],
                     #                 use_averaging=True, scenario="step")
