@@ -71,7 +71,7 @@ class AGradientDescent(ABC):
                 # TODO TSNE or Dirichlet!
                 self.optimal_grad = pickle_loader("{0}/../grads_min-TSNE".format(algos_pickle_path))
             else:
-                self.optimal_grad = pickle_loader("{0}/../../grads_min".format(algos_pickle_path))
+                self.optimal_grad = pickle_loader("{0}/../../grads_min-TSNE".format(algos_pickle_path))
         else:
             self.optimal_grad = None
 

@@ -111,7 +111,7 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
                     double_check: bool =False):
     print("TSNE-based client distribution.")
     # The TSNE representation is independent of the number of devices.
-    tsne_file = "{0}-tsne".format(data_path)
+    tsne_file = "{0}-tsne-N{1}".format(data_path, nb_cluster)
     if not file_exist("{0}.pkl".format(tsne_file)):
         # Running TNSE to obtain a 2D representation of data
         logging.debug("The TSNE representation ({0}) doesn't exist."
@@ -119,7 +119,7 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
         embedded_data = tsne(data)
         pickle_saver(embedded_data, tsne_file)
 
-    tsne_cluster_file = "{0}/tsne-cluster".format(pickle_path)
+    tsne_cluster_file = "{0}/tsne-cluster-N{1}".format(pickle_path, nb_cluster)
     if not file_exist("{0}.pkl".format(tsne_cluster_file)):
         # Finding clusters in the TNSE.
         logging.debug("Finding non-iid clusters in the TNSE represesentation: {0}.pkl".format(tsne_file))

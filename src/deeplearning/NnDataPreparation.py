@@ -8,12 +8,47 @@ import random
 import numpy as np
 from numpy.random import dirichlet
 import torch
+from sklearn.preprocessing import scale
+import logging
 from torchvision import datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Subset, RandomSampler
 
 from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset, PhishingDataset, MushroomDataset
 from src.utils.PathDataset import get_path_to_datasets
+from src.utils.PickletHandler import pickle_loader, pickle_saver
+from src.utils.Utilities import file_exist
+from src.utils.data.DataClustering import find_cluster, tsne
+
+
+def TSNE_non_iid_split(data, data_path: str, nb_cluster: int):
+    """
+    Split DL dataset based on TSNE.
+    """
+
+    X = np.zeros((data.shape[0], 784))
+
+    for i in range(data.shape[0]):
+        X[i] = data[i].flatten()
+
+    print("TSNE-based client distribution.")
+    # The TSNE representation is independent of the number of devices.
+    tsne_file = "{0}-tsne".format(data_path)
+    if not file_exist("{0}.pkl".format(tsne_file)):
+        # Running TNSE to obtain a 2D representation of data
+        logging.debug("The TSNE representation ({0}) doesn't exist.".format(tsne_file))
+        embedded_data = tsne(X)
+        pickle_saver(embedded_data, tsne_file)
+
+    tsne_cluster_file = "{0}/tsne-cluster".format()
+    if not file_exist("{0}.pkl".format(tsne_cluster_file)):
+        # Finding clusters in the TNSE.
+        logging.debug("Finding non-iid clusters in the TNSE represesentation: {0}.pkl".format(tsne_file))
+        embedded_data = pickle_loader("{0}".format(tsne_file))
+        logging.debug("Saving found clusters : {0}.pkl".format(tsne_cluster_file))
+        predicted_cluster = find_cluster(embedded_data, tsne_cluster_file, nb_cluster)
+        pickle_saver(predicted_cluster, "{0}".format(tsne_cluster_file))
+    return [np.array(np.where(np.array(predicted_cluster) == i)) for i in range(20)]
 
 
 def non_iid_split(train_data, nb_devices):
@@ -68,7 +103,8 @@ def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, sto
         if hasattr(train_data, 'split'):
             split = train_data.split
         else:
-            split = non_iid_split(train_data, nb_devices)
+            path_to_dataset = '{0}/dataset/'.format(get_path_to_datasets())
+            split = TSNE_non_iid_split(train_data.data, data_path=path_to_dataset,  nb_cluster=nb_devices)
 
     pin_memory = True if torch.cuda.is_available() else False
     num_workers = 1  # Suggested max number of worker in my GPU's system is 1
