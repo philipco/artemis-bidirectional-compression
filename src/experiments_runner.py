@@ -10,7 +10,8 @@ from src.utils.ConvexSettings import batch_sizes, models
 from src.utils.ErrorPlotter import *
 from src.utils.data.DataPreparation import build_data_logistic, build_data_linear
 from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_superconduct, prepare_mushroom, \
-    prepare_phishing, prepare_a9a, prepare_abalone, prepare_covtype, prepare_madelon, prepare_gisette, prepare_w8a
+    prepare_phishing, prepare_a9a, prepare_abalone, prepare_covtype, prepare_madelon, prepare_gisette, prepare_w8a, \
+    get_preparation_operator_of_dataset
 from src.utils.Constants import *
 from src.utils.data.DataClustering import *
 from src.utils.runner.RunnerUtilities import *
@@ -22,7 +23,8 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=None):
+                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = True, modify_run=None,
+                    dirichlet = None):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
@@ -39,43 +41,16 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
-    nb_epoch = 600 if stochastic else 400
+    nb_epoch = 150 if stochastic else 400
 
     iid_data = True if iid == 'iid' else False
 
     batch_size = batch_sizes[dataset]
     model = models[dataset]
 
-    # Select the correct dataset
-    if dataset == "a9a":
-        X, Y, dim_notebook = prepare_a9a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "abalone":
-        X, Y, dim_notebook = prepare_abalone(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "covtype":
-        X, Y, dim_notebook = prepare_covtype(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "gisette":
-        X, Y, dim_notebook = prepare_gisette(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "madelon":
-        X, Y, dim_notebook = prepare_madelon(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "mushroom":
-        X, Y, dim_notebook = prepare_mushroom(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "quantum":
-        X, Y, dim_notebook = prepare_quantum(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "phishing":
-        X, Y, dim_notebook = prepare_phishing(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    elif dataset == "superconduct":
-        X, Y, dim_notebook = prepare_superconduct(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
-
-    if dataset == "w8a":
-        X, Y, dim_notebook = prepare_w8a(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data)
+    if dataset not in ['synth_logistic', 'synth_linear_noised', 'synth_linear_nonoised']:
+        prepare_dataset = get_preparation_operator_of_dataset(dataset)
+        X, Y, dim_notebook = prepare_dataset(nb_devices, data_path=data_path, pickle_path=pickle_path, iid=iid_data, dirichlet = dirichlet)
 
     elif dataset == 'synth_logistic':
         nb_epoch = 100 if stochastic else 400
@@ -110,7 +85,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             X, Y = pickle_loader(pickle_path + "/data")
 
     default_level_of_quantization = 1 if fraction_sampled_workers == 1 else 2
-    compression_by_default = SQuantization(1, dim_notebook, norm=2)
+    compression_by_default = SQuantization(default_level_of_quantization, dim_notebook, norm=2)
 
     values_compression = [SQuantization(0, dim_notebook, norm=2),
                           SQuantization(16, dim_notebook, norm=2),
@@ -138,7 +113,14 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     # hp.setrelheap()
 
-    if not file_exist("{0}/obj_min.pkl".format(pickle_path)) or not file_exist("{0}/grads_min.pkl".format(pickle_path)):
+    if dirichlet is not None:
+        obj_type = "dirichlet-{0}".format(dirichlet)
+    else:
+        obj_type = "TSNE"
+    obj_name = "{0}/obj_min-{1}".format(pickle_path, obj_type)
+
+    if not file_exist("{0}.pkl".format(obj_name)) \
+            or not file_exist("{0}/grads_min-{1}.pkl".format(pickle_path, obj_type)):
         obj_min_by_N_descent = SGD_Descent(Parameters(n_dimensions=dim_notebook,
                                                   nb_devices=nb_devices,
                                                   nb_epoch=40000,
@@ -147,20 +129,21 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                                   cost_models=cost_models,
                                                   stochastic=False
                                                   ), None)
+
         obj_min_by_N_descent.run(cost_models)
         obj_min = obj_min_by_N_descent.train_losses[-1]
-        pickle_saver(obj_min, "{0}/obj_min".format(pickle_path))
+
+        pickle_saver(obj_min, obj_name)
 
         grads_min = [worker.local_update.g_i for worker in obj_min_by_N_descent.workers]
-        pickle_saver(grads_min, "{0}/grads_min".format(pickle_path))
+        pickle_saver(grads_min, "{0}/grads_min-{1}".format(pickle_path, obj_type))
 
     # Choice of step size
     if stochastic and batch_size == 1:
         step_size = iid_step_size
     else:
-        step_size = batch_step_size
-    if 'synth' in dataset and stochastic:
-        step_size = deacreasing_step_size
+        step_size = lambda it, L, omega, N: 1 / L
+        label_step_size = "rr"
 
     stochasticity = 'sto' if stochastic else "full"
     if stochastic:
@@ -201,7 +184,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     # h = hp.heap()
     # print(h)
 
-    obj_min = pickle_loader("{0}/obj_min".format(pickle_path))
+    obj_min = pickle_loader(obj_name)
     print("Obj min:", obj_min)
 
     if scenario is None:

@@ -32,9 +32,10 @@ class PredefinedParameters:
     def type_FL(self) -> AGradientDescent:
         return ArtemisDescent
 
-    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1.,
-               use_averaging=False, stochastic=True, streaming=False, batch_size=1) -> Parameters:
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel,
+               down_compression_model: CompressionModel, step_formula=None, nb_epoch: int = NB_EPOCH,
+               fraction_sampled_workers: int = 1., use_averaging=False, stochastic=True, streaming=False,
+               batch_size=1) -> Parameters:
         """Define parameters to be used during the descent.
 
         Args:
@@ -179,6 +180,8 @@ class BiQSGD(Qsgd):
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
         params.down_compression_model = down_compression_model
+        params.use_down_memory = False
+        params.use_up_memory = False
         return params
 
 
@@ -200,7 +203,7 @@ class Artemis(Diana):
                                 stochastic, streaming, batch_size)
         # Important settings to recover results provided in the paper !
         params.use_down_memory = False
-        params.use_unique_up_memory = False
+        params.use_unique_up_memory = True
         params.down_compression_model = down_compression_model
         return params
 

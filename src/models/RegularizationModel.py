@@ -18,7 +18,7 @@ class ARegularizationModel(ABC):
     The regularization model is injected in the gradient descent and used to run the update scheme.
     """
 
-    def __init__(self, regularization_rate: float = 0.03) -> None:
+    def __init__(self, regularization_rate: float = 0.001) -> None:
         super().__init__()
         self.regularization_rate = regularization_rate
 
