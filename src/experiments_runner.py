@@ -20,8 +20,9 @@ def deacreasing_step_size(it, L, omega, N): return 1 / (L * sqrt(it))
 def batch_step_size(it, L, omega, N): return 1 / L
 
 
-def operator_of_compression():
-    return SQuantization, 1
+def operator_of_compression(fraction_sampled_workers):
+    s = 1 if fraction_sampled_workers == 1 else 2
+    return SQuantization, s
     # return RandomSparsification, 0.06
 
 
@@ -44,7 +45,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers, scenario)
     nb_devices = nb_devices
-    nb_epoch = 150 if stochastic else 400
+    nb_epoch = 150 if stochastic else 600
 
     iid_data = True if iid == 'iid' else False
 
@@ -87,9 +88,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         else:
             X, Y = pickle_loader(pickle_path + "/data")
 
-    operator, level = operator_of_compression()
+    operator, level = operator_of_compression(fraction_sampled_workers)
     compression_by_default = operator(level=level, dim=dim_notebook, norm=2)
-    # default_level_of_quantization = 1 if fraction_sampled_workers == 1 else 2 TODO Fraction sampled!!
     print("Omega_c: ", compression_by_default.omega_c)
     label_default_compression = str(compression_by_default.omega_c)[:4]
 
@@ -347,7 +347,7 @@ if __name__ == '__main__':
             raise ValueError("Arg 2 should be either 'logistic', either 'linear', either 'linear_nonoised'.")
 
     elif sys.argv[1] == "real":
-        for sto in [False]:
+        for sto in [False, True]:
             for dataset in [sys.argv[2]]:
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                                 use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))

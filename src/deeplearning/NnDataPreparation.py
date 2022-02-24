@@ -40,7 +40,7 @@ def TSNE_non_iid_split(data, data_path: str, nb_cluster: int):
         embedded_data = tsne(X)
         pickle_saver(embedded_data, tsne_file)
 
-    tsne_cluster_file = "{0}/tsne-cluster".format()
+    tsne_cluster_file = "{0}/tsne-cluster".format(data_path)
     if not file_exist("{0}.pkl".format(tsne_cluster_file)):
         # Finding clusters in the TNSE.
         logging.debug("Finding non-iid clusters in the TNSE represesentation: {0}.pkl".format(tsne_file))

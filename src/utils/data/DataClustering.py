@@ -99,10 +99,6 @@ def clustering_data(data, clustered_indices, target_column_name: str, nb_cluster
     if not np.sort(np.unique(Y_data)).tolist() == [-1.0, 1.0]:
         Y_data = scale(Y_data)
 
-    X_data = scale(X_data)
-    if not np.sort(np.unique(Y_data)).tolist() == [-1.0, 1.0]:
-        Y_data = scale(Y_data)
-
     X, Y = [], []
     for i in range(nb_cluster):
         indices = np.where(np.array(clustered_indices) == i)
@@ -146,7 +142,6 @@ def rebalancing_clusters(X_origin, Y_origin):
             X[max_lenght[1]] = X[max_lenght[1]][int(max_lenght[0] / 2):]
             Y[max_lenght[1]] = Y[max_lenght[1]][int(max_lenght[0] / 2):]
     return X, Y
-
 
 
 def check_data_clusterisation(X, Y, nb_devices:int = 10):
