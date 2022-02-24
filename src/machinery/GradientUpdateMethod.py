@@ -124,11 +124,11 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
                 assert true_mean.equal(approximate_mean), "The true and approximate means are not equal !"
         return approximate_mean
 
-    def compute_full_gradients(self, model_param):
+    def compute_full_gradients(self, model_param, cost_models):
         """Compute the gradient by using the full dataset held by each worker."""
         grad = 0
-        for worker in self.workers:
-            grad = grad + worker.cost_model.grad(model_param)
+        for cost_model in cost_models:
+            grad = grad + cost_model.grad(model_param)
         return grad / len(self.workers)
 
     def compute_cost(self, model_param, cost_models):
@@ -136,7 +136,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
         all_loss_i = []
         for worker, cost_model in zip(self.workers, cost_models):
             loss_i, _ = cost_model.cost(model_param)
-            all_loss_i.append(loss_i.item())
+            all_loss_i.append(loss_i.item() * cost_model.X.shape[0] * self.parameters.nb_devices / self.parameters.total_nb_points)
         return np.mean(all_loss_i)
 
     def sampling_devices(self, cost_models):
@@ -165,7 +165,7 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
 
         if nb_it == 1:
             if self.parameters.momentum != 0:
-                self.v = self.compute_full_gradients(model_param)
+                self.v = self.compute_full_gradients(model_param, cost_models)
             else:
                 self.v = torch.zeros_like(model_param)
             # Initialization of v_-1 (for momentum)

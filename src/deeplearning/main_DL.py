@@ -7,6 +7,7 @@ import copy
 import sys
 import logging
 import time
+from datetime import datetime
 
 from pympler import asizeof
 
@@ -16,8 +17,8 @@ from src.deeplearning.NonConvexSettings import *
 from src.deeplearning.Train import Train, compute_L
 from src.machinery.PredefinedParameters import *
 from src.utils.ErrorPlotter import plot_error_dist
-from src.utils.Utilities import pickle_loader, pickle_saver, file_exist, seed_everything, \
-    create_folder_if_not_existing, remove_file
+from src.utils.PickleHandler import pickle_loader, pickle_saver
+from src.utils.Utilities import file_exist, seed_everything, create_folder_if_not_existing, remove_file
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
@@ -41,10 +42,10 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False) -> No
 
     create_folder_if_not_existing(algos)
     log_file = algos + "/log_" + dataset + "_" + iid + ".txt"
-    with open(log_file, 'a') as f:
-        print("==== NEW RUN ====", file=f)
 
     with open(log_file, 'a') as f:
+        print(f"=========================== NEW RUN " + datetime.now().strftime("%d/%m/%Y at %H:%M:%S") +
+              " ===========================", file=f)
         print("stochastic -> {0}, iid -> {1}, batch_size -> {2}, norm -> {3}, s -> {4}, momentum -> {5}, model -> {6}"
             .format(stochastic, iid, batch_size, norm_quantization[dataset], quantization_levels[dataset],
                     momentums[dataset], models[dataset].__name__), file=f)
@@ -57,7 +58,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False) -> No
 
     loaders = create_loaders(dataset, iid, nb_devices, batch_size, stochastic)
     _, train_loader_workers_full, _ = loaders
-    dim = next(iter(train_loader_workers_full[0]))[0].shape[1]
+    dim = next(iter(train_loader_workers_full))[0].shape[1]
     if optimal_steps_size[dataset] is None:
         L = compute_L(train_loader_workers_full)
         optimal_steps_size[dataset] = 1/L

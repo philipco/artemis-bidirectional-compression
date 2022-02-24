@@ -79,8 +79,6 @@ def build_data_logistic(true_model_param: torch.FloatTensor, n_samples=NB_OF_POI
         X.append(x)
         Y.append(y)
 
-    if n_devices == 1:
-        return X[0], Y[0]
     return X, Y
 
 
@@ -126,6 +124,4 @@ def build_data_linear(true_model_param: torch.FloatTensor, n_samples=NB_OF_POINT
 
         X.append(x)
         Y.append(y)
-    if n_devices == 1:
-        return X[0], Y[0]
     return X, Y

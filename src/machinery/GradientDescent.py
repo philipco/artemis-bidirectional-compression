@@ -32,7 +32,7 @@ from src.machinery.Parameters import Parameters
 from src.machinery.Worker import Worker
 from src.models.CompressionModel import SQuantization
 from src.utils.Constants import MAX_LOSS
-from src.utils.Utilities import pickle_loader
+from src.utils.PickleHandler import pickle_loader
 
 
 class AGradientDescent(ABC):
@@ -64,9 +64,10 @@ class AGradientDescent(ABC):
         self.memory_info = None
         if algos_pickle_path is not None:
             if self.parameters.fraction_sampled_workers == 1:
-                self.optimal_grad = pickle_loader("{0}/../grads_min".format(algos_pickle_path))
+                # TODO TSNE or Dirichlet!
+                self.optimal_grad = pickle_loader("{0}/../grads_min-TSNE".format(algos_pickle_path))
             else:
-                self.optimal_grad = pickle_loader("{0}/../../grads_min".format(algos_pickle_path))
+                self.optimal_grad = pickle_loader("{0}/../../grads_min-TSNE".format(algos_pickle_path))
         else:
             self.optimal_grad = None
 
@@ -118,11 +119,9 @@ class AGradientDescent(ABC):
     def __number_iterations__(self, cost_models) -> int:
         """Return the number of iterations needed to perform one epoch."""
         if self.parameters.stochastic:
-            # Devices may have different number of points. Thus to reach an equal weight of participation,
-            # we choose that an epoch is constituted of N rounds of communication with the central server,
-            # where N is the minimum size of the dataset hold by the different devices.
-            n_samples = min([cost_models[i].X.shape[0] for i in range(len(cost_models))])
-            return n_samples * self.parameters.nb_epoch / min(n_samples, self.parameters.batch_size)
+            # We choose that one epoch is n / (b * N) inner iteration, where n is the total number of points, N the
+            # number of devices, and b the batch size.
+            return self.parameters.total_nb_points / (self.parameters.nb_devices * self.parameters.batch_size) * self.parameters.nb_epoch
 
         return self.parameters.nb_epoch
 
@@ -244,7 +243,8 @@ class AGradientDescent(ABC):
             print("Gradient Descent: execution time={t:.3f} seconds".format(t=elapsed_time))
             print("Final loss : {0:.5f}\n".format(self.train_losses[-1]))
 
-        del averaged_model_params
+        if self.parameters.use_averaging:
+            del averaged_model_params
         del current_model_param
         del past_model
         return elapsed_time

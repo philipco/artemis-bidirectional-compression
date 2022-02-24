@@ -31,8 +31,7 @@ class Parameters:
 
     def __init__(self,
                  cost_models,
-                 federated: bool = False,
-                 n_dimensions: int = DIM,
+                 n_dimensions: int,
                  nb_devices: int = NB_DEVICES,
                  fraction_sampled_workers: float = 1.,
                  batch_size: int = 1,
@@ -61,7 +60,8 @@ class Parameters:
                  log_file: str = None) -> None:
         super().__init__()
         self.cost_models = cost_models  # Cost model to use for gradient descent.
-        self.federated = federated  # Boolean to say if we do federated learning or not.
+        if cost_models:
+            self.total_nb_points = np.sum(np.array([cost.X.shape[0] for cost in cost_models]))
         self.n_dimensions = n_dimensions  # Dimension of the problem.
         self.nb_devices = nb_devices  # Number of device on the network.
         self.fraction_sampled_workers = fraction_sampled_workers # Probability of a worker to be active at each round.
@@ -97,7 +97,6 @@ class Parameters:
         self.log_file = log_file
 
     def print(self):
-        print("federated", self.federated)
         print("nb devices:", self.nb_devices)
         print("nb dimension:", self.n_dimensions)
         print("regularization rate:", self.regularization_rate)

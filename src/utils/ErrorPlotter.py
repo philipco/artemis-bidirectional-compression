@@ -16,7 +16,7 @@ from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 
 from src.utils.Utilities import drop_nan_values, keep_until_found_nan
 
-# colors=["tab:blue", "tab:brown", "tab:orange", "tab:green", "tab:red", "tab:purple"]
+colors=["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink"]
 markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
 markersize = 1
 curve_size=4
@@ -86,7 +86,7 @@ def plot_error_dist(all_losses, legend, all_error=None, x_points=None, x_legend=
             if omega_c:
                 legend_i = legend_i + " {0}".format(str(omega_c[i]))[:4]
             ax.errorbar(abscisse, objectives_dist, yerr=error_to_plot, label=legend_i, lw=lw, marker=markers[it],
-                         markersize=ms)
+                         markersize=ms, color=colors[i])
             if zoom is not None:
                 setup_zoom(ax, axins, abscisse, objectives_dist, xlog, legend, i, it, ms, lw, zoom)
 
