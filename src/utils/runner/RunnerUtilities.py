@@ -60,14 +60,15 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
     return list_algos
 
 
-def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str, fraction_sampled_workers: int =1, model_name: str=None):
+def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str, fraction_sampled_workers: int = 1, 
+                            model_name: str=None, pp_strategy: str = "pp2"):
     if model_name is not None:
         foldername = "{0}-{1}-N{2}/{3}".format(dataset, iid, nb_devices, model_name)
     else:
         foldername = "{0}-{1}-N{2}".format(dataset, iid, nb_devices)
     picture_path = "{0}/pictures/{1}/{2}".format(get_project_root(), foldername, algos)
     if fraction_sampled_workers != 1:
-        picture_path += "/pp-{0}".format(fraction_sampled_workers)
+        picture_path += "/{0}-{1}".format(pp_strategy, fraction_sampled_workers)
     # Contains the pickle of the dataset
     data_path = "{0}/pickle".format(get_path_to_pickle(), foldername)
     # Contains the pickle of the minimum objective.
@@ -75,7 +76,7 @@ def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str,
     # Contains the pickle of the gradient descent for each kind of algorithms.
     algos_pickle_path = "{0}/{1}".format(pickle_path, algos)
     if fraction_sampled_workers != 1:
-        algos_pickle_path += "/pp-{0}".format(fraction_sampled_workers)
+        algos_pickle_path += "/{0}-{1}".format(pp_strategy, fraction_sampled_workers)
 
     # Create folders for pictures and pickle files
     create_folder_if_not_existing(algos_pickle_path)
@@ -90,7 +91,8 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                          streaming: bool = False,
                          batch_size: int = 1,
                          fraction_sampled_workers: float = 1.,
-                         logs_file: str = None) -> AverageOfSeveralIdenticalRun:
+                         logs_file: str = None,
+                         use_unique_up_memory: bool = True) -> AverageOfSeveralIdenticalRun:
     """
     Run several time the same algorithm in the same conditions and gather all result in the MultipleDescentRun class.
 
@@ -119,6 +121,7 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                                               streaming=streaming,
                                               batch_size=batch_size,
                                               fraction_sampled_workers=fraction_sampled_workers,
+                                              use_unique_up_memory = use_unique_up_memory,
                                               up_compression_model=compression_model,
                                               down_compression_model=compression_model)
         model_descent = predefined_parameters.type_FL()(params, logs_file)
@@ -145,7 +148,7 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
 def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settings: str, batch_size: int = 1,
                      stochastic: bool = True, nb_epoch: int = 250, step_size = None,
                      compression: CompressionModel = None, use_averaging: bool = False,
-                     fraction_sampled_workers: int = 1, modify_run = None) -> None:
+                     fraction_sampled_workers: int = 1, modify_run = None, pp_strategy: str = "pp2") -> None:
 
     pickle_file = "{0}/descent-{1}".format(logs_file, experiments_settings)
 
@@ -156,6 +159,7 @@ def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settin
     else:
         algos = [list_algos[i] for i in modify_run]
     for type_params in tqdm(algos):
+        use_unique_up_memory = False if pp_strategy == "pp1" else True
         multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models,
                                                    compression_model=compression,
                                                    use_averaging=use_averaging,
@@ -164,7 +168,8 @@ def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settin
                                                    step_formula=step_size,
                                                    batch_size=batch_size,
                                                    logs_file=logs_file,
-                                                   fraction_sampled_workers=fraction_sampled_workers)
+                                                   fraction_sampled_workers=fraction_sampled_workers,
+                                                   use_unique_up_memory = use_unique_up_memory)
 
         if logs_file:
             logs = open("{0}/logs.txt".format(logs_file), "a+")

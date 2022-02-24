@@ -23,8 +23,8 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = True, modify_run=None,
-                    dirichlet = None):
+                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=None,
+                    dirichlet = None, pp_strategy: str = "pp2"):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
@@ -37,11 +37,13 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     # tracemalloc.start()
     # hp = hpy()
 
-    data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos, fraction_sampled_workers)
+    data_path, pickle_path, algos_pickle_path, picture_path = create_path_and_folders(nb_devices, dataset, iid, algos,
+                                                                                      fraction_sampled_workers,
+                                                                                      pp_strategy=pp_strategy)
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
     nb_devices = nb_devices
-    nb_epoch = 150 if stochastic else 400
+    nb_epoch = 200 if stochastic else 800
 
     iid_data = True if iid == 'iid' else False
 
@@ -141,9 +143,12 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     # Choice of step size
     if stochastic and batch_size == 1:
         step_size = iid_step_size
+    if algos == "artemis-vs-existing":
+        step_size = lambda it, L, omega, N: 1 / (2*L)
+        label_step_size = "1/2L"
     else:
         step_size = lambda it, L, omega, N: 1 / L
-        label_step_size = "rr"
+        label_step_size = "1/L"
 
     stochasticity = 'sto' if stochastic else "full"
     if stochastic:
@@ -172,7 +177,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                              batch_size=batch_size, experiments_settings=experiments_settings,
                              stochastic=stochastic, nb_epoch=nb_epoch, step_size=step_size,
                              use_averaging=use_averaging, compression=compression_by_default,
-                             fraction_sampled_workers=fraction_sampled_workers, modify_run=modify_run)
+                             fraction_sampled_workers=fraction_sampled_workers, modify_run=modify_run, pp_strategy=pp_strategy)
 
     # snapshot = tracemalloc.take_snapshot()
     # top_stats = snapshot.statistics('lineno')
@@ -274,15 +279,14 @@ if __name__ == '__main__':
     elif sys.argv[1] == "real":
         for sto in [False, True]:
             for dataset in [sys.argv[2]]:
-                # run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                #                 use_averaging=True, scenario="alpha", fraction_sampled_workers=float(sys.argv[5]))
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                                use_averaging=True, fraction_sampled_workers=float(sys.argv[5]))
-
-        # for sto in [True, False]:
-        #     for dataset in ["phishing", "mushroom", "a9a", "quantum", "superconduct"]:
-        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[3],
-        #                         use_averaging=True, scenario="step")
-        #         run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid='non-iid', algos=sys.argv[3],
-        #                           use_averaging=True, scenario="compression")
+                                use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+                                use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp1")
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+                                use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp2")
+                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos="artemis-vs-existing",
+                                use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
+        run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+                        use_averaging=True, fraction_sampled_workers=1, pp_strategy="pp1", scenario="step")
 
