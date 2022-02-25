@@ -2,16 +2,14 @@
 Created by Philippenko, 15 January 2021
 """
 import sys
-from guppy import hpy
 
 from src.models.CostModel import build_several_cost_model
+from src.models.RegularizationModel import L2Regularization
 from src.utils.ConvexSettings import batch_sizes, models
 
 from src.utils.ErrorPlotter import *
 from src.utils.data.DataPreparation import build_data_logistic, build_data_linear
-from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_superconduct, prepare_mushroom, \
-    prepare_phishing, prepare_a9a, prepare_abalone, prepare_covtype, prepare_madelon, prepare_gisette, prepare_w8a, \
-    get_preparation_operator_of_dataset
+from src.utils.data.RealDatasetPreparation import get_preparation_operator_of_dataset
 from src.utils.Constants import *
 from src.utils.data.DataClustering import *
 from src.utils.runner.RunnerUtilities import *
@@ -23,7 +21,7 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=None,
+                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = True, modify_run=None,
                     dirichlet = None, pp_strategy: str = "pp2"):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
@@ -111,7 +109,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     label_alpha = [str(value.constant) for value in values_alpha]
 
     # Creating cost models which will be used to computed cost/loss, gradients, L ...
-    cost_models = build_several_cost_model(model, X, Y, nb_devices)
+    default_regularizer = L2Regularization(regularization_rate=0.0)
+    cost_models = build_several_cost_model(model, X, Y, nb_devices, regularization=default_regularizer)
 
     # hp.setrelheap()
 
@@ -121,8 +120,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         obj_type = "TSNE"
     obj_name = "{0}/obj_min-{1}".format(pickle_path, obj_type)
 
-    if not file_exist("{0}.pkl".format(obj_name)) \
-            or not file_exist("{0}/grads_min-{1}.pkl".format(pickle_path, obj_type)):
+    if True:#not file_exist("{0}.pkl".format(obj_name)) \
+            # or not file_exist("{0}/grads_min-{1}.pkl".format(pickle_path, obj_type)):
         obj_min_by_N_descent = SGD_Descent(Parameters(n_dimensions=dim_notebook,
                                                   nb_devices=nb_devices,
                                                   nb_epoch=40000,
@@ -151,10 +150,13 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         label_step_size = "1/L"
 
     stochasticity = 'sto' if stochastic else "full"
+    reg = "-reg{0}".format(
+        (default_regularizer.regularization_rate)) if default_regularizer.regularization_rate != 0 else ""
     if stochastic:
-        experiments_settings = "{0}-{1}-b{2}".format(compression_by_default.get_name(), stochasticity, batch_size)
+        experiments_settings = "{0}-{1}-b{2}{3}".format(compression_by_default.get_name(), stochasticity,
+                                                        batch_size, reg)
     else:
-        experiments_settings = "{0}-{1}".format(compression_by_default.get_name(), stochasticity)
+        experiments_settings = "{0}-{1}{2}".format(compression_by_default.get_name(), stochasticity, reg)
 
     if not plot_only:
         if scenario == "compression":
@@ -222,14 +224,14 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                         one_on_two_points=True, xlabels=label_step_formula,
                         picture_name="{0}/{1}-{2}".format(picture_path, scenario, experiments_settings))
 
-        # res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
-        #
-        # plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
-        #                 x_legend="(non-iid)", ylim=True,
-        #                 picture_name="{0}/{1}-optimal-it-{2}".format(picture_path, scenario, experiments_settings))
-        # plot_error_dist(res.get_loss(obj_min), res.names, x_points=res.X_number_of_bits,
-        #                 x_legend="Communicated bits", all_error=res.get_std(obj_min), ylim=True,
-        #                 picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
+        res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
+
+        plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
+                        x_legend="(non-iid)", ylim=True,
+                        picture_name="{0}/{1}-optimal-it-{2}".format(picture_path, scenario, experiments_settings))
+        plot_error_dist(res.get_loss(obj_min), res.names, x_points=res.X_number_of_bits,
+                        x_legend="Communicated bits", all_error=res.get_std(obj_min), ylim=True,
+                        picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
 
     if scenario in ["compression", "alpha"]:
         create_folder_if_not_existing("{0}/{1}".format(picture_path, scenario))
@@ -287,6 +289,6 @@ if __name__ == '__main__':
                                 use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp2")
                 run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos="artemis-vs-existing",
                                 use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
-        run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+        run_experiments(nb_devices=20, stochastic=True, dataset=sys.argv[2], iid=sys.argv[4], algos=sys.argv[3],
                         use_averaging=True, fraction_sampled_workers=1, pp_strategy="pp1", scenario="step")
 

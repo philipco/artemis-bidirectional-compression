@@ -99,7 +99,7 @@ def clustering_data(data, predicted_cluster, column_name: str, nb_cluster: int =
     if not np.sort(np.unique(Y_data)).tolist() == [-1.0, 1.0]:
         Y_data = scale(Y_data)
 
-    X_data =    scale(X_data)
+    X_data = scale(X_data)
     if not np.sort(np.unique(Y_data)).tolist() == [-1.0, 1.0]:
         Y_data = scale(Y_data)
 
