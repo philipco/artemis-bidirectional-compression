@@ -96,6 +96,7 @@ class VanillaSGDMem(VanillaSGD):
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
+        params.up_compression_model = SQuantization(0, dim=n_dimensions)
         params.use_up_memory = True
         params.use_unique_up_memory = use_unique_up_memory
         return params
@@ -139,6 +140,28 @@ class Diana(VanillaSGD):
                                 stochastic, streaming, batch_size)
         params.up_compression_model = up_compression_model
         params.use_up_memory = True
+        return params
+
+
+class DianaMem(VanillaSGD):
+    """Predefine parameters to run Diana algorithm.
+    """
+
+    def name(self) -> str:
+        return r"Art. $\omega^{dwn}_C = 0$"
+
+    def type_FL(self):
+        return DianaDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        params.up_compression_model = up_compression_model
+        params.use_up_memory = True
+        params.use_unique_up_memory = use_unique_up_memory
         return params
 
 

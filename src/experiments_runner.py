@@ -21,7 +21,7 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = True, modify_run=None,
+                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=None,
                     dirichlet = None, pp_strategy: str = "pp2"):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
@@ -39,7 +39,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                                                                                       fraction_sampled_workers,
                                                                                       pp_strategy=pp_strategy)
 
-    list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
+    list_algos = choose_algo(algos, stochastic, fraction_sampled_workers, pp_strategy)
     nb_devices = nb_devices
     nb_epoch = 200 if stochastic else 800
 
@@ -120,8 +120,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         obj_type = "TSNE"
     obj_name = "{0}/obj_min-{1}".format(pickle_path, obj_type)
 
-    if True:#not file_exist("{0}.pkl".format(obj_name)) \
-            # or not file_exist("{0}/grads_min-{1}.pkl".format(pickle_path, obj_type)):
+    if not file_exist("{0}.pkl".format(obj_name)) \
+            or not file_exist("{0}/grads_min-{1}.pkl".format(pickle_path, obj_type)):
         obj_min_by_N_descent = SGD_Descent(Parameters(n_dimensions=dim_notebook,
                                                   nb_devices=nb_devices,
                                                   nb_epoch=40000,

@@ -19,10 +19,10 @@ from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-NB_RUN = 5  # Number of gradient descent before averaging.
+NB_RUN = 2  # Number of gradient descent before averaging.
 
 
-def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1):
+def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1, pp_strategy = "pp2"):
     assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-1-mem", "mcm-one-way",
                      "mcm-other-options", "artemis-vs-existing", "artemis-and-ef"], \
         "The possible choice of algorithms are : " \
@@ -34,7 +34,10 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
         if fraction_sampled_workers==1:
             list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
         else:
-            list_algos = [VanillaSGD(), VanillaSGDMem(), Qsgd(), Diana(), BiQSGD(), Artemis()]
+            if pp_strategy == "pp1":
+                list_algos = [VanillaSGD(), VanillaSGDMem(), Qsgd(), Diana(), BiQSGD(), Artemis()]
+            else:
+                list_algos = [VanillaSGD(), VanillaSGDMem(), Qsgd(), DianaMem(), BiQSGD(), Artemis()]
     if algos == 'artemis-and-ef':
         list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis(), Dore()]#, DoubleSqueeze()]
     elif algos == "with-without-ef":
@@ -146,7 +149,7 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
 
 
 def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settings: str, batch_size: int = 1,
-                     stochastic: bool = True, nb_epoch: int = 250, step_size = None,
+                     stochastic: bool = True, nb_epoch: int = 150, step_size = None,
                      compression: CompressionModel = None, use_averaging: bool = False,
                      fraction_sampled_workers: int = 1, modify_run = None, pp_strategy: str = "pp2") -> None:
 
