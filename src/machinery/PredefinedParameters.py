@@ -73,8 +73,8 @@ class VanillaSGD(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
-                          up_compression_model=SQuantization(0, dim=n_dimensions),
-                          down_compression_model=SQuantization(0, dim=n_dimensions),
+                          up_compression_model=up_compression_model, # Should not be init with 0-compression, otherwise SGDMem will fail to init. the mem learning rate.
+                          down_compression_model=down_compression_model,
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
@@ -96,7 +96,7 @@ class VanillaSGDMem(VanillaSGD):
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.up_compression_model = SQuantization(0, dim=n_dimensions)
+        params.up_compression_model = up_compression_model
         params.use_up_memory = True
         params.use_unique_up_memory = use_unique_up_memory
         return params
@@ -159,7 +159,6 @@ class DianaMem(VanillaSGD):
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.up_compression_model = up_compression_model
         params.use_up_memory = True
         params.use_unique_up_memory = use_unique_up_memory
         return params
