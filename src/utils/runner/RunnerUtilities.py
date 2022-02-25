@@ -15,7 +15,8 @@ from src.models.CompressionModel import CompressionModel
 
 from src.utils.Constants import NB_EPOCH
 from src.utils.PathDataset import get_path_to_pickle
-from src.utils.Utilities import pickle_saver, get_project_root, create_folder_if_not_existing, pickle_loader, file_exist, remove_file
+from src.utils.Utilities import get_project_root, create_folder_if_not_existing, file_exist, remove_file
+from src.utils.PickleHandler import pickle_loader, pickle_saver
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
