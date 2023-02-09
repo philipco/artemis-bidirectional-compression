@@ -176,7 +176,7 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
         ax.legend(loc='best', fontsize=fontsize_legend)
     fig.tight_layout()
     if picture_name:
-        plt.savefig('{0}.eps'.format(picture_name), format='eps')
+        plt.savefig('{0}.pdf'.format(picture_name), bbox_inches='tight', dpi=600)
     else:
         plt.show()
 

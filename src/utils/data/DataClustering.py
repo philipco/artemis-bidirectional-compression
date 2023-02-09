@@ -75,7 +75,7 @@ def find_cluster(embedded_data, tsne_cluster_file, nb_cluster: int = 10):
     # plt.title("Gaussian Mixture - Finding clusters in the TSNE", fontsize=20)
     ax.get_legend().remove()
 
-    plt.savefig('{0}.eps'.format(tsne_cluster_file), format='eps')
+    plt.savefig('{0}.pdf'.format(tsne_cluster_file), bbox_inches='tight', dpi=600)
 
     return predicted_cluster
 

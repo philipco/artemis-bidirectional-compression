@@ -10,7 +10,7 @@ scipy
 #tensorflow<2.0
 Pillow
 psutil
-matplotlib
+matplotlib>=3.4
 jupyter
 pandas
 scikit-learn
@@ -21,4 +21,3 @@ tqdm
 joblib
 pympler
 #guppy3 # to profile memory
-pympler
