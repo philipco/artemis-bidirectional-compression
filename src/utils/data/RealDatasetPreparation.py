@@ -270,7 +270,7 @@ def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: boo
 def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                      double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/phishing/phishing.txt".format(get_path_to_datasets()))
+    raw_X, raw_Y = load_svmlight_file("{0}/phishing/phishing.txt".format(get_path_to_datasets()))
 
     for i in range(len(raw_Y)):
         if raw_Y[i] == 0:
@@ -296,10 +296,10 @@ def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
                 double_check: bool =False, test: bool = False):
 
     if not test:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a.txt".format(get_path_to_datasets()))
+        raw_X, raw_Y = load_svmlight_file("{0}/a9a/a9a.txt".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
     else:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a_test.txt".format(get_path_to_datasets()))
+        raw_X, raw_Y = load_svmlight_file("{0}/a9a/a9a_test.txt".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
         raw_X = np.c_[raw_X, np.zeros((len(raw_Y)))]
 
@@ -352,7 +352,7 @@ def prepare_abalone(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                     double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_path_to_datasets()))
+    raw_X, raw_Y = load_svmlight_file("{0}/covtype/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
 
     for i in range(len(raw_Y)):
@@ -402,7 +402,7 @@ def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                     double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_path_to_datasets()))
+    raw_X, raw_Y = load_svmlight_file("{0}/covtype/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
 
     for i in range(len(raw_Y)):
@@ -428,7 +428,7 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 
 def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/gisette/data".format(get_path_to_datasets()))
+    raw_X, raw_Y = load_svmlight_file("{0}/gisette/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
 
     raw_data = pd.DataFrame(data=raw_X)
@@ -452,10 +452,10 @@ def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
                 double_check: bool = False, test: bool = False):
 
     if not test:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a".format(get_path_to_datasets()))
+        raw_X, raw_Y = load_svmlight_file("{0}/w8a/w8a".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
     else:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a.t".format(get_path_to_datasets()))
+        raw_X, raw_Y = load_svmlight_file("{0}/w8a/w8a.t".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
         raw_X = np.c_[raw_X, np.zeros((len(raw_Y)))]
 
