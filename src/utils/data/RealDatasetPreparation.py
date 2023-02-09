@@ -14,7 +14,7 @@ from src.utils.PathDataset import get_path_to_datasets
 from src.utils.PickleHandler import pickle_loader, pickle_saver
 from src.utils.Utilities import file_exist
 from src.utils.data.DataClustering import find_cluster, clustering_data, tsne, check_data_clusterisation, \
-    rebalancing_clusters, dirichlet_sampling
+    rebalancing_clusters, dirichlet_sampling, palette
 from src.utils.data.DataPreparation import add_bias_term
 
 
@@ -118,6 +118,7 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
         embedded_data = tsne(data)
         pickle_saver(embedded_data, tsne_file)
 
+    embedded_data = pickle_loader(tsne_file)
     tsne_cluster_file = "{0}/tsne-cluster".format(pickle_path)
     if not file_exist("{0}.pkl".format(tsne_cluster_file)):
         # Finding clusters in the TNSE.
@@ -128,6 +129,20 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
         pickle_saver(predicted_cluster, "{0}".format(tsne_cluster_file))
 
     predicted_cluster = pickle_loader("{0}".format(tsne_cluster_file))
+    n = len(embedded_data[:, 0])
+    idx = np.random.choice(n, int(n * 0.25), replace=False)
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(12, 9))
+    sns.scatterplot(embedded_data[:, 0], embedded_data[:, 1], ax=ax, hue=predicted_cluster, legend='full',
+                    palette=palette(nb_cluster))
+    # plt.savefig('{0}.eps'.format(tsne_cluster_file), format='eps')
+    plt.yticks(fontsize=20)
+    plt.xticks(fontsize=20)
+    # plt.title("Gaussian Mixture - Finding clusters in the TSNE", fontsize=20)
+    ax.get_legend().remove()
+    plt.savefig('{0}.pdf'.format(tsne_cluster_file), format='pdf')
+
 
     # With the found clusters, splitting data.
     X, Y = clustering_data(data, predicted_cluster, target_label, nb_cluster)
@@ -147,7 +162,7 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
 
 def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                          double_check: bool = False):
-    raw_data = pd.read_csv('{0}/dataset/superconduct/train.csv'.format(get_path_to_datasets()), sep=",")
+    raw_data = pd.read_csv('{0}/superconduct/train.csv'.format(get_path_to_datasets()), sep=",")
     if raw_data.isnull().values.any():
         logging.warning("There is missing value.")
     else:
@@ -175,7 +190,7 @@ def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid:
 def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                     double_check: bool =False):
 
-    raw_data= pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_path_to_datasets()), sep="\t", header=None)
+    raw_data= pd.read_csv('{0}/quantum/phy_train.csv'.format(get_path_to_datasets()), sep="\t", header=None)
 
     # Looking for missing values.
     columns_with_missing_values = []
@@ -226,7 +241,7 @@ def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 
 def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                      double_check: bool =False):
-    raw_data = pd.read_csv('{0}/dataset/mushroom/mushrooms.csv'.format(get_path_to_datasets()))
+    raw_data = pd.read_csv('{0}/mushroom/mushrooms.csv'.format(get_path_to_datasets()))
 
     # The data is categorial so I convert it with LabelEncoder to transfer to ordinal.
     labelencoder = LabelEncoder()
@@ -313,7 +328,7 @@ def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
 
 def prepare_abalone(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                     double_check: bool =False):
-    raw_data = pd.read_csv('{0}/dataset/abalone/abalone.csv'.format(get_path_to_datasets()), sep=",", header = None)
+    raw_data = pd.read_csv('{0}/abalone/abalone.csv'.format(get_path_to_datasets()), sep=",", header = None)
 
     raw_data = raw_data.rename(columns={ 0: "gender", 1: "Length", 2: "Diameter", 3: "Height", 8: "rings"})
     labelencoder = LabelEncoder()
@@ -364,12 +379,12 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                     double_check: bool =False):
 
-    X_data = pd.read_csv('{0}/dataset/madelon/madelon_train.data'.format(get_path_to_datasets()), sep=" ", header=None)
+    X_data = pd.read_csv('{0}/madelon/madelon_train.data'.format(get_path_to_datasets()), sep=" ", header=None)
     X_data.drop(X_data.columns[len(X_data.columns) - 1], axis=1, inplace=True)
 
     dim = len(X_data.columns)
 
-    Y_data = pd.read_csv('{0}/dataset/madelon/madelon_train.labels'.format(get_path_to_datasets()), header=None)
+    Y_data = pd.read_csv('{0}/madelon/madelon_train.labels'.format(get_path_to_datasets()), header=None)
 
     raw_data = X_data.copy()
     raw_data["target"] = Y_data.values

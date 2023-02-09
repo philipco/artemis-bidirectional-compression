@@ -7,7 +7,7 @@ from src.models.CostModel import RMSEModel, LogisticModel
 
 batch_sizes = {"a9a": 128, "abalone": 50, "covtype": 10000, "gisette": 50, "madelon": 16, "mushroom": 4, "quantum": 256,
                "phishing": 64, "superconduct": 64, "w8a": 12,
-               "synth_logistic": 1, "synth_linear_noised": 1, "synth_linear_nonoised": 1}
+               "synth_logistic": 1, "synth_linear_noised": 32, "synth_linear_nonoised": 1}
 
 models =  {"a9a": LogisticModel, "abalone": RMSEModel, "covtype": RMSEModel, "gisette": RMSEModel,
            "madelon": LogisticModel, "mushroom": LogisticModel, "quantum": LogisticModel, "phishing": LogisticModel,

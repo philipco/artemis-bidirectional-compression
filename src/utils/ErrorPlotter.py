@@ -63,6 +63,8 @@ def plot_error_dist(all_losses, legend, all_error=None, x_points=None, x_legend=
     nb_curves = min(len(all_losses), len(markers))
 
     for i in range(nb_curves):
+        # if i == 1:
+        #     continue
         abscisse = [i for i in range(N_it)]
         error_distance = all_losses[i]
         lw = curve_size-1 if len(error_distance) > 40 else curve_size

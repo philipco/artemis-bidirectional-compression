@@ -141,14 +141,14 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         pickle_saver(grads_min, "{0}/grads_min-{1}".format(pickle_path, obj_type))
 
     # Choice of step size
-    if stochastic and batch_size == 1:
-        step_size = iid_step_size
     if algos == "artemis-vs-existing":
         step_size = lambda it, L, omega, N: 1 / (2*L)
         label_step_size = "1/2L"
     else:
         step_size = lambda it, L, omega, N: 1 / L
         label_step_size = "1/L"
+    if 'synth' in dataset and stochastic:
+        step_size = deacreasing_step_size
 
     stochasticity = 'sto' if stochastic else "full"
     reg = "-reg{0}".format(
