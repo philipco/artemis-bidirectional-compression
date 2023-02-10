@@ -284,7 +284,7 @@ def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: boo
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -316,7 +316,7 @@ def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -367,7 +367,7 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -390,7 +390,7 @@ def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     raw_data["target"] = Y_data.values
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -417,7 +417,7 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -439,7 +439,7 @@ def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -467,7 +467,7 @@ def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
