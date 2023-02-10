@@ -43,8 +43,6 @@ def plot_error_dist(all_losses, legend, all_error=None, x_points=None, x_legend=
 
     assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
 
-    # legend = [l if l != "Diana" else r"Art. $\omega_{C}^{dwn}=0$" for l in legend]
-
     N_it = len(all_losses[0])
 
     # If there is less than 50 points, we plot each point !

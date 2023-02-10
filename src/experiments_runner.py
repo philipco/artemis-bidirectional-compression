@@ -209,6 +209,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                             .format(picture_path, experiments_settings))
 
     if scenario == "step":
+        create_folder_if_not_existing("{0}/{1}".format(picture_path, scenario))
         res = pickle_loader("{0}/{1}-{2}".format(algos_pickle_path, scenario, experiments_settings))
 
         plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
@@ -228,7 +229,8 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             "{0}/{1}-descent_by_algo-{2}".format(algos_pickle_path, scenario, experiments_settings))
         for key in res_by_algo.keys():
             res = res_by_algo[key]
-            plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
+            # Maximum 7 curves when plotting the convergence of an algorithm for different values of the hyperparameter.
+            plot_error_dist(res.get_loss(obj_min)[0:7], res.names, all_error=res.get_std(obj_min),
                             x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}/{2}-it-noavg-{3}"
                             .format(picture_path, scenario, key, experiments_settings))
 
@@ -243,9 +245,15 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         res_by_algo = pickle_loader("{0}/{1}-descent_by_algo-{2}".format(algos_pickle_path, scenario, experiments_settings))
         for key in res_by_algo.keys():
             res = res_by_algo[key]
-            plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
-                            x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}/{2}-it-noavg-{3}"
-                            .format(picture_path, scenario, key, experiments_settings))
+            # Maximum 7 curves when plotting the convergence of an algorithm for different values of the hyperparameter.
+            if len(res.get_loss(obj_min)) > 7:
+                plot_error_dist(res.get_loss(obj_min)[1:8], res.names, all_error=res.get_std(obj_min),
+                                x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}/{2}-it-noavg-{3}"
+                                .format(picture_path, scenario, key, experiments_settings))
+            else:
+                plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
+                                x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}/{2}-it-noavg-{3}"
+                                .format(picture_path, scenario, key, experiments_settings))
 
 if __name__ == '__main__':
 
@@ -267,11 +275,11 @@ if __name__ == '__main__':
 
     elif sys.argv[1] == "real":
         dataset = sys.argv[2]
-        # for sto in [False, True]:
-        #     run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-        #                     use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
-        #     run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-        #                     use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp1")
+        for sto in [False, True]:
+            run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+                            use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
+            run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+                            use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp1")
         if sys.argv[3] == "uni-vs-bi":
             run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                             use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp2")
@@ -286,7 +294,7 @@ if __name__ == '__main__':
                             algos="mcm-other-options", use_averaging=True, scenario=None, fraction_sampled_workers=0.5,
                             pp_strategy="pp1")
             run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4],
-                            algos="mcm-1-mem", use_averaging=True, scenario=None, fraction_sampled_workers=1,
+                            algos="mcm-1-mem", use_averaging=True, scenario=None, fraction_sampled_workers=0.5,
                             pp_strategy="NA")
             run_experiments(nb_devices=20, stochastic=True, dataset=sys.argv[2], iid=sys.argv[4], algos=sys.argv[3],
                             use_averaging=True, fraction_sampled_workers=1, pp_strategy="pp1", scenario="alpha")

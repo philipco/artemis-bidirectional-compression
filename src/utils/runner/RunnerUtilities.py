@@ -20,7 +20,7 @@ from src.utils.PickleHandler import pickle_loader, pickle_saver
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-NB_RUN = 2  # Number of gradient descent before averaging.
+NB_RUN = 5  # Number of gradient descent before averaging.
 
 
 def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: float = 1, pp_strategy = "pp2"):
@@ -194,7 +194,7 @@ def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settin
 
 def run_for_different_scenarios(cost_models, list_algos, values, labels, experiments_settings: str,
                                 logs_file: str, batch_size: int = 1,
-                                stochastic: bool = True, nb_epoch: int = 25, step_formula = None,
+                                stochastic: bool = True, nb_epoch: int = 250, step_formula = None,
                                 compression: CompressionModel = None, scenario: str = "step") -> None:
 
     assert scenario in ["step", "compression", "alpha"], "There is three possible scenarios : to analyze by step size," \
