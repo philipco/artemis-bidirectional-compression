@@ -130,18 +130,15 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
 
     predicted_cluster = pickle_loader("{0}".format(tsne_cluster_file))
     n = len(embedded_data[:, 0])
-    idx = np.random.choice(n, int(n * 0.25), replace=False)
+    idx = np.random.choice(n, int(n * 0.2), replace=False)
     import seaborn as sns
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(12, 9))
-    sns.scatterplot(embedded_data[:, 0], embedded_data[:, 1], ax=ax, hue=predicted_cluster, legend='full',
-                    palette=palette(nb_cluster))
-    # plt.savefig('{0}.eps'.format(tsne_cluster_file), format='eps')
-    plt.yticks(fontsize=20)
-    plt.xticks(fontsize=20)
-    # plt.title("Gaussian Mixture - Finding clusters in the TSNE", fontsize=20)
+    fig, ax = plt.subplots(figsize=(8, 7))
+    sns.scatterplot(embedded_data[idx][:,0], embedded_data[idx][:,1], ax=ax, hue=predicted_cluster[idx],
+                    legend='full', s=50, palette=palette(nb_cluster))
+    ax.tick_params(axis='both', labelsize=25)
     ax.get_legend().remove()
-    plt.savefig('{0}.pdf'.format(tsne_cluster_file), format='pdf')
+    plt.savefig('{0}.pdf'.format(tsne_cluster_file), bbox_inches='tight')
 
 
     # With the found clusters, splitting data.

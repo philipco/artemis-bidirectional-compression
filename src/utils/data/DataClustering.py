@@ -67,16 +67,12 @@ def find_cluster(embedded_data, tsne_cluster_file, nb_cluster: int = 10):
         .fit(embedded_data)
     predicted_cluster = clustering.predict(embedded_data)
 
-    fig, ax = plt.subplots(figsize=dim_tnse_fig)
-    sns.scatterplot(embedded_data[:, 0], embedded_data[:, 1], ax=ax, hue=predicted_cluster, legend='full',
+    fig, ax = plt.subplots(figsize=(8,7))
+    sns.scatterplot(embedded_data[:1000, 0], embedded_data[:1000, 1], ax=ax, hue=predicted_cluster[:1000], legend='full', s=50,
                     palette=palette(nb_cluster))
-    plt.yticks(fontsize=20)
-    plt.xticks(fontsize=20)
-    # plt.title("Gaussian Mixture - Finding clusters in the TSNE", fontsize=20)
+    ax.tick_params(axis='both', labelsize=25)
     ax.get_legend().remove()
-
-    plt.savefig('{0}.pdf'.format(tsne_cluster_file), bbox_inches='tight', dpi=00)
-
+    plt.savefig('{0}.pdf'.format(tsne_cluster_file), bbox_inches='tight')
     return predicted_cluster
 
 
