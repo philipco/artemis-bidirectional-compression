@@ -183,9 +183,11 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
 
 def logistic_plot(X, Y):
     """Plot the logistic distribution of a dataset of dimension 2."""
-    plt.scatter(*X[Y == 1].T, color='b', s=10, label=r'$y_i=1$')
-    plt.scatter(*X[Y == -1].T, color='r', s=10, label=r'$y_i=-1$')
-    plt.legend(loc='upper left')
-    plt.xlabel(r"$x_i^1$", fontsize=16)
-    plt.ylabel(r"$x_i^2$", fontsize=16)
-    plt.title("Logistic regression simulation", fontsize=18)
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.scatter(*X[Y == 1].T, color='b', s=150, label=r'$y_i=1$')
+    ax.scatter(*X[Y == -1].T, color='r', s=150, label=r'$y_i=-1$')
+    ax.legend(loc='upper left', fontsize=20)
+    ax.set_xlabel(r"$x_i^1$", fontsize=30)
+    ax.set_xlabel(r"$x_i^2$", fontsize=30)
+    ax.tick_params(axis='both', labelsize=30)
+    plt.title("Logistic regression simulation", fontsize=30)

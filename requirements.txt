@@ -16,7 +16,7 @@ pandas
 scikit-learn
 pytorch-gpu==1.10.2 # To allow run on a gpu, version is required to force a cudatoolkit's version >= 11.6
 torchvision
-seaborn
+seaborn==0.11.2
 tqdm
 joblib
 pympler

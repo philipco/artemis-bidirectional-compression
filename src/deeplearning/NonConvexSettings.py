@@ -4,7 +4,6 @@ Created by Constantin Philippenko, 5th October 2021.
 This file gather all the settings used in non-convex experiments.
 """
 from src.deeplearning.NnModels import *
-from src.deeplearning.ResNet import resnet32
 from src.deeplearning.VGG import VGG11, VGG19
 from src.models.CompressionModel import SQuantization
 
@@ -17,7 +16,7 @@ momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a"
              "quantum": 0, "mushroom": 0}
 optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a": None,
                       "phishing": None, "quantum": None, "mushroom": None}
-quantization_levels= {"cifar10": 2**4, "mnist": 2, "fashion_mnist": 2, "femnist": 4, "a9a":1, "phishing": 1,
+quantization_levels= {"cifar10": 2**4, "mnist": 4, "fashion_mnist": 4, "femnist": 4, "a9a":1, "phishing": 1,
                       "quantum": 1, "mushroom": 1}
 norm_quantization = {"cifar10": 2, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "a9a": 2,
                      "phishing": 2, "quantum": 2, "mushroom": 2}

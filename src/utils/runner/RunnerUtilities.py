@@ -23,7 +23,7 @@ from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 NB_RUN = 2  # Number of gradient descent before averaging.
 
 
-def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1, pp_strategy = "pp2"):
+def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: float = 1, pp_strategy = "pp2"):
     assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-1-mem", "mcm-one-way",
                      "mcm-other-options", "artemis-vs-existing", "artemis-and-ef"], \
         "The possible choice of algorithms are : " \
@@ -36,11 +36,11 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
             list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
         else:
             if pp_strategy == "pp1":
-                list_algos = [VanillaSGD(), VanillaSGDMem(), Qsgd(), Diana(), BiQSGD(), Artemis()]
+                list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
             else:
-                list_algos = [VanillaSGD(), VanillaSGDMem(), Qsgd(), DianaMem(), BiQSGD(), Artemis()]
+                list_algos = [VanillaSGD(), VanillaSGD1Mem(), Qsgd(), Diana1Mem(), BiQSGD(), Artemis1Mem()]
     if algos == 'artemis-and-ef':
-        list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis(), Dore()]#, DoubleSqueeze()]
+        list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis(), Dore()]
     elif algos == "with-without-ef":
         list_algos = [Qsgd(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
     elif algos == "compress-model":
@@ -64,7 +64,7 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
     return list_algos
 
 
-def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str, fraction_sampled_workers: int = 1, 
+def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str, fraction_sampled_workers: float = 1,
                             model_name: str=None, pp_strategy: str = "pp2"):
     if model_name is not None:
         foldername = "{0}-{1}-N{2}/{3}".format(dataset, iid, nb_devices, model_name)
@@ -152,7 +152,7 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
 def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settings: str, batch_size: int = 1,
                      stochastic: bool = True, nb_epoch: int = 150, step_size = None,
                      compression: CompressionModel = None, use_averaging: bool = False,
-                     fraction_sampled_workers: int = 1, modify_run = None, pp_strategy: str = "pp2") -> None:
+                     fraction_sampled_workers: float = 1, modify_run = None, pp_strategy: str = "pp2") -> None:
 
     pickle_file = "{0}/descent-{1}".format(logs_file, experiments_settings)
 
@@ -194,7 +194,7 @@ def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settin
 
 def run_for_different_scenarios(cost_models, list_algos, values, labels, experiments_settings: str,
                                 logs_file: str, batch_size: int = 1,
-                                stochastic: bool = True, nb_epoch: int = 150, step_formula = None,
+                                stochastic: bool = True, nb_epoch: int = 25, step_formula = None,
                                 compression: CompressionModel = None, scenario: str = "step") -> None:
 
     assert scenario in ["step", "compression", "alpha"], "There is three possible scenarios : to analyze by step size," \

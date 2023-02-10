@@ -80,15 +80,16 @@ class VanillaSGD(PredefinedParameters):
                           batch_size=batch_size,
                           cost_models=cost_models,
                           use_averaging=use_averaging,
-                          use_up_memory=False
+                          use_up_memory=False,
+                          use_unique_up_memory=False
                           )
 
-class VanillaSGDMem(VanillaSGD):
+class VanillaSGD1Mem(VanillaSGD):
     """Predefine parameters to run Diana algorithm.
     """
 
     def name(self) -> str:
-        return "SGDMem"
+        return "SGD 1Mem"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
                step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
@@ -140,15 +141,16 @@ class Diana(VanillaSGD):
                                 stochastic, streaming, batch_size)
         params.up_compression_model = up_compression_model
         params.use_up_memory = True
+        params.use_unique_up_memory = False
         return params
 
 
-class DianaMem(VanillaSGD):
-    """Predefine parameters to run Diana algorithm.
+class Diana1Mem(Diana):
+    """Predefine parameters to run Diana algorithm with 1Mem.
     """
 
     def name(self) -> str:
-        return r"Art. $\omega^{dwn}_C = 0$"
+        return r"Diana 1Mem"
 
     def type_FL(self):
         return DianaDescent
@@ -159,8 +161,7 @@ class DianaMem(VanillaSGD):
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
                                 stochastic, streaming, batch_size)
-        params.use_up_memory = True
-        params.use_unique_up_memory = use_unique_up_memory
+        params.use_unique_up_memory = True
         return params
 
 
@@ -209,6 +210,29 @@ class BiQSGD(Qsgd):
 
 
 class Artemis(Diana):
+    """Predefine parameters to run Artemis algorithm.
+    """
+
+    def name(self) -> str:
+        return "Artemis"
+
+    def type_FL(self):
+        return ArtemisDescent
+
+    def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
+        params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
+                                step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
+                                stochastic, streaming, batch_size)
+        # Important settings to recover results provided in the paper !
+        params.use_down_memory = False
+        params.use_unique_up_memory = False
+        params.down_compression_model = down_compression_model
+        return params
+
+
+class Artemis1Mem(Diana):
     """Predefine parameters to run Artemis algorithm.
     """
 
@@ -790,7 +814,7 @@ class RandMCM1Mem(RandMCM):
 class RandMCM1MemReset(RandMCM1Mem):
 
     def name(self) -> str:
-        return "R-MCM 1Mem Reset"
+        return "R-MCM nMem Reset"
 
     def type_FL(self):
         return DownCompressModelDescent

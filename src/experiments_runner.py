@@ -22,7 +22,7 @@ def batch_step_size(it, L, omega, N): return 1 / L
 
 
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
-                    scenario: str = None, fraction_sampled_workers: int = 1, plot_only: bool = False, modify_run=None,
+                    scenario: str = None, fraction_sampled_workers: float = 1, plot_only: bool = False, modify_run=None,
                     dirichlet = None, pp_strategy: str = "pp2"):
 
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
@@ -182,15 +182,6 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
                              use_averaging=use_averaging, compression=compression_by_default,
                              fraction_sampled_workers=fraction_sampled_workers, modify_run=modify_run, pp_strategy=pp_strategy)
 
-    # snapshot = tracemalloc.take_snapshot()
-    # top_stats = snapshot.statistics('lineno')
-    #
-    # print("[ Top 10 ]")
-    # for stat in top_stats[:10]:
-    #     print(stat)
-    #
-    # h = hp.heap()
-    # print(h)
 
     obj_min = pickle_loader(obj_name)
     print("Obj min:", obj_min)
@@ -221,8 +212,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         res = pickle_loader("{0}/{1}-{2}".format(algos_pickle_path, scenario, experiments_settings))
 
         plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
-                        x_legend="Step size ({0}, {1})".format(iid, str(compression_by_default.omega_c)[:4]),
-                        one_on_two_points=True, xlabels=label_step_formula,
+                        x_legend="Step size", one_on_two_points=True, xlabels=label_step_formula,
                         picture_name="{0}/{1}-{2}".format(picture_path, scenario, experiments_settings))
 
         res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
@@ -233,6 +223,14 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         plot_error_dist(res.get_loss(obj_min), res.names, x_points=res.X_number_of_bits,
                         x_legend="Communicated bits", all_error=res.get_std(obj_min), ylim=True,
                         picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
+
+        res_by_algo = pickle_loader(
+            "{0}/{1}-descent_by_algo-{2}".format(algos_pickle_path, scenario, experiments_settings))
+        for key in res_by_algo.keys():
+            res = res_by_algo[key]
+            plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
+                            x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}/{2}-it-noavg-{3}"
+                            .format(picture_path, scenario, key, experiments_settings))
 
     if scenario in ["compression", "alpha"]:
         create_folder_if_not_existing("{0}/{1}".format(picture_path, scenario))
@@ -248,18 +246,6 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
                             x_legend="Number of passes on data", ylim=1, picture_name="{0}/{1}/{2}-it-noavg-{3}"
                             .format(picture_path, scenario, key, experiments_settings))
-
-        # res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
-        #
-        # plot_error_dist(res.get_loss(obj_min), res.names,
-        #                 all_error=res.get_std(obj_min),
-        #                 x_legend="(non-iid)", ylim=True,
-        #                 picture_name="{0}/{1}-optimal-it-{2}".format(picture_path, scenario, experiments_settings))
-        # plot_error_dist(res.get_loss(obj_min), res.names,
-        #                 x_points=res.X_number_of_bits,
-        #                 x_legend="Communicated bits", all_error=res.get_std(obj_min), ylim=True,
-        #                 picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
-
 
 if __name__ == '__main__':
 
@@ -280,16 +266,30 @@ if __name__ == '__main__':
             raise ValueError("Arg 2 should be either 'logistic', either 'linear'.")
 
     elif sys.argv[1] == "real":
-        for sto in [False, True]:
-            for dataset in [sys.argv[2]]:
-                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                                use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
-                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                                use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp1")
-                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                                use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp2")
-                run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos="artemis-vs-existing",
-                                use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
-        run_experiments(nb_devices=20, stochastic=True, dataset=sys.argv[2], iid=sys.argv[4], algos=sys.argv[3],
-                        use_averaging=True, fraction_sampled_workers=1, pp_strategy="pp1", scenario="step")
+        dataset = sys.argv[2]
+        # for sto in [False, True]:
+        #     run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+        #                     use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
+        #     run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+        #                     use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp1")
+        if sys.argv[3] == "uni-vs-bi":
+            run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+                            use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp2")
+            run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4],
+                            algos="artemis-vs-existing",
+                            use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
+            run_experiments(nb_devices=20, stochastic=True, dataset=sys.argv[2], iid=sys.argv[4], algos=sys.argv[3],
+                            use_averaging=True, fraction_sampled_workers=1, pp_strategy="pp1", scenario="step")
+        elif sys.argv[3] == "mcm-vs-existing":
+            # pp_strategy="pp1" ==> because we compare to Artemis PP1. Other alogorithm are by defautl set to PP2 strategy.
+            run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4],
+                            algos="mcm-other-options", use_averaging=True, scenario=None, fraction_sampled_workers=0.5,
+                            pp_strategy="pp1")
+            run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4],
+                            algos="mcm-1-mem", use_averaging=True, scenario=None, fraction_sampled_workers=1,
+                            pp_strategy="NA")
+            run_experiments(nb_devices=20, stochastic=True, dataset=sys.argv[2], iid=sys.argv[4], algos=sys.argv[3],
+                            use_averaging=True, fraction_sampled_workers=1, pp_strategy="pp1", scenario="alpha")
+
+
 
