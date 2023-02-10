@@ -8,7 +8,7 @@ ipywidgets
 numpy
 scipy
 #tensorflow<2.0
-Pillow
+pillow<7.0.0
 psutil
 matplotlib>=3.4
 jupyter
