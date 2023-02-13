@@ -237,7 +237,7 @@ class Artemis1Mem(Diana):
     """
 
     def name(self) -> str:
-        return "Artemis"
+        return "Artemis 1Mem"
 
     def type_FL(self):
         return ArtemisDescent

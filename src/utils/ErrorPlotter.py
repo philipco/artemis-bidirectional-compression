@@ -16,7 +16,9 @@ from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 
 from src.utils.Utilities import drop_nan_values, keep_until_found_nan
 
-colors=["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink"]
+COLORS=["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink"]
+COLORS_PP2=["tab:blue", "tab:brown", "tab:orange", "tab:green", "tab:red", "tab:purple"]
+
 markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
 markersize = 1
 curve_size=4
@@ -40,6 +42,11 @@ nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 
 def plot_error_dist(all_losses, legend, all_error=None, x_points=None, x_legend=None, one_on_two_points=True,
                     xlabels=None, ylegends="loss", ylim=False, omega_c = None, picture_name=None, zoom = None):
+
+    if "uni-vs-bi/pp2" in picture_name:
+        colors = COLORS_PP2
+    else:
+        colors = COLORS
 
     assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
 

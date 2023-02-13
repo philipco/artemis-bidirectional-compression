@@ -188,15 +188,16 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     if scenario is None:
         res = pickle_loader("{0}/descent-{1}".format(algos_pickle_path, experiments_settings))
+        ylim = 2 if algos == "mcm-other-options" else None
 
         # Plotting without averaging
         plot_error_dist(res.get_loss(obj_min), res.names,
                         all_error=res.get_std(obj_min), x_legend="Number of passes on data",
-                        picture_name="{0}/it-noavg-{1}".format(picture_path, experiments_settings))
+                        picture_name="{0}/it-noavg-{1}".format(picture_path, experiments_settings), ylim=ylim)
         plot_error_dist(res.get_loss(obj_min), res.names,
                         x_points=res.X_number_of_bits, x_legend="Communicated bits",
                         all_error=res.get_std(obj_min), picture_name="{0}/bits-noavg-{1}"
-                        .format(picture_path, experiments_settings))
+                        .format(picture_path, experiments_settings), ylim=ylim)
 
         # Plotting with averaging
         if use_averaging:
@@ -219,10 +220,10 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         res = pickle_loader("{0}/{1}-optimal-{2}".format(algos_pickle_path, scenario, experiments_settings))
 
         plot_error_dist(res.get_loss(obj_min), res.names, all_error=res.get_std(obj_min),
-                        x_legend="(non-iid)", ylim=True,
+                        x_legend="(non-iid)",
                         picture_name="{0}/{1}-optimal-it-{2}".format(picture_path, scenario, experiments_settings))
         plot_error_dist(res.get_loss(obj_min), res.names, x_points=res.X_number_of_bits,
-                        x_legend="Communicated bits", all_error=res.get_std(obj_min), ylim=True,
+                        x_legend="Communicated bits", all_error=res.get_std(obj_min),
                         picture_name="{0}/{1}-optimal-bits-{2}".format(picture_path, scenario, experiments_settings))
 
         res_by_algo = pickle_loader(
@@ -280,9 +281,9 @@ if __name__ == '__main__':
                             use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
             run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                             use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp1")
-        if sys.argv[3] == "uni-vs-bi":
-            run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+            run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                             use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp2")
+        if sys.argv[3] == "uni-vs-bi":
             run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4],
                             algos="artemis-vs-existing",
                             use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
