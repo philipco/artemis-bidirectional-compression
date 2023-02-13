@@ -24,13 +24,6 @@ def add_bias_term(X):
     return newX
 
 
-def add_constant_columns(x):
-    """Form (y,tX) to get regression data in matrix form."""
-    num_samples = x.shape[0]
-    tx = np.c_[np.ones(num_samples), x]
-    return tx
-
-
 def build_data_logistic(true_model_param: torch.FloatTensor, n_samples=NB_OF_POINTS_BY_DEVICE, n_dimensions=DIM,
                n_devices: int = 1, with_seed: bool = False,
                features_corr=0.6, labels_std=0.4):

@@ -14,7 +14,7 @@ from torch.utils.data import Dataset
 from torchvision.datasets import MNIST
 from torchvision.datasets.utils import download_and_extract_archive
 
-from src.utils.Utilities import get_project_root, create_folder_if_not_existing
+from src.utils.Utilities import get_project_root, create_folder_if_not_existing, file_exist
 from src.utils.data.RealDatasetPreparation import prepare_quantum, prepare_a9a, prepare_phishing, prepare_abalone, \
     prepare_mushroom
 
@@ -43,9 +43,9 @@ class FEMNISTDataset(MNIST):
         if download:
             self.download()
 
-        if not self._check_exists():
-            raise RuntimeError('Dataset not found.' +
-                               ' You can use download=True to download it')
+        # if not self._check_exists():
+        #     raise RuntimeError('Dataset not found.' +
+        #                        ' You can use download=True to download it')
         if self.train:
             data_file = self.training_file
         else:
@@ -84,8 +84,10 @@ class FEMNISTDataset(MNIST):
 
         # process and save as torch files
         print('Processing...')
-        shutil.move(os.path.join(self.raw_folder, self.training_file), self.processed_folder)
-        shutil.move(os.path.join(self.raw_folder, self.test_file), self.processed_folder)
+        if not file_exist(os.path.join(self.raw_folder, self.training_file)):
+            shutil.move(os.path.join(self.raw_folder, self.training_file), self.processed_folder)
+        if not file_exist(os.path.join(self.raw_folder, self.test_file)):
+            shutil.move(os.path.join(self.raw_folder, self.test_file), self.processed_folder)
 
     def __len__(self):
         return len(self.data)

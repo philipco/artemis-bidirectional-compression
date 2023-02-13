@@ -94,7 +94,7 @@ def load_data(dataset: str, iid: str):
     :param iid: True if the dataset must not be splitted by target value
     :return: Train dataset, test dataset
     """
-    path_to_dataset = '{0}/dataset/'.format(get_path_to_datasets())
+    path_to_dataset = '{0}/'.format(get_path_to_datasets())
     if dataset == "fake":
 
         transform = transforms.ToTensor()

@@ -140,7 +140,6 @@ class AGradientDescent(ABC):
         start_time = time.time()
 
         inside_loop_time = 0
-        averaging_time = 0
 
         # Initialization
         current_model_param = torch.FloatTensor(
@@ -184,12 +183,10 @@ class AGradientDescent(ABC):
             # We add the past update because at this time, local update has not been yet updated.
             self.update_gradient_descent_info(past_model, cost_models)
 
-            start_averaging_time = time.time()
             if self.parameters.use_averaging:
                 # Divion by (full_nb_iterations + 1) because this variable is initiliazed to 0.
                 averaged_model_params = averaged_model_params + (current_model_param - averaged_model_params) / (full_nb_iterations + 1)
                 self.averaged_train_losses.append(self.update.compute_cost(averaged_model_params, cost_models))
-            averaging_time += time.time() - start_averaging_time
 
             if self.parameters.verbose:
                 if i == 1:
@@ -219,7 +216,6 @@ class AGradientDescent(ABC):
                 print("Grad time: {0}".format(cost_model.grad_i_times))
 
             print("== Inside time {0}".format(inside_loop_time))
-            print("== Averaging time : {0}".format(averaging_time))
             print("== Full time : {0}".format(elapsed_time))
             print("=== Used memory : {0} Mbytes".format(self.memory_info))  # in bytes
 

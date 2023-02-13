@@ -23,10 +23,8 @@ CORES = mp.cpu_count()
 
 def generate_param(n_dimensions: int):
     """Simulation of model's parameters"""
-    nnz = 20
     idx = np.arange(n_dimensions)
     W = torch.FloatTensor((-1) ** (idx + 1) * np.exp(-idx / 10.)).to(dtype=torch.float64)
-    W[nnz:] = 0.
     return W
 
 
