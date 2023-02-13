@@ -22,9 +22,11 @@ from src.utils.Utilities import file_exist, seed_everything, create_folder_if_no
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-from src.utils.runner.RunnerUtilities import create_path_and_folders, NB_RUN, choose_algo
+from src.utils.runner.RunnerUtilities import create_path_and_folders, choose_algo
 
 logging.basicConfig(level=logging.INFO)
+
+NB_RUN_DL = 2
 
 
 def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False) -> None:
@@ -99,8 +101,8 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False) -> No
             multiple_descent = AverageOfSeveralIdenticalRun()
             seed_everything(seed=42)
             start = time.time()
-            for i in range(NB_RUN):
-                print('Run {:3d}/{:3d}:'.format(i + 1, NB_RUN))
+            for i in range(NB_RUN_DL):
+                print('Run {:3d}/{:3d}:'.format(i + 1, NB_RUN_DL))
                 fixed_params = copy.deepcopy(params)
                 try:
                     training = Train(loaders, fixed_params)

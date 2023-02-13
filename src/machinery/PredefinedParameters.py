@@ -73,8 +73,8 @@ class VanillaSGD(PredefinedParameters):
                           nb_epoch=nb_epoch,
                           fraction_sampled_workers=fraction_sampled_workers,
                           step_formula=step_formula,
-                          up_compression_model=up_compression_model, # Should not be init with 0-compression, otherwise SGDMem will fail to init. the mem learning rate.
-                          down_compression_model=down_compression_model,
+                          up_compression_model=SQuantization(0), # Should not be init with 0-compression, otherwise SGDMem will fail to init. the mem learning rate.
+                          down_compression_model=SQuantization(0),
                           stochastic=stochastic,
                           streaming=streaming,
                           batch_size=batch_size,
