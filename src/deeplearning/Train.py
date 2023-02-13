@@ -57,8 +57,6 @@ class Train:
 
         self.optimizers = [SGDGen(model.parameters(), parameters=parameters, weight_decay=parameters.weight_decay) for model
                       in self.client_models]
-        self.schedulers = [torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100, 150], last_epoch=0 - 1) for
-                      optimizer in self.optimizers]
         
         with open(self.parameters.log_file, 'a') as f:
             print("Device :",self.device, file=f)
@@ -98,7 +96,6 @@ class Train:
         loss = self.criterion(output, target)
         loss.backward()
         optimizer.step_local_global(w_id)
-        return loss.item()
 
     def __initialize_gradients_to_zeros__(self) -> None:
         """Intialization of all gradient. Required because at first call, gradients do not exist.
@@ -181,7 +178,7 @@ class Train:
                 if down_learning_rate_name not in param_state:
                     # Initialisation of the memory learning rate
                     param_state[down_learning_rate_name] = self.parameters.down_compression_model.get_learning_rate(omega)
-    
+
                 if self.parameters.use_down_memory:
                     param_state[down_memory_name] = param_state[down_memory_name] + omega.mul(
                         param_state[down_learning_rate_name]).detach()
@@ -245,9 +242,7 @@ class Train:
             for w_id in active_worker:
                 all_data[w_id], all_labels[w_id] = next(train_loader_iter[w_id])
                 data, target = all_data[w_id].to(self.device), all_labels[w_id].to(self.device)
-                loss = self.__compute_client_loss__(self.client_models[w_id], self.optimizers[w_id], data, target, w_id)
-                losses += loss
-                self.schedulers[w_id].step()
+                self.__compute_client_loss__(self.client_models[w_id], self.optimizers[w_id], data, target, w_id)
 
             self.__server_aggregate_gradients__()
 
@@ -260,8 +255,6 @@ class Train:
                 self.__server_compress_model_and_send_to_clients__()
             else:
                 self.__server_send_models_to_clients__()
-
-        return losses / (self.parameters.nb_devices * nb_inner_iterations)
 
     def run_training(self) -> DeepLearningRun:
         """Run the whole training process over all the workers.
