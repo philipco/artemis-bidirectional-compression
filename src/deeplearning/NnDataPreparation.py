@@ -144,18 +144,18 @@ def load_data(dataset: str, iid: str):
         ])
 
         # Download and load the training data
-        train_data = datasets.FashionMNIST(path_to_dataset, download=True, train=True, transform=train_transforms)
+        train_data = datasets.FashionMNIST(path_to_dataset, download=False, train=True, transform=train_transforms)
 
         # Download and load the test data
-        test_data = datasets.FashionMNIST(path_to_dataset, download=True, train=False, transform=val_transforms)
+        test_data = datasets.FashionMNIST(path_to_dataset, download=False, train=False, transform=val_transforms)
 
     elif dataset == "femnist":
 
         transform = transforms.Compose([transforms.ToTensor()])
 
-        train_data = FEMNISTDataset(path_to_dataset, download=True, train=True, transform=transform)
+        train_data = FEMNISTDataset(path_to_dataset, download=False, train=True, transform=transform)
 
-        test_data = FEMNISTDataset(path_to_dataset, download=True, train=False, transform=transform)
+        test_data = FEMNISTDataset(path_to_dataset, download=False, train=False, transform=transform)
 
     elif dataset == "a9a":
 

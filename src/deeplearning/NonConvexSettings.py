@@ -9,7 +9,7 @@ from src.models.CompressionModel import SQuantization
 
 batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 128,
           "a9a": 50, "phishing": 50, "quantum": 400, "mushroom": 4}
-models = {"cifar10": VGG11, "mnist": MNIST_CNN, "fashion_mnist": FashionSimpleNet, "femnist": MNIST_CNN,
+models = {"cifar10": LeNet, "mnist": MNIST_CNN, "fashion_mnist": FashionSimpleNet, "femnist": MNIST_CNN,
           "a9a": LogisticReg, "phishing": LogisticReg, "quantum": LogisticReg,
           "mushroom": LogisticReg}
 momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a": 0, "phishing": 0,
