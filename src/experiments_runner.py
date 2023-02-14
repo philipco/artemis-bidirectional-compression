@@ -42,7 +42,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers, pp_strategy)
     nb_devices = nb_devices
-    nb_epoch = 200 if stochastic else 800
+    nb_epoch = 200 if stochastic else 400
 
     iid_data = True if iid == 'iid' else False
 
@@ -276,7 +276,7 @@ if __name__ == '__main__':
 
     elif sys.argv[1] == "real":
         dataset = sys.argv[2]
-        for sto in [False, True]:
+        for sto in [True]:
             run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                             use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
             run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
@@ -289,6 +289,8 @@ if __name__ == '__main__':
                             use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
             run_experiments(nb_devices=20, stochastic=True, dataset=sys.argv[2], iid=sys.argv[4], algos=sys.argv[3],
                             use_averaging=True, fraction_sampled_workers=1, pp_strategy="pp1", scenario="step")
+            run_experiments(nb_devices=20, stochastic=False, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
+                            use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
         elif sys.argv[3] == "mcm-vs-existing":
             # pp_strategy="pp1" ==> because we compare to Artemis PP1. Other alogorithm are by defautl set to PP2 strategy.
             run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4],
