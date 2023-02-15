@@ -276,7 +276,7 @@ if __name__ == '__main__':
 
     elif sys.argv[1] == "real":
         dataset = sys.argv[2]
-        for sto in [True]:
+        for sto in [True, False]:
             run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                             use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
             run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
