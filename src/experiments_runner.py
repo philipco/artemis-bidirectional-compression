@@ -86,7 +86,11 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             X, Y = pickle_loader(pickle_path + "/data")
 
     default_level_of_quantization = 1 if fraction_sampled_workers == 1 else 2
-    compression_by_default = SQuantization(default_level_of_quantization, dim_notebook, norm=2)
+
+    if algos == "various-compressor":
+        compression_by_default = SQuantization(default_level_of_quantization, dim_notebook, norm=2)
+    else:
+        compression_by_default = RandomSparsification(0.1, dim_notebook, norm=2)
 
     values_compression = [SQuantization(0, dim_notebook, norm=2),
                           SQuantization(16, dim_notebook, norm=2),
@@ -179,8 +183,9 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
             run_one_scenario(cost_models=cost_models, list_algos=list_algos, logs_file=algos_pickle_path,
                              batch_size=batch_size, experiments_settings=experiments_settings,
                              stochastic=stochastic, nb_epoch=nb_epoch, step_size=step_size,
-                             use_averaging=use_averaging, compression=compression_by_default,
-                             fraction_sampled_workers=fraction_sampled_workers, modify_run=modify_run, pp_strategy=pp_strategy)
+                             use_averaging=use_averaging, up_compression=compression_by_default,
+                             dwn_compression=compression_by_default, fraction_sampled_workers=fraction_sampled_workers,
+                             modify_run=modify_run, pp_strategy=pp_strategy)
 
 
     obj_min = pickle_loader(obj_name)
@@ -278,7 +283,7 @@ if __name__ == '__main__':
         dataset = sys.argv[2]
         for sto in [True, False]:
             run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                            use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
+                            use_averaging=True, fraction_sampled_workers=1, pp_strategy="pp1")
             run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                             use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp1")
             run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
@@ -287,20 +292,21 @@ if __name__ == '__main__':
             run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4],
                             algos="artemis-vs-existing",
                             use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
-            run_experiments(nb_devices=20, stochastic=True, dataset=sys.argv[2], iid=sys.argv[4], algos=sys.argv[3],
+            run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                             use_averaging=True, fraction_sampled_workers=1, pp_strategy="pp1", scenario="step")
-            run_experiments(nb_devices=20, stochastic=False, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                            use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")
         elif sys.argv[3] == "mcm-vs-existing":
-            # pp_strategy="pp1" ==> because we compare to Artemis PP1. Other alogorithm are by defautl set to PP2 strategy.
+            # pp_strategy="pp1" ==> because we compare to Artemis PP1. Other algorithm are by default set to PP2 strategy.
             run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4],
                             algos="mcm-other-options", use_averaging=True, scenario=None, fraction_sampled_workers=0.5,
                             pp_strategy="pp1")
             run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4],
                             algos="mcm-1-mem", use_averaging=True, scenario=None, fraction_sampled_workers=0.5,
                             pp_strategy="NA")
-            run_experiments(nb_devices=20, stochastic=True, dataset=sys.argv[2], iid=sys.argv[4], algos=sys.argv[3],
+            run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                             use_averaging=True, fraction_sampled_workers=1, pp_strategy="pp1", scenario="alpha")
+            run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4],
+                            algos="various-compressors", use_averaging=True, fraction_sampled_workers=1,
+                            pp_strategy="pp1")
 
 
 

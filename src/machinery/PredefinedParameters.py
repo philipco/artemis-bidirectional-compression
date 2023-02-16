@@ -34,7 +34,7 @@ class PredefinedParameters:
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel,
                down_compression_model: CompressionModel, step_formula=None, nb_epoch: int = NB_EPOCH,
-               fraction_sampled_workers: int = 1., use_averaging=False, stochastic=True, streaming=False,
+               fraction_sampled_workers: float = 1., use_averaging=False, stochastic=True, streaming=False,
                batch_size=1, use_unique_up_memory=True) -> Parameters:
         """Define parameters to be used during the descent.
 
@@ -66,7 +66,7 @@ class VanillaSGD(PredefinedParameters):
         return SGD_Descent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         return Parameters(n_dimensions=n_dimensions,
                           nb_devices=nb_devices,
@@ -92,7 +92,7 @@ class VanillaSGD1Mem(VanillaSGD):
         return "SGD 1Mem"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -114,7 +114,7 @@ class Qsgd(VanillaSGD):
         return DianaDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -134,7 +134,7 @@ class Diana(VanillaSGD):
         return DianaDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -156,7 +156,7 @@ class Diana1Mem(Diana):
         return DianaDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -176,7 +176,7 @@ class DianaOneWay(VanillaSGD):
         return DianaDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -198,7 +198,7 @@ class BiQSGD(Qsgd):
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -220,7 +220,7 @@ class Artemis(Diana):
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -243,7 +243,7 @@ class Artemis1Mem(Diana):
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -266,7 +266,7 @@ class ArtemisND(Artemis):
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -286,7 +286,7 @@ class ArtemisOneWay(Artemis):
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -307,7 +307,7 @@ class Sympa(Artemis):
         return GhostDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -322,7 +322,7 @@ class RArtemis(Artemis):
         return "RArtemis"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -338,7 +338,7 @@ class RArtemisEF(RArtemis):
         return "RArtemisEF"
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -367,7 +367,7 @@ class BiQSGD_EF(BiQSGD):
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -386,7 +386,7 @@ class DoubleSqueeze(BiQSGD):
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -407,7 +407,7 @@ class Dore(Artemis):
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -427,7 +427,7 @@ class DoreOneWay(Dore):
         return ArtemisDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -473,7 +473,7 @@ class Topk(PredefinedParameters):
         self.biased = True
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True):
         parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
                                              up_compression_model, step_formula, nb_epoch,
@@ -494,7 +494,7 @@ class RandkBiased(PredefinedParameters):
         self.biased = True
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True):
         parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
                                              up_compression_model, step_formula, nb_epoch,
@@ -515,7 +515,7 @@ class Randk(PredefinedParameters):
         self.biased = False
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True):
         parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
                                              up_compression_model, step_formula, nb_epoch,
@@ -536,7 +536,7 @@ class Quantiz(PredefinedParameters):
         self.biased = False
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True):
         parameters = self.super_class.define(cost_models, n_dimensions, nb_devices,
                                              up_compression_model, step_formula, nb_epoch,
@@ -596,7 +596,7 @@ class ModelCompr(Artemis):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -615,7 +615,7 @@ class MCM(ModelCompr):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -642,7 +642,7 @@ class MC(ModelCompr):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -663,7 +663,7 @@ class MCM0(ModelCompr):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -690,7 +690,7 @@ class MCM1(ModelCompr):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -717,7 +717,7 @@ class MCMOneWay(MCM):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -740,7 +740,7 @@ class ModelComprEF(ModelCompr):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -760,7 +760,7 @@ class RModelComprEF(ModelComprEF):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -780,7 +780,7 @@ class RandMCM(MCM):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         print(self.name())
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
@@ -802,7 +802,7 @@ class RandMCM1Mem(RandMCM):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -820,7 +820,7 @@ class RandMCM1MemReset(RandMCM1Mem):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -840,7 +840,7 @@ class RandMCMOneWay(MCM):
         return DownCompressModelDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -869,7 +869,7 @@ class FedPAQ(VanillaSGD):
         return FedAvgDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -890,7 +890,7 @@ class FedAvg(VanillaSGD):
         return FedAvgDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
@@ -912,7 +912,7 @@ class FedSGD(FedAvg):
         return FedAvgDescent
 
     def define(self, cost_models, n_dimensions: int, nb_devices: int, up_compression_model: CompressionModel, down_compression_model: CompressionModel,
-               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: int = 1., use_averaging=False,
+               step_formula=None, nb_epoch: int = NB_EPOCH, fraction_sampled_workers: float = 1., use_averaging=False,
                stochastic=True, streaming=False, batch_size=1, use_unique_up_memory=True) -> Parameters:
         params = super().define(cost_models, n_dimensions, nb_devices, up_compression_model, down_compression_model,
                                 step_formula, nb_epoch, fraction_sampled_workers, use_averaging,
