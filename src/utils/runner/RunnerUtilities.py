@@ -25,12 +25,12 @@ NB_RUN = 5  # Number of gradient descent before averaging.
 
 def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: float = 1, pp_strategy = "pp2"):
     assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-1-mem", "mcm-one-way",
-                     "mcm-other-options", "artemis-vs-existing", "artemis-and-ef"], \
+                     "mcm-other-options", "artemis-vs-existing", "artemis-and-ef", "various-compressors"], \
         "The possible choice of algorithms are : " \
         "uni-vs-bi (to compare uni-compression with bi-compression), " \
         "with-without-ef (to compare algorithms using or not error-feedback), " \
         "compress-model (algorithms compressing the model)," \
-        "mcm-other-options."
+        "mcm-other-options, various-compressors"
     if algos == 'uni-vs-bi':
         if fraction_sampled_workers==1:
             list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
