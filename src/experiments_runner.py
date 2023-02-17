@@ -87,11 +87,10 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
 
     default_level_of_quantization = 1 if fraction_sampled_workers == 1 else 2
 
-    if algos == "various-compressor":
-        compression_by_default = SQuantization(default_level_of_quantization, dim_notebook, norm=2)
-    else:
+    if algos == "various-compressors":
         compression_by_default = RandomSparsification(0.1, dim_notebook, norm=2)
-
+    else:
+        compression_by_default = SQuantization(default_level_of_quantization, dim_notebook, norm=2)
     values_compression = [SQuantization(0, dim_notebook, norm=2),
                           SQuantization(16, dim_notebook, norm=2),
                           SQuantization(8, dim_notebook, norm=2),

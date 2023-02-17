@@ -61,7 +61,7 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: f
             list_algos = [VanillaSGD(), FedAvg(), FedPAQ(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
         else:
             list_algos = [VanillaSGD(), FedSGD(), FedPAQ(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
-    elif algos == "various-compressor":
+    elif algos == "various-compressors":
         list_algos = [VanillaSGD(), Diana(), Artemis(), Dore(), MCM(), RandMCM()]
     return list_algos
 
