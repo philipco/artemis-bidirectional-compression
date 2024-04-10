@@ -22,15 +22,18 @@ from src.utils.Utilities import file_exist, seed_everything, create_folder_if_no
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-from src.utils.runner.RunnerUtilities import create_path_and_folders, NB_RUN, choose_algo
+from src.utils.runner.RunnerUtilities import create_path_and_folders, choose_algo
 
 logging.basicConfig(level=logging.INFO)
 
+NB_RUN_DL = 2
 
-def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False) -> None:
+
+def run_experiments_in_deeplearning(dataset: str, continue_run: bool = False, plot_only: bool = False) -> None:
     """Runs and plots experiments for a given dataset using an appropriate neural network.
 
     :param dataset: Name of the dataset
+    :param continue_run: True if you wish to continue a run interrupted for any reason. It will not remove the existing pkl file.
     :param plot_only: True if the goal is not to rerun all experiments but only to regenerate figures.
     """
     fraction_sampled_workers = 1
@@ -70,7 +73,8 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False) -> No
     list_algos = choose_algo(algos, stochastic, fraction_sampled_workers)
 
     if not plot_only:
-        if file_exist(pickle_file + ".pkl"):
+        # We remove the existing file if it already exists and if we are not continuing a run.
+        if file_exist(pickle_file + ".pkl") and not continue_run:
             remove_file(pickle_file  + ".pkl")
 
         for type_params in list_algos:
@@ -99,8 +103,8 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False) -> No
             multiple_descent = AverageOfSeveralIdenticalRun()
             seed_everything(seed=42)
             start = time.time()
-            for i in range(NB_RUN):
-                print('Run {:3d}/{:3d}:'.format(i + 1, NB_RUN))
+            for i in range(NB_RUN_DL):
+                print('Run {:3d}/{:3d}:'.format(i + 1, NB_RUN_DL))
                 fixed_params = copy.deepcopy(params)
                 try:
                     training = Train(loaders, fixed_params)
@@ -116,6 +120,7 @@ def run_experiments_in_deeplearning(dataset: str, plot_only: bool = False) -> No
                                                                                         asizeof.asizeof(multiple_descent)),
                            file=f)
 
+            # Add the results to the created pkl file.
             if file_exist(pickle_file + ".pkl"):
                 res = pickle_loader(pickle_file)
                 res.add_descent(multiple_descent, type_params.name(), deep_learning_run=True)

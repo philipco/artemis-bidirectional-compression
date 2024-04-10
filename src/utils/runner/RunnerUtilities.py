@@ -20,27 +20,27 @@ from src.utils.PickleHandler import pickle_loader, pickle_saver
 from src.utils.runner.AverageOfSeveralIdenticalRun import AverageOfSeveralIdenticalRun
 from src.utils.runner.ResultsOfSeveralDescents import ResultsOfSeveralDescents
 
-NB_RUN = 2  # Number of gradient descent before averaging.
+NB_RUN = 5  # Number of gradient descent before averaging.
 
 
-def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: int = 1, pp_strategy = "pp2"):
+def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: float = 1, pp_strategy = "pp2"):
     assert algos in ['uni-vs-bi', "with-without-ef", "compress-model", "mcm-vs-existing", "mcm-1-mem", "mcm-one-way",
-                     "mcm-other-options", "artemis-vs-existing", "artemis-and-ef"], \
+                     "mcm-other-options", "artemis-vs-existing", "artemis-and-ef", "various-compressors"], \
         "The possible choice of algorithms are : " \
         "uni-vs-bi (to compare uni-compression with bi-compression), " \
         "with-without-ef (to compare algorithms using or not error-feedback), " \
         "compress-model (algorithms compressing the model)," \
-        "mcm-other-options."
+        "mcm-other-options, various-compressors"
     if algos == 'uni-vs-bi':
         if fraction_sampled_workers==1:
             list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
         else:
             if pp_strategy == "pp1":
-                list_algos = [VanillaSGD(), VanillaSGDMem(), Qsgd(), Diana(), BiQSGD(), Artemis()]
+                list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis()]
             else:
-                list_algos = [VanillaSGD(), VanillaSGDMem(), Qsgd(), DianaMem(), BiQSGD(), Artemis()]
+                list_algos = [VanillaSGD(), VanillaSGD1Mem(), Qsgd(), Diana1Mem(), BiQSGD(), Artemis1Mem()]
     if algos == 'artemis-and-ef':
-        list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis(), Dore()]#, DoubleSqueeze()]
+        list_algos = [VanillaSGD(), Qsgd(), Diana(), BiQSGD(), Artemis(), Dore()]
     elif algos == "with-without-ef":
         list_algos = [Qsgd(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
     elif algos == "compress-model":
@@ -61,10 +61,12 @@ def choose_algo(algos: str, stochastic: bool = True, fraction_sampled_workers: i
             list_algos = [VanillaSGD(), FedAvg(), FedPAQ(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
         else:
             list_algos = [VanillaSGD(), FedSGD(), FedPAQ(), Diana(), Artemis(), Dore(), DoubleSqueeze()]
+    elif algos == "various-compressors":
+        list_algos = [VanillaSGD(), Diana(), Artemis(), Dore(), MCM(), RandMCM()]
     return list_algos
 
 
-def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str, fraction_sampled_workers: int = 1, 
+def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str, fraction_sampled_workers: float = 1,
                             model_name: str=None, pp_strategy: str = "pp2"):
     if model_name is not None:
         foldername = "{0}-{1}-N{2}/{3}".format(dataset, iid, nb_devices, model_name)
@@ -87,7 +89,9 @@ def create_path_and_folders(nb_devices: int, dataset: str, iid: str, algos: str,
     create_folder_if_not_existing(picture_path)
     return data_path, pickle_path, algos_pickle_path, picture_path
 
-def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_models, compression_model: CompressionModel,
+def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_models,
+                         up_compression_model: CompressionModel,
+                         dwn_compression_model: CompressionModel,
                          nb_epoch=NB_EPOCH,
                          step_formula=None,
                          use_averaging=False,
@@ -126,8 +130,8 @@ def multiple_run_descent(predefined_parameters: PredefinedParameters, cost_model
                                               batch_size=batch_size,
                                               fraction_sampled_workers=fraction_sampled_workers,
                                               use_unique_up_memory = use_unique_up_memory,
-                                              up_compression_model=compression_model,
-                                              down_compression_model=compression_model)
+                                              up_compression_model=up_compression_model,
+                                              down_compression_model=dwn_compression_model)
         model_descent = predefined_parameters.type_FL()(params, logs_file)
         model_descent.run(cost_models)
         multiple_descent.append(model_descent)
@@ -151,8 +155,9 @@ def single_run_descent(cost_models, model: AGradientDescent, parameters: Paramet
 
 def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settings: str, batch_size: int = 1,
                      stochastic: bool = True, nb_epoch: int = 150, step_size = None,
-                     compression: CompressionModel = None, use_averaging: bool = False,
-                     fraction_sampled_workers: int = 1, modify_run = None, pp_strategy: str = "pp2") -> None:
+                     up_compression: CompressionModel = None, dwn_compression: CompressionModel = None,
+                     use_averaging: bool = False, fraction_sampled_workers: float = 1, modify_run = None,
+                     pp_strategy: str = "pp2") -> None:
 
     pickle_file = "{0}/descent-{1}".format(logs_file, experiments_settings)
 
@@ -165,7 +170,8 @@ def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settin
     for type_params in tqdm(algos):
         use_unique_up_memory = False if pp_strategy == "pp1" else True
         multiple_sg_descent = multiple_run_descent(type_params, cost_models=cost_models,
-                                                   compression_model=compression,
+                                                   up_compression_model=up_compression,
+                                                   dwn_compression_model=dwn_compression,
                                                    use_averaging=use_averaging,
                                                    stochastic=stochastic,
                                                    nb_epoch=nb_epoch,
@@ -194,7 +200,7 @@ def run_one_scenario(cost_models, list_algos, logs_file: str, experiments_settin
 
 def run_for_different_scenarios(cost_models, list_algos, values, labels, experiments_settings: str,
                                 logs_file: str, batch_size: int = 1,
-                                stochastic: bool = True, nb_epoch: int = 10, step_formula = None,
+                                stochastic: bool = True, nb_epoch: int = 250, step_formula = None,
                                 compression: CompressionModel = None, scenario: str = "step") -> None:
 
     assert scenario in ["step", "compression", "alpha"], "There is three possible scenarios : to analyze by step size," \
@@ -217,15 +223,19 @@ def run_for_different_scenarios(cost_models, list_algos, values, labels, experim
 
             if scenario == "step":
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
-                                                           use_averaging=True, stochastic=stochastic, batch_size=batch_size,
-                                                           step_formula=value, nb_epoch=nb_epoch, compression_model=compression,
+                                                           use_averaging=True, stochastic=stochastic,
+                                                           batch_size=batch_size,
+                                                           step_formula=value, nb_epoch=nb_epoch,
+                                                           up_compression_model=compression,
+                                                           dwn_compression_model=compression,
                                                            logs_file=logs_file)
 
             if scenario in ["compression", "alpha"]:
                 multiple_sg_descent = multiple_run_descent(param_algo, cost_models=cost_models,
-                                                           use_averaging=True, stochastic=stochastic, batch_size=batch_size,
-                                                           step_formula=step_formula,
-                                                           compression_model=value, nb_epoch=nb_epoch,
+                                                           use_averaging=True, stochastic=stochastic,
+                                                           batch_size=batch_size, step_formula=step_formula,
+                                                           up_compression_model=compression,
+                                                           dwn_compression_model=compression, nb_epoch=nb_epoch,
                                                            logs_file=logs_file)
 
             descent_by_step_size[label] = multiple_sg_descent

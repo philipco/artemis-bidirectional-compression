@@ -94,7 +94,7 @@ def load_data(dataset: str, iid: str):
     :param iid: True if the dataset must not be splitted by target value
     :return: Train dataset, test dataset
     """
-    path_to_dataset = '{0}/dataset/'.format(get_path_to_datasets())
+    path_to_dataset = '{0}/'.format(get_path_to_datasets())
     if dataset == "fake":
 
         transform = transforms.ToTensor()
@@ -144,18 +144,18 @@ def load_data(dataset: str, iid: str):
         ])
 
         # Download and load the training data
-        train_data = datasets.FashionMNIST(path_to_dataset, download=True, train=True, transform=train_transforms)
+        train_data = datasets.FashionMNIST(path_to_dataset, download=False, train=True, transform=train_transforms)
 
         # Download and load the test data
-        test_data = datasets.FashionMNIST(path_to_dataset, download=True, train=False, transform=val_transforms)
+        test_data = datasets.FashionMNIST(path_to_dataset, download=False, train=False, transform=val_transforms)
 
     elif dataset == "femnist":
 
         transform = transforms.Compose([transforms.ToTensor()])
 
-        train_data = FEMNISTDataset(path_to_dataset, download=True, train=True, transform=transform)
+        train_data = FEMNISTDataset(path_to_dataset, download=False, train=True, transform=transform)
 
-        test_data = FEMNISTDataset(path_to_dataset, download=True, train=False, transform=transform)
+        test_data = FEMNISTDataset(path_to_dataset, download=False, train=False, transform=transform)
 
     elif dataset == "a9a":
 

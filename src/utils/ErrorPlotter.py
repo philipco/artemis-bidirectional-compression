@@ -16,7 +16,9 @@ from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 
 from src.utils.Utilities import drop_nan_values, keep_until_found_nan
 
-colors=["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink"]
+COLORS=["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink"]
+COLORS_PP2=["tab:blue", "tab:brown", "tab:orange", "tab:green", "tab:red", "tab:purple"]
+
 markers = ["o", "v", "s", "p", "X", "d", "P", "*", "<"]
 markersize = 1
 curve_size=4
@@ -41,9 +43,12 @@ nb_bars = 1  # = 3 when running 400 iterations, to plot 1 on nb_bars error bars.
 def plot_error_dist(all_losses, legend, all_error=None, x_points=None, x_legend=None, one_on_two_points=True,
                     xlabels=None, ylegends="loss", ylim=False, omega_c = None, picture_name=None, zoom = None):
 
-    assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
+    if "uni-vs-bi/pp2" in picture_name:
+        colors = COLORS_PP2
+    else:
+        colors = COLORS
 
-    # legend = [l if l != "Diana" else r"Art. $\omega_{C}^{dwn}=0$" for l in legend]
+    assert ylegends in Y_LEGENDS.keys(), "Possible values for ylegend are : " + str([key for key in Y_LEGENDS.keys()])
 
     N_it = len(all_losses[0])
 
@@ -63,6 +68,8 @@ def plot_error_dist(all_losses, legend, all_error=None, x_points=None, x_legend=
     nb_curves = min(len(all_losses), len(markers))
 
     for i in range(nb_curves):
+        # if i == 1:
+        #     continue
         abscisse = [i for i in range(N_it)]
         error_distance = all_losses[i]
         lw = curve_size-1 if len(error_distance) > 40 else curve_size
@@ -174,16 +181,18 @@ def setup_plot(xlegends, ylegends="loss", fontsize=fontsize, xticks_fontsize=fon
         ax.legend(loc='best', fontsize=fontsize_legend)
     fig.tight_layout()
     if picture_name:
-        plt.savefig('{0}.eps'.format(picture_name), format='eps')
+        plt.savefig('{0}.pdf'.format(picture_name), bbox_inches='tight', dpi=600)
     else:
         plt.show()
 
 
 def logistic_plot(X, Y):
     """Plot the logistic distribution of a dataset of dimension 2."""
-    plt.scatter(*X[Y == 1].T, color='b', s=10, label=r'$y_i=1$')
-    plt.scatter(*X[Y == -1].T, color='r', s=10, label=r'$y_i=-1$')
-    plt.legend(loc='upper left')
-    plt.xlabel(r"$x_i^1$", fontsize=16)
-    plt.ylabel(r"$x_i^2$", fontsize=16)
-    plt.title("Logistic regression simulation", fontsize=18)
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.scatter(*X[Y == 1].T, color='b', s=150, label=r'$y_i=1$')
+    ax.scatter(*X[Y == -1].T, color='r', s=150, label=r'$y_i=-1$')
+    ax.legend(loc='upper left', fontsize=20)
+    ax.set_xlabel(r"$x_i^1$", fontsize=30)
+    ax.set_xlabel(r"$x_i^2$", fontsize=30)
+    ax.tick_params(axis='both', labelsize=30)
+    plt.title("Logistic regression simulation", fontsize=30)

@@ -76,7 +76,10 @@ def get_project_root() -> str:
     path = str(pathlib.Path().absolute())
     root_dir = str(Path(__file__).parent.parent.parent)
     split = path.split(root_dir)
-    return split[0] + "/" + root_dir # TODO : checl that it is fine in both notebook and codes
+    project_root = split[0] + "/" + root_dir  # TODO : check that it is fine in both notebook and codes
+    if project_root[1] == '/':
+        return project_root[1:]
+    return project_root
 
 
 def create_folder_if_not_existing(folder):

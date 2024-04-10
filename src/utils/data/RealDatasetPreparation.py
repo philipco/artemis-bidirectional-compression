@@ -14,7 +14,7 @@ from src.utils.PathDataset import get_path_to_datasets
 from src.utils.PickleHandler import pickle_loader, pickle_saver
 from src.utils.Utilities import file_exist
 from src.utils.data.DataClustering import find_cluster, clustering_data, tsne, check_data_clusterisation, \
-    rebalancing_clusters, dirichlet_sampling
+    rebalancing_clusters, dirichlet_sampling, palette
 from src.utils.data.DataPreparation import add_bias_term
 
 
@@ -118,6 +118,7 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
         embedded_data = tsne(data)
         pickle_saver(embedded_data, tsne_file)
 
+    embedded_data = pickle_loader(tsne_file)
     tsne_cluster_file = "{0}/tsne-cluster".format(pickle_path)
     if not file_exist("{0}.pkl".format(tsne_cluster_file)):
         # Finding clusters in the TNSE.
@@ -128,6 +129,17 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
         pickle_saver(predicted_cluster, "{0}".format(tsne_cluster_file))
 
     predicted_cluster = pickle_loader("{0}".format(tsne_cluster_file))
+    n = len(embedded_data[:, 0])
+    idx = np.random.choice(n, int(n * 0.2), replace=False)
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(8, 7))
+    sns.scatterplot(embedded_data[idx][:,0], embedded_data[idx][:,1], ax=ax, hue=predicted_cluster[idx],
+                    legend='full', s=50, palette=palette(nb_cluster))
+    ax.tick_params(axis='both', labelsize=25)
+    ax.get_legend().remove()
+    plt.savefig('{0}.pdf'.format(tsne_cluster_file), bbox_inches='tight')
+
 
     # With the found clusters, splitting data.
     X, Y = clustering_data(data, predicted_cluster, target_label, nb_cluster)
@@ -147,7 +159,7 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
 
 def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                          double_check: bool = False):
-    raw_data = pd.read_csv('{0}/dataset/superconduct/train.csv'.format(get_path_to_datasets()), sep=",")
+    raw_data = pd.read_csv('{0}/superconduct/train.csv'.format(get_path_to_datasets()), sep=",")
     if raw_data.isnull().values.any():
         logging.warning("There is missing value.")
     else:
@@ -175,7 +187,7 @@ def prepare_superconduct(nb_devices: int, data_path: str, pickle_path: str, iid:
 def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                     double_check: bool =False):
 
-    raw_data= pd.read_csv('{0}/dataset/quantum/phy_train.csv'.format(get_path_to_datasets()), sep="\t", header=None)
+    raw_data= pd.read_csv('{0}/quantum/phy_train.csv'.format(get_path_to_datasets()), sep="\t", header=None)
 
     # Looking for missing values.
     columns_with_missing_values = []
@@ -226,7 +238,7 @@ def prepare_quantum(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 
 def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                      double_check: bool =False):
-    raw_data = pd.read_csv('{0}/dataset/mushroom/mushrooms.csv'.format(get_path_to_datasets()))
+    raw_data = pd.read_csv('{0}/mushroom/mushrooms.csv'.format(get_path_to_datasets()))
 
     # The data is categorial so I convert it with LabelEncoder to transfer to ordinal.
     labelencoder = LabelEncoder()
@@ -255,7 +267,7 @@ def prepare_mushroom(nb_devices: int, data_path: str, pickle_path: str, iid: boo
 def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                      double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/phishing/phishing.txt".format(get_path_to_datasets()))
+    raw_X, raw_Y = load_svmlight_file("{0}/phishing/phishing.txt".format(get_path_to_datasets()))
 
     for i in range(len(raw_Y)):
         if raw_Y[i] == 0:
@@ -269,7 +281,7 @@ def prepare_phishing(nb_devices: int, data_path: str, pickle_path: str, iid: boo
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -281,10 +293,10 @@ def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
                 double_check: bool =False, test: bool = False):
 
     if not test:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a.txt".format(get_path_to_datasets()))
+        raw_X, raw_Y = load_svmlight_file("{0}/a9a/a9a.txt".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
     else:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/a9a/a9a_test.txt".format(get_path_to_datasets()))
+        raw_X, raw_Y = load_svmlight_file("{0}/a9a/a9a_test.txt".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
         raw_X = np.c_[raw_X, np.zeros((len(raw_Y)))]
 
@@ -301,7 +313,7 @@ def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -313,7 +325,7 @@ def prepare_a9a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
 
 def prepare_abalone(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                     double_check: bool =False):
-    raw_data = pd.read_csv('{0}/dataset/abalone/abalone.csv'.format(get_path_to_datasets()), sep=",", header = None)
+    raw_data = pd.read_csv('{0}/abalone/abalone.csv'.format(get_path_to_datasets()), sep=",", header = None)
 
     raw_data = raw_data.rename(columns={ 0: "gender", 1: "Length", 2: "Diameter", 3: "Height", 8: "rings"})
     labelencoder = LabelEncoder()
@@ -337,7 +349,7 @@ def prepare_abalone(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                     double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_path_to_datasets()))
+    raw_X, raw_Y = load_svmlight_file("{0}/covtype/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
 
     for i in range(len(raw_Y)):
@@ -352,7 +364,7 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -364,18 +376,18 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                     double_check: bool =False):
 
-    X_data = pd.read_csv('{0}/dataset/madelon/madelon_train.data'.format(get_path_to_datasets()), sep=" ", header=None)
+    X_data = pd.read_csv('{0}/madelon/madelon_train.data'.format(get_path_to_datasets()), sep=" ", header=None)
     X_data.drop(X_data.columns[len(X_data.columns) - 1], axis=1, inplace=True)
 
     dim = len(X_data.columns)
 
-    Y_data = pd.read_csv('{0}/dataset/madelon/madelon_train.labels'.format(get_path_to_datasets()), header=None)
+    Y_data = pd.read_csv('{0}/madelon/madelon_train.labels'.format(get_path_to_datasets()), header=None)
 
     raw_data = X_data.copy()
     raw_data["target"] = Y_data.values
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -387,7 +399,7 @@ def prepare_madelon(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
                     double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/covtype/data".format(get_path_to_datasets()))
+    raw_X, raw_Y = load_svmlight_file("{0}/covtype/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
 
     for i in range(len(raw_Y)):
@@ -402,7 +414,7 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -413,7 +425,7 @@ def prepare_covtype(nb_devices: int, data_path: str, pickle_path: str, iid: bool
 
 def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None, double_check: bool =False):
 
-    raw_X, raw_Y = load_svmlight_file("{0}/dataset/gisette/data".format(get_path_to_datasets()))
+    raw_X, raw_Y = load_svmlight_file("{0}/gisette/data".format(get_path_to_datasets()))
     raw_X = raw_X.todense()
 
     raw_data = pd.DataFrame(data=raw_X)
@@ -424,7 +436,7 @@ def prepare_gisette(nb_devices: int, data_path: str, pickle_path: str, iid: bool
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
@@ -437,10 +449,10 @@ def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
                 double_check: bool = False, test: bool = False):
 
     if not test:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a".format(get_path_to_datasets()))
+        raw_X, raw_Y = load_svmlight_file("{0}/w8a/w8a".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
     else:
-        raw_X, raw_Y = load_svmlight_file("{0}/dataset/w8a/w8a.t".format(get_path_to_datasets()))
+        raw_X, raw_Y = load_svmlight_file("{0}/w8a/w8a.t".format(get_path_to_datasets()))
         raw_X = raw_X.todense()
         raw_X = np.c_[raw_X, np.zeros((len(raw_Y)))]
 
@@ -452,7 +464,7 @@ def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
     Y_data = raw_data.loc[:, raw_data.columns == "target"]
 
     if iid:
-        X_tensor = torch.tensor(X_data, dtype=torch.float64)
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
         Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
         X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
     else:
