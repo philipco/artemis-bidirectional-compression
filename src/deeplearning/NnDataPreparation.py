@@ -14,6 +14,8 @@ from torch.utils.data import DataLoader, Subset, RandomSampler
 
 from src.deeplearning.Dataset import QuantumDataset, FEMNISTDataset, A9ADataset, PhishingDataset, MushroomDataset
 from src.utils.PathDataset import get_path_to_datasets
+from src.utils.PickleHandler import pickle_loader
+from src.utils.Utilities import file_exist
 
 
 def non_iid_split(train_data, nb_devices):
@@ -43,7 +45,7 @@ def non_iid_split(train_data, nb_devices):
     return split
 
 
-def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, stochastic: bool, seed: int = 42):
+def create_loaders(dataset: str, pickle_path: str, iid: str, nb_devices: int, batch_size: int, stochastic: bool, seed: int = 42):
     """Returns dataloader."""
 
     train_data, test_data = load_data(dataset, iid)
@@ -57,7 +59,9 @@ def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, sto
     indices = np.arange(size_dataset)
 
     size_dataset = len(indices)
-    size_dataset_worker = np.int(np.floor(size_dataset / nb_devices))
+    size_dataset_worker = int(np.floor(size_dataset / nb_devices))
+
+    tsne_file = "{0}/tsne-cluster".format(pickle_path)
 
     if iid == "iid":
         top_ind = size_dataset_worker * nb_devices
@@ -67,6 +71,12 @@ def create_loaders(dataset: str, iid: str, nb_devices: int, batch_size: int, sto
         # If the dataset contains a split attribute, no need to compute a new one based on unique values.
         if hasattr(train_data, 'split'):
             split = train_data.split
+        elif file_exist("{0}.pkl".format(tsne_file)):
+            # Here I will have to use
+            predicted_cluster = pickle_loader("{0}".format(tsne_file))
+            split = []
+            for client_id in range(nb_devices):
+                split.append(np.array([k for k in range(len(predicted_cluster)) if predicted_cluster[k] == client_id]))
         else:
             split = non_iid_split(train_data, nb_devices)
 
