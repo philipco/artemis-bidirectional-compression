@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 import logging
 
+from torchvision import datasets, transforms
+
 import torch
 from sklearn.datasets import load_svmlight_file
 from sklearn.preprocessing import scale, LabelEncoder
@@ -49,6 +51,12 @@ def get_preparation_operator_of_dataset(dataset):
 
     if dataset == "w8a":
         return prepare_w8a
+
+    if dataset == "mnist":
+        return prepare_mnist
+
+    if dataset == "cifar10":
+        return prepare_cifar10
 
 
 def prepare_dataset_by_device(X_merged, Y_merged, nb_devices: int):
@@ -115,7 +123,7 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
         # Running TNSE to obtain a 2D representation of data
         logging.debug("The TSNE representation ({0}) doesn't exist."
               .format(tsne_file))
-        embedded_data = tsne(data)
+        embedded_data = tsne(data, target_label)
         pickle_saver(embedded_data, tsne_file)
 
     embedded_data = pickle_loader(tsne_file)
@@ -134,7 +142,7 @@ def TSNE_prepration(data, target_label: str, data_path: str, pickle_path: str, n
     import seaborn as sns
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=(8, 7))
-    sns.scatterplot(embedded_data[idx][:,0], embedded_data[idx][:,1], ax=ax, hue=predicted_cluster[idx],
+    sns.scatterplot(x=embedded_data[idx][:,0], y=embedded_data[idx][:,1], ax=ax, hue=predicted_cluster[idx],
                     legend='full', s=50, palette=palette(nb_cluster))
     ax.tick_params(axis='both', labelsize=25)
     ax.get_legend().remove()
@@ -472,3 +480,52 @@ def prepare_w8a(nb_devices: int, data_path: str, pickle_path: str, iid: bool = T
                                       double_check)
     return X, Y, dim + 1 # Because we added one column for the bias
 
+
+def prepare_mnist(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
+                double_check: bool = False):
+
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+
+    # Download and load the MNIST dataset
+    train_dataset = datasets.MNIST(root="~/GITHUB/DATASETS", train=True, download=True, transform=transform)
+
+    raw_data = pd.DataFrame(data=np.array([item[0].flatten().numpy() for item in train_dataset]))
+    raw_data["target"] = np.array([item[1] for item in train_dataset])
+    dim = len(raw_data.columns) - 1
+
+    X_data = raw_data.loc[:, raw_data.columns != "target"]
+    Y_data = raw_data.loc[:, raw_data.columns == "target"]
+
+    if iid:
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
+        Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
+    else:
+        X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/mnist", pickle_path, nb_devices, dirichlet,
+                                      double_check)
+    return X, Y, dim + 1 # Because we added one column for the bias
+
+
+def prepare_cifar10(nb_devices: int, data_path: str, pickle_path: str, iid: bool = True, dirichlet: int = None,
+                double_check: bool = False):
+
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+
+    # Download and load the MNIST dataset
+    train_dataset = datasets.CIFAR10(root="~/GITHUB/DATASETS", train=True, download=True, transform=transform)
+
+    raw_data = pd.DataFrame(data=np.array([item[0].flatten().numpy() for item in train_dataset]))
+    raw_data["target"] = np.array([item[1] for item in train_dataset])
+    dim = len(raw_data.columns) - 1
+
+    X_data = raw_data.loc[:, raw_data.columns != "target"]
+    Y_data = raw_data.loc[:, raw_data.columns == "target"]
+
+    if iid:
+        X_tensor = torch.tensor(X_data.to_numpy(), dtype=torch.float64)
+        Y_tensor = torch.tensor(Y_data.values, dtype=torch.float64)
+        X, Y = prepare_dataset_by_device(X_tensor, Y_tensor, nb_devices)
+    else:
+        X, Y = prepare_noniid_dataset(raw_data, "target", data_path + "/cifar10", pickle_path, nb_devices, dirichlet,
+                                      double_check)
+    return X, Y, dim + 1 # Because we added one column for the bias

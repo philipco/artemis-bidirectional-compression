@@ -23,13 +23,13 @@ def palette(nb_cluster: int = 10):
     return sns.color_palette("bright", nb_cluster)
 
 
-def tsne(data):
+def tsne(data, target_label):
     """Compute the TSNE representation of a dataset."""
     np.random.seed(25)
     tsne = TSNE()
-    X_embedded = tsne.fit_transform(scale(data))
+    X_embedded = tsne.fit_transform(scale(data.loc[:, data.columns != target_label]))
     fig, ax = plt.subplots(figsize=dim_tnse_fig)
-    sns.scatterplot(X_embedded[:, 0], X_embedded[:, 1], ax=ax).set_title("TSNE - 2D representation of data")
+    sns.scatterplot(x=X_embedded[:, 0], y=X_embedded[:, 1], ax=ax).set_title("TSNE - 2D representation of data")
     return X_embedded
 
 
