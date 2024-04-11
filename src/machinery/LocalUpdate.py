@@ -31,18 +31,18 @@ class AbstractLocalUpdate(ABC):
         # cost_model = cost_model
 
         # Local memory.
-        self.h_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.h_i = torch.zeros(parameters.n_dimensions, dtype=float)
 
         # Local delta (information that is sent to central server).
-        self.delta_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.delta_i = torch.zeros(parameters.n_dimensions, dtype=float)
 
-        self.g_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
-        self.v = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.g_i = torch.zeros(parameters.n_dimensions, dtype=float)
+        self.v = torch.zeros(parameters.n_dimensions, dtype=float)
 
         # Initialization of model's parameter.
         self.model_param = torch.FloatTensor([0 for i in range(self.parameters.n_dimensions)]).to(dtype=torch.float64)
 
-        self.error_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.error_i = torch.zeros(parameters.n_dimensions, dtype=float)
 
     def set_initial_v(self, v):
         """Initialize v (gradient-like, updated using previous gradients, required to use a momentum)"""
@@ -152,7 +152,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
         super().__init__(parameters)
 
         # For bidirectional compression :
-        self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.H_i = torch.zeros(parameters.n_dimensions, dtype=float)
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float) -> None:
 
@@ -169,7 +169,7 @@ class LocalArtemisUpdate(AbstractLocalUpdate):
             self.model_param = self.model_param - step * self.v
 
         if not self.parameters.use_down_memory:
-            assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
+            assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None)\
@@ -216,7 +216,7 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
 
         # Memory for bidirectional compression.
         # There is no need for smart initialiation as we take w_0 = 0.
-        self.H_i = torch.zeros(parameters.n_dimensions, dtype=np.float)
+        self.H_i = torch.zeros(parameters.n_dimensions, dtype=float)
 
     def send_global_informations_and_update_local_param(self, tensor_sent: torch.FloatTensor, step: float,
                                                         H_i: torch.FloatTensor = None):
@@ -232,7 +232,7 @@ class LocalDownCompressModelUpdate(AbstractLocalUpdate):
         self.model_param = decompressed_value
 
         if not self.parameters.use_down_memory:
-            assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
+            assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
     def compute_locally(self, cost_model: ACostModel, full_nb_iterations: int, step_size: float = None) \
@@ -272,7 +272,7 @@ class LocalGhostUpdate(LocalArtemisUpdate):
         self.model_param = model_param - step * decompressed_value
 
         if not self.parameters.use_down_memory:
-            assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=np.float)), \
+            assert self.H_i.equal(torch.zeros(self.parameters.n_dimensions, dtype=float)), \
                 "Downlink memory is not a zero tensor while the double-memory mechanism is switched-off."
 
         return self.model_param
