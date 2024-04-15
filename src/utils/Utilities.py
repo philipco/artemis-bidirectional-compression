@@ -17,6 +17,9 @@ from pympler import tracker
 from src.deeplearning.DLParameters import DLParameters
 from src.machinery.Parameters import Parameters
 
+SPEED_UPLOAD = 50
+SPEED_DOWNLOAD = 90
+
 
 def number_of_bits_needed_to_communicates_compressed(nb_devices: int, s: int, d: int) -> int:
     """Computing the theoretical number of bits used for a single way when using compression (with Elias encoding)."""
@@ -35,37 +38,42 @@ def compute_number_of_bits_by_layer(type_params: Parameters, d: int, nb_epoch: i
     """Returns the theoretical number of bits used for a single layer."""
     fraction = type_params.fraction_sampled_workers
     number_of_bits = [0]
+    training_time = [0]
     nb_devices = type_params.nb_devices
     for i in range(nb_epoch):
-        nb_bits = 0
+        nb_bits, time = 0, 0
         s_up = type_params.up_compression_model.level
         s_dwn = type_params.down_compression_model.level
         if s_up != 0:
             nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s_up, d) * fraction
         else:
             nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d) * fraction
+        time += nb_bits / SPEED_UPLOAD
         if s_dwn != 0:
             nb_bits += number_of_bits_needed_to_communicates_compressed(nb_devices, s_dwn, d) * [1, fraction][
                 compress_model]
         else:
             nb_bits += number_of_bits_needed_to_communicates_no_compressed(nb_devices, d)
+        time += nb_bits / SPEED_DOWNLOAD
 
         number_of_bits.append(nb_bits + number_of_bits[-1])
+        training_time.append(time + training_time[-1])
     # Due to intialization, the first element needs to be removed at the end.
-    return np.array(number_of_bits[1:])
+    return np.array(number_of_bits[1:]), np.array(training_time[1:])
 
 
 def compute_number_of_bits(type_params: Parameters, nb_epoch: int, compress_model: bool):
     """Computing the theoretical number of bits used by an algorithm (with Elias encoding)."""
     # Initialization
     number_of_bits = np.array([0 for i in range(nb_epoch)])
+    training_time = np.array([0 for i in range(nb_epoch)])
     if isinstance(type_params, DLParameters):
         model = type_params.model(type_params.n_dimensions)
         for p in model.parameters():
             d = p.numel()
-            nb_bits = compute_number_of_bits_by_layer(type_params, d, nb_epoch, compress_model)
-            number_of_bits = number_of_bits + nb_bits
-        return number_of_bits
+            nb_bits, time = compute_number_of_bits_by_layer(type_params, d, nb_epoch, compress_model)
+            number_of_bits, training_time = number_of_bits + nb_bits, training_time + time
+        return number_of_bits, training_time
     else:
         d = type_params.n_dimensions
         return compute_number_of_bits_by_layer(type_params, d, nb_epoch, compress_model)
