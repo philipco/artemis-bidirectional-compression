@@ -53,6 +53,21 @@ class MNIST_Linear(nn.Module):
         return x
 
 
+class CIFAR10_Linear(nn.Module):
+
+    def __init__(self, input_size):
+        input_size = 32*32*3
+        self.output_size = 10
+        super(CIFAR10_Linear, self).__init__()
+        self.f1 = nn.Flatten()
+        self.l1 = nn.Linear(input_size, self.output_size)
+
+    def forward(self, x):
+        x = self.f1(x)
+        x = self.l1(x)
+        return x
+
+
 class MNIST_FullyConnected(nn.Module):
 
     def __init__(self, input_size):

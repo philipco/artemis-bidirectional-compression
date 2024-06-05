@@ -43,6 +43,11 @@ class AbstractGradientUpdate(ABC):
         return loss.item()
 
     @abstractmethod
+    def compute_accuracy(self, model_param):
+        """Compute the train accuracy for the model's parameter."""
+        pass
+
+    @abstractmethod
     def compute(self, model_param: torch.FloatTensor, cost_models, full_nb_iterations: int, nb_inside_it: int) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         """Compute the model's update.
@@ -138,6 +143,14 @@ class AbstractFLUpdate(AbstractGradientUpdate, metaclass=ABCMeta):
             loss_i, _ = cost_model.cost(model_param)
             all_loss_i.append(loss_i.item() * cost_model.X.shape[0] * self.parameters.nb_devices / self.parameters.total_nb_points)
         return np.mean(all_loss_i)
+
+    def compute_accuracy(self, model_param, cost_models):
+        """Compute the loss by iterating over all worker."""
+        all_exact = []
+        for worker, cost_model in zip(self.workers, cost_models):
+            exact = cost_model.compute_exact_pred(model_param)
+            all_exact.append(exact)
+        return 100. * np.sum(all_exact) / self.parameters.total_nb_points
 
     def sampling_devices(self, cost_models):
         """Samples devices that will be active at this round."""

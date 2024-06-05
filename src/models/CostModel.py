@@ -191,6 +191,12 @@ class RMSEModel(ACostModel):
         self.grad_i_times += (end - start)
         return loss, w
 
+    def compute_exact_pred(self, w: torch.FloatTensor):
+        output = self.X.mv(w)
+        pred = output.round()
+        correct = pred.eq(self.Y).sum().item()
+        return correct
+
     def grad(self, w: torch.FloatTensor) -> torch.FloatTensor:
         n_sample = self.X.shape[0]
         return 2 * self.X.T.mv(self.X.mv(w) - self.Y) / n_sample + self.regularization.grad(w)

@@ -26,7 +26,7 @@ from src.utils.runner.RunnerUtilities import create_path_and_folders, choose_alg
 
 logging.basicConfig(level=logging.INFO)
 
-NB_RUN_DL = 2
+NB_RUN_DL = 1
 
 
 def run_experiments_in_deeplearning(dataset: str, continue_run: bool = False, plot_only: bool = False) -> None:
@@ -59,12 +59,12 @@ def run_experiments_in_deeplearning(dataset: str, continue_run: bool = False, pl
     default_up_compression = SQuantization(quantization_levels[dataset], norm=norm_quantization[dataset])
     default_down_compression = SQuantization(quantization_levels[dataset], norm=norm_quantization[dataset])
 
-    loaders = create_loaders(dataset, iid, nb_devices, batch_size, stochastic)
+    loaders = create_loaders(dataset, pickle_path, iid, nb_devices, batch_size, stochastic)
     _, train_loader_workers_full, _ = loaders
     dim = next(iter(train_loader_workers_full))[0].shape[1]
     if optimal_steps_size[dataset] is None:
         L = compute_L(train_loader_workers_full)
-        optimal_steps_size[dataset] = 1/L
+        optimal_steps_size[dataset] = 1/ (2 * L)
         print("Step size:", optimal_steps_size[dataset])
 
     exp_name = name_of_the_experiments(dataset, stochastic)
@@ -82,7 +82,7 @@ def run_experiments_in_deeplearning(dataset: str, continue_run: bool = False, pl
             torch.cuda.empty_cache()
             params = type_params.define(cost_models=None,
                                         n_dimensions=dim,
-                                        nb_epoch=300,
+                                        nb_epoch=25,
                                         nb_devices=nb_devices,
                                         stochastic=stochastic,
                                         batch_size=batch_size,
@@ -90,7 +90,11 @@ def run_experiments_in_deeplearning(dataset: str, continue_run: bool = False, pl
                                         up_compression_model=default_up_compression,
                                         down_compression_model=default_down_compression)
 
-            params = cast_to_DL(params, dataset, models[dataset], optimal_steps_size[dataset], weight_decay[dataset], iid)
+            # if hasattr(type_params, 'down_compression_model'):
+            #     step_size = optimal_steps_size[dataset] / (type_params.down_compression_model.omega_c + 1)
+            # else:
+            step_size = optimal_steps_size[dataset]
+            params = cast_to_DL(params, dataset, models[dataset], step_size, weight_decay[dataset], iid)
             params.log_file = log_file
             params.momentum = momentums[dataset]
             params.criterion = criterion[dataset]

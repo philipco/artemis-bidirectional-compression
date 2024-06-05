@@ -16,11 +16,6 @@ from src.utils.runner.RunnerUtilities import *
 from src.utils.PickleHandler import pickle_loader, pickle_saver
 
 
-def iid_step_size(it, L, omega, N): return 1 / (8 * L)
-def deacreasing_step_size(it, L, omega, N): return 1 / (L * sqrt(it))
-def batch_step_size(it, L, omega, N): return 1 / L
-
-
 def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, algos: str, use_averaging: bool = False,
                     scenario: str = None, fraction_sampled_workers: float = 1, plot_only: bool = False, modify_run=None,
                     dirichlet = None, pp_strategy: str = "pp2"):
@@ -28,7 +23,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
     print("Running with following parameters: {0}".format(["{0} -> {1}".format(k, v) for (k, v)
                                                            in zip(locals().keys(), locals().values())]))
     assert dataset in ["quantum", "superconduct", "mushroom", "phishing", "a9a", "abalone", "covtype", 'synth_logistic',
-                       'madelon', 'gisette', 'w8a', 'synth_linear_noised', 'synth_linear_nonoised'], \
+                       'madelon', 'gisette', 'w8a', 'synth_linear_noised', 'synth_linear_nonoised', 'mnist', "cifar10"], \
         "The available dataset are ['quantum', 'superconduct', 'synth_linear_noised', 'synth_linear_nonoised']."
     assert iid in ['iid', 'non-iid'], "The iid option are ['iid', 'non-iid']."
     assert scenario in [None, "compression", "step", "alpha"], "The possible scenario are [None, 'compression', 'step', 'alpha']."
@@ -85,7 +80,7 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         else:
             X, Y = pickle_loader(pickle_path + "/data")
 
-    default_level_of_quantization = 1 if fraction_sampled_workers == 1 else 2
+    default_level_of_quantization = 2 if fraction_sampled_workers == 1 else 2
 
     if algos == "various-compressors":
         compression_by_default = RandomSparsification(0.1, dim_notebook, norm=2)
@@ -148,10 +143,10 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         step_size = lambda it, L, omega, N: 1 / (2*L)
         label_step_size = "1/2L"
     else:
-        step_size = lambda it, L, omega, N: 1 / L
+        step_size = lambda it, L, omega, N: 1 / (2 * L)
         label_step_size = "1/L"
     if 'synth' in dataset and stochastic:
-        step_size = deacreasing_step_size
+        step_size = lambda it, L, omega, N: 1 / (L * sqrt(it))
 
     stochasticity = 'sto' if stochastic else "full"
     reg = "-reg{0}".format(
@@ -201,6 +196,11 @@ def run_experiments(nb_devices: int, stochastic: bool, dataset: str, iid: str, a
         plot_error_dist(res.get_loss(obj_min), res.names,
                         x_points=res.X_number_of_bits, x_legend="Communicated bits",
                         all_error=res.get_std(obj_min), picture_name="{0}/bits-noavg-{1}"
+                        .format(picture_path, experiments_settings), ylim=ylim)
+
+        plot_error_dist(res.get_loss(obj_min), res.names,
+                        x_points=res.X_training_time, x_legend="Theoretical training time",
+                        all_error=res.get_std(obj_min), picture_name="{0}/time-noavg-{1}"
                         .format(picture_path, experiments_settings), ylim=ylim)
 
         # Plotting with averaging
@@ -280,14 +280,10 @@ if __name__ == '__main__':
 
     elif sys.argv[1] == "real":
         dataset = sys.argv[2]
-        for sto in [True, False]:
+        for sto in [True]:
             run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
                             use_averaging=True, fraction_sampled_workers=1, pp_strategy="pp1")
-            run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                            use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp1")
-            run_experiments(nb_devices=20, stochastic=sto, dataset=dataset, iid=sys.argv[4], algos=sys.argv[3],
-                            use_averaging=True, fraction_sampled_workers=0.5, pp_strategy="pp2")
-        if sys.argv[3] == "uni-vs-bi":
+        if sys.argv[3] == "uni-vs-bi22":
             run_experiments(nb_devices=20, stochastic=True, dataset=dataset, iid=sys.argv[4],
                             algos="artemis-vs-existing",
                             use_averaging=True, scenario=None, fraction_sampled_workers=1, pp_strategy="pp1")

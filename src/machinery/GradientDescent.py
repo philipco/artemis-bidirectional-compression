@@ -56,6 +56,7 @@ class AGradientDescent(ABC):
         super().__init__()
         self.parameters = parameters
         self.train_losses = []
+        self.test_accuracies = []
         self.norm_error_feedback = []
         self.dist_to_model = [torch.tensor(0.)]
         self.h_i_to_optimal_grad = []
@@ -204,6 +205,8 @@ class AGradientDescent(ABC):
         end_time = time.time()
         elapsed_time = end_time - start_time
 
+
+
         # print(self.distance_to_model)
 
         self.memory_info = psutil.Process(os.getpid()).memory_info().rss / 1e6
@@ -247,6 +250,7 @@ class AGradientDescent(ABC):
 
     def update_gradient_descent_info(self, past_model, cost_models):
         self.train_losses.append(self.update.compute_cost(past_model, cost_models))
+        self.test_accuracies.append(self.update.compute_accuracy(past_model, cost_models))
         if self.parameters.randomized:
             self.norm_error_feedback.append(
                 torch.norm(torch.mean(torch.stack(self.update.all_error_i[-1]), dim=0), p=2))

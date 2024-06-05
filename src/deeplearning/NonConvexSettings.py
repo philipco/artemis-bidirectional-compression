@@ -7,16 +7,16 @@ from src.deeplearning.NnModels import *
 from src.deeplearning.VGG import VGG11, VGG19
 from src.models.CompressionModel import SQuantization
 
-batch_sizes = {"cifar10": 128, "mnist": 128, "fashion_mnist": 128, "femnist": 128,
+batch_sizes = {"cifar10": 256, "mnist": 256, "fashion_mnist": 128, "femnist": 128,
           "a9a": 50, "phishing": 50, "quantum": 400, "mushroom": 4}
-models = {"cifar10": LeNet, "mnist": MNIST_CNN, "fashion_mnist": FashionSimpleNet, "femnist": MNIST_CNN,
+models = {"cifar10": CIFAR10_Linear, "mnist": MNIST_CNN, "fashion_mnist": FashionSimpleNet, "femnist": MNIST_CNN,
           "a9a": LogisticReg, "phishing": LogisticReg, "quantum": LogisticReg,
           "mushroom": LogisticReg}
-momentums = {"cifar10": 0.9, "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a": 0, "phishing": 0,
+momentums = {"cifar10": 0., "mnist": 0, "fashion_mnist": 0, "femnist": 0, "a9a": 0, "phishing": 0,
              "quantum": 0, "mushroom": 0}
-optimal_steps_size = {"cifar10": 0.1, "mnist": 0.1, "fashion_mnist": 0.1, "femnist": 0.1, "a9a": None,
+optimal_steps_size = {"cifar10": 0.01, "mnist": 0.001, "fashion_mnist": 0.1, "femnist": 0.1, "a9a": None,
                       "phishing": None, "quantum": None, "mushroom": None}
-quantization_levels= {"cifar10": 2**4, "mnist": 4, "fashion_mnist": 4, "femnist": 4, "a9a":1, "phishing": 1,
+quantization_levels= {"cifar10": 2**2, "mnist": 0, "fashion_mnist": 4, "femnist": 4, "a9a":1, "phishing": 1,
                       "quantum": 1, "mushroom": 1}
 norm_quantization = {"cifar10": 2, "mnist": 2, "fashion_mnist": 2, "femnist": 2, "a9a": 2,
                      "phishing": 2, "quantum": 2, "mushroom": 2}
